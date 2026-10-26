@@ -1,4 +1,4 @@
-# MVP-Workshop
+# MVP-Workshop asset editor
 
 Asset explorer, editor and format-research workbench for **MVP 07 NCAA Baseball (PS2, SLUS-215.82)** and **MVP 06 NCAA Baseball (Xbox, default.xbe)**.
 Frosty-style layout: data explorer on the left, tabbed documents in the middle, properties on the right, log below.
