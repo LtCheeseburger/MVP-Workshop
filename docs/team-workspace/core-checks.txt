@@ -1,0 +1,322 @@
+tests\TeamAssignments\TeamAssignments.csproj : warning NU1900: Error occurred while getting package vulnerability data: Unable to load the service index for source https://api.nuget.org/v3/index.json.
+tests\TeamAssignments\TeamAssignments.csproj : warning NU1900: Error occurred while getting package vulnerability data: Unable to load the service index for source https://api.nuget.org/v3/index.json.
+PASS A&M: all roster slots join to attrib.dat by key
+PASS A&M: player source keys agree
+PASS AF: all roster slots join to attrib.dat by key
+PASS AF: player source keys agree
+PASS ARIZ: all roster slots join to attrib.dat by key
+PASS ARIZ: player source keys agree
+PASS ARMY: all roster slots join to attrib.dat by key
+PASS ARMY: player source keys agree
+PASS ASU: all roster slots join to attrib.dat by key
+PASS ASU: player source keys agree
+PASS ASU: all roster slots join to attrib.dat by key
+PASS ASU: player source keys agree
+PASS ASU: all roster slots join to attrib.dat by key
+PASS ASU: player source keys agree
+PASS AUB: all roster slots join to attrib.dat by key
+PASS AUB: player source keys agree
+PASS BAMA: all roster slots join to attrib.dat by key
+PASS BAMA: player source keys agree
+PASS BAY: all roster slots join to attrib.dat by key
+PASS BAY: player source keys agree
+PASS BC: all roster slots join to attrib.dat by key
+PASS BC: player source keys agree
+PASS BU: all roster slots join to attrib.dat by key
+PASS BU: player source keys agree
+PASS BU: all roster slots join to attrib.dat by key
+PASS BU: player source keys agree
+PASS BYU: all roster slots join to attrib.dat by key
+PASS BYU: player source keys agree
+PASS CAL: all roster slots join to attrib.dat by key
+PASS CAL: player source keys agree
+PASS CIT: all roster slots join to attrib.dat by key
+PASS CIT: player source keys agree
+PASS CLEM: all roster slots join to attrib.dat by key
+PASS CLEM: player source keys agree
+PASS COFC: all roster slots join to attrib.dat by key
+PASS COFC: player source keys agree
+PASS CONN: all roster slots join to attrib.dat by key
+PASS CONN: player source keys agree
+PASS CSF: all roster slots join to attrib.dat by key
+PASS CSF: player source keys agree
+PASS CSN: all roster slots join to attrib.dat by key
+PASS CSN: player source keys agree
+PASS CU: all roster slots join to attrib.dat by key
+PASS CU: player source keys agree
+PASS DC: all roster slots join to attrib.dat by key
+PASS DC: player source keys agree
+PASS DU: all roster slots join to attrib.dat by key
+PASS DU: player source keys agree
+PASS DUKE: all roster slots join to attrib.dat by key
+PASS DUKE: player source keys agree
+PASS ECU: all roster slots join to attrib.dat by key
+PASS ECU: player source keys agree
+PASS ELON: all roster slots join to attrib.dat by key
+PASS ELON: player source keys agree
+PASS EVAN: all roster slots join to attrib.dat by key
+PASS EVAN: player source keys agree
+PASS FIU: all roster slots join to attrib.dat by key
+PASS FIU: player source keys agree
+PASS FORD: all roster slots join to attrib.dat by key
+PASS FORD: player source keys agree
+PASS FRES: all roster slots join to attrib.dat by key
+PASS FRES: player source keys agree
+PASS FSU: all roster slots join to attrib.dat by key
+PASS FSU: player source keys agree
+PASS FU: all roster slots join to attrib.dat by key
+PASS FU: player source keys agree
+PASS GSU: all roster slots join to attrib.dat by key
+PASS GSU: player source keys agree
+PASS GU: all roster slots join to attrib.dat by key
+PASS GU: player source keys agree
+PASS GWU: all roster slots join to attrib.dat by key
+PASS GWU: player source keys agree
+PASS HC: all roster slots join to attrib.dat by key
+PASS HC: player source keys agree
+PASS HOGS: all roster slots join to attrib.dat by key
+PASS HOGS: player source keys agree
+PASS IOWA: all roster slots join to attrib.dat by key
+PASS IOWA: player source keys agree
+PASS ISU: all roster slots join to attrib.dat by key
+PASS ISU: player source keys agree
+PASS ISU: all roster slots join to attrib.dat by key
+PASS ISU: player source keys agree
+PASS IU: all roster slots join to attrib.dat by key
+PASS IU: player source keys agree
+PASS KSU: all roster slots join to attrib.dat by key
+PASS KSU: player source keys agree
+PASS KU: all roster slots join to attrib.dat by key
+PASS KU: player source keys agree
+PASS LASU: all roster slots join to attrib.dat by key
+PASS LASU: player source keys agree
+PASS LBSU: all roster slots join to attrib.dat by key
+PASS LBSU: player source keys agree
+PASS LC: all roster slots join to attrib.dat by key
+PASS LC: player source keys agree
+PASS LMU: all roster slots join to attrib.dat by key
+PASS LMU: player source keys agree
+PASS LSU: all roster slots join to attrib.dat by key
+PASS LSU: player source keys agree
+PASS LU: all roster slots join to attrib.dat by key
+PASS LU: player source keys agree
+PASS MAR: all roster slots join to attrib.dat by key
+PASS MAR: player source keys agree
+PASS MEMP: all roster slots join to attrib.dat by key
+PASS MEMP: player source keys agree
+PASS MICH: all roster slots join to attrib.dat by key
+PASS MICH: player source keys agree
+PASS MINN: all roster slots join to attrib.dat by key
+PASS MINN: player source keys agree
+PASS MISS: all roster slots join to attrib.dat by key
+PASS MISS: player source keys agree
+PASS MIZZ: all roster slots join to attrib.dat by key
+PASS MIZZ: player source keys agree
+PASS MSU: all roster slots join to attrib.dat by key
+PASS MSU: player source keys agree
+PASS MSU: all roster slots join to attrib.dat by key
+PASS MSU: player source keys agree
+PASS MSU: all roster slots join to attrib.dat by key
+PASS MSU: player source keys agree
+PASS MTSU: all roster slots join to attrib.dat by key
+PASS MTSU: player source keys agree
+PASS NAVY: all roster slots join to attrib.dat by key
+PASS NAVY: player source keys agree
+PASS NCST: all roster slots join to attrib.dat by key
+PASS NCST: player source keys agree
+PASS ND: all roster slots join to attrib.dat by key
+PASS ND: player source keys agree
+PASS NEB: all roster slots join to attrib.dat by key
+PASS NEB: player source keys agree
+PASS NEV: all roster slots join to attrib.dat by key
+PASS NEV: player source keys agree
+PASS NMSU: all roster slots join to attrib.dat by key
+PASS NMSU: player source keys agree
+PASS NOVA: all roster slots join to attrib.dat by key
+PASS NOVA: player source keys agree
+PASS NU: all roster slots join to attrib.dat by key
+PASS NU: player source keys agree
+PASS OSU: all roster slots join to attrib.dat by key
+PASS OSU: player source keys agree
+PASS OSU: all roster slots join to attrib.dat by key
+PASS OSU: player source keys agree
+PASS OSU: all roster slots join to attrib.dat by key
+PASS OSU: player source keys agree
+PASS OU: all roster slots join to attrib.dat by key
+PASS OU: player source keys agree
+PASS PEPP: all roster slots join to attrib.dat by key
+PASS PEPP: player source keys agree
+PASS PITT: all roster slots join to attrib.dat by key
+PASS PITT: player source keys agree
+PASS POLY: all roster slots join to attrib.dat by key
+PASS POLY: player source keys agree
+PASS PORT: all roster slots join to attrib.dat by key
+PASS PORT: player source keys agree
+PASS PSU: all roster slots join to attrib.dat by key
+PASS PSU: player source keys agree
+PASS PUR: all roster slots join to attrib.dat by key
+PASS PUR: player source keys agree
+PASS RICE: all roster slots join to attrib.dat by key
+PASS RICE: player source keys agree
+PASS RUTG: all roster slots join to attrib.dat by key
+PASS RUTG: player source keys agree
+PASS SAC: all roster slots join to attrib.dat by key
+PASS SAC: player source keys agree
+PASS SC: all roster slots join to attrib.dat by key
+PASS SC: player source keys agree
+PASS SDSU: all roster slots join to attrib.dat by key
+PASS SDSU: player source keys agree
+PASS SHU: all roster slots join to attrib.dat by key
+PASS SHU: player source keys agree
+PASS SIU: all roster slots join to attrib.dat by key
+PASS SIU: player source keys agree
+PASS SJSU: all roster slots join to attrib.dat by key
+PASS SJSU: player source keys agree
+PASS SJU: all roster slots join to attrib.dat by key
+PASS SJU: player source keys agree
+PASS SLU: all roster slots join to attrib.dat by key
+PASS SLU: player source keys agree
+PASS SMC: all roster slots join to attrib.dat by key
+PASS SMC: player source keys agree
+PASS STAN: all roster slots join to attrib.dat by key
+PASS STAN: player source keys agree
+PASS STB: all roster slots join to attrib.dat by key
+PASS STB: player source keys agree
+PASS STJ: all roster slots join to attrib.dat by key
+PASS STJ: player source keys agree
+PASS TCU: all roster slots join to attrib.dat by key
+PASS TCU: player source keys agree
+PASS TECH: all roster slots join to attrib.dat by key
+PASS TECH: player source keys agree
+PASS TECH: all roster slots join to attrib.dat by key
+PASS TECH: player source keys agree
+PASS TECH: all roster slots join to attrib.dat by key
+PASS TECH: player source keys agree
+PASS TEMP: all roster slots join to attrib.dat by key
+PASS TEMP: player source keys agree
+PASS TENN: all roster slots join to attrib.dat by key
+PASS TENN: player source keys agree
+PASS TROY: all roster slots join to attrib.dat by key
+PASS TROY: player source keys agree
+PASS TUL: all roster slots join to attrib.dat by key
+PASS TUL: player source keys agree
+PASS UAB: all roster slots join to attrib.dat by key
+PASS UAB: player source keys agree
+PASS UALR: all roster slots join to attrib.dat by key
+PASS UALR: player source keys agree
+PASS UC: all roster slots join to attrib.dat by key
+PASS UC: player source keys agree
+PASS UCF: all roster slots join to attrib.dat by key
+PASS UCF: player source keys agree
+PASS UCI: all roster slots join to attrib.dat by key
+PASS UCI: player source keys agree
+PASS UCLA: all roster slots join to attrib.dat by key
+PASS UCLA: player source keys agree
+PASS UCR: all roster slots join to attrib.dat by key
+PASS UCR: player source keys agree
+PASS UCSB: all roster slots join to attrib.dat by key
+PASS UCSB: player source keys agree
+PASS UD: all roster slots join to attrib.dat by key
+PASS UD: player source keys agree
+PASS UF: all roster slots join to attrib.dat by key
+PASS UF: player source keys agree
+PASS UGA: all roster slots join to attrib.dat by key
+PASS UGA: player source keys agree
+PASS UH: all roster slots join to attrib.dat by key
+PASS UH: player source keys agree
+PASS UH: all roster slots join to attrib.dat by key
+PASS UH: player source keys agree
+PASS UI: all roster slots join to attrib.dat by key
+PASS UI: player source keys agree
+PASS UK: all roster slots join to attrib.dat by key
+PASS UK: player source keys agree
+PASS UL: all roster slots join to attrib.dat by key
+PASS UL: player source keys agree
+PASS UL-L: all roster slots join to attrib.dat by key
+PASS UL-L: player source keys agree
+PASS UM: all roster slots join to attrib.dat by key
+PASS UM: player source keys agree
+PASS UM: all roster slots join to attrib.dat by key
+PASS UM: player source keys agree
+PASS UMASS: all roster slots join to attrib.dat by key
+PASS UMASS: player source keys agree
+PASS UNC: all roster slots join to attrib.dat by key
+PASS UNC: player source keys agree
+PASS UNCC: all roster slots join to attrib.dat by key
+PASS UNCC: player source keys agree
+PASS UNCG: all roster slots join to attrib.dat by key
+PASS UNCG: player source keys agree
+PASS UNI: all roster slots join to attrib.dat by key
+PASS UNI: player source keys agree
+PASS UNLV: all roster slots join to attrib.dat by key
+PASS UNLV: player source keys agree
+PASS UNM: all roster slots join to attrib.dat by key
+PASS UNM: player source keys agree
+PASS UNO: all roster slots join to attrib.dat by key
+PASS UNO: player source keys agree
+PASS UOP: all roster slots join to attrib.dat by key
+PASS UOP: player source keys agree
+PASS UR: all roster slots join to attrib.dat by key
+PASS UR: player source keys agree
+PASS URI: all roster slots join to attrib.dat by key
+PASS URI: player source keys agree
+PASS USA: all roster slots join to attrib.dat by key
+PASS USA: player source keys agree
+PASS USC: all roster slots join to attrib.dat by key
+PASS USC: player source keys agree
+PASS USC: all roster slots join to attrib.dat by key
+PASS USC: player source keys agree
+PASS USD: all roster slots join to attrib.dat by key
+PASS USD: player source keys agree
+PASS USF: all roster slots join to attrib.dat by key
+PASS USF: player source keys agree
+PASS USF: all roster slots join to attrib.dat by key
+PASS USF: player source keys agree
+PASS USM: all roster slots join to attrib.dat by key
+PASS USM: player source keys agree
+PASS UT: all roster slots join to attrib.dat by key
+PASS UT: player source keys agree
+PASS UTAH: all roster slots join to attrib.dat by key
+PASS UTAH: player source keys agree
+PASS UVA: all roster slots join to attrib.dat by key
+PASS UVA: player source keys agree
+PASS UW: all roster slots join to attrib.dat by key
+PASS UW: player source keys agree
+PASS VAND: all roster slots join to attrib.dat by key
+PASS VAND: player source keys agree
+PASS VT: all roster slots join to attrib.dat by key
+PASS VT: player source keys agree
+PASS WAKE: all roster slots join to attrib.dat by key
+PASS WAKE: player source keys agree
+PASS WC: all roster slots join to attrib.dat by key
+PASS WC: player source keys agree
+PASS WCU: all roster slots join to attrib.dat by key
+PASS WCU: player source keys agree
+PASS WKU: all roster slots join to attrib.dat by key
+PASS WKU: player source keys agree
+PASS WSU: all roster slots join to attrib.dat by key
+PASS WSU: player source keys agree
+PASS WSU: all roster slots join to attrib.dat by key
+PASS WSU: player source keys agree
+PASS WVU: all roster slots join to attrib.dat by key
+PASS WVU: player source keys agree
+PASS XU: all roster slots join to attrib.dat by key
+PASS XU: player source keys agree
+PASS ZAGS: all roster slots join to attrib.dat by key
+PASS ZAGS: player source keys agree
+PASS LSU exact first slot → attrib.dat field evidence
+PASS shared sources never assert player/school ownership
+PASS authentic venue differs from roster assignment for validation schools
+PASS 152 variable records: boundary IDs reopen; unknown bytes, third asset and packed bits preserved
+PASS out-of-range family rejected
+PASS unknown stadium enum rejected
+PASS team browser decodes edited IDs
+PASS team browser resolves selected families
+PASS team browser resolves selected stadium enum
+PASS undo restores original bytes
+PASS redo restores reviewed assignments
+PASS project reopens with exact assignment bytes
+PASS export reopens archives and verifies all logical entries: 
+PASS only roster container exported; executable registry untouched
+PASS exported roster reopens with only intended assignment fields changed
+319 checks passed. Output: test-output\workspace-export

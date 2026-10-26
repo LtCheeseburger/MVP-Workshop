@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>MVP-Workshop</AssemblyName>
+    <RootNamespace>MVPWorkshop.App</RootNamespace>
+    <Product>MVP-Workshop</Product>
+    <ApplicationIcon>Assets\MvpWorkshop.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
+    <Company>MVP-Workshop</Company>
+    <Copyright>MVP-Workshop contributors</Copyright>
+    <Description>Asset explorer and editor for MVP 07 NCAA Baseball (PS2) and MVP 06 NCAA Baseball (Xbox)</Description>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="Assets\MvpWorkshop.png" />
+    <Resource Include="Assets\MvpWorkshop.ico" />
+    <ProjectReference Include="..\MVPWorkshop.Core\MVPWorkshop.Core.csproj" />
+  </ItemGroup>
+</Project>

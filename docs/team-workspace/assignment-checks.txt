@@ -1,0 +1,10 @@
+PASS three assignment selectors visible
+PASS draft selections leave roster unchanged
+PASS reviewed draft can be applied
+PASS live team profile reflects applied IDs
+PASS open team view refreshes
+PASS browser grid reflects applied assignments
+PASS tree resolves edited logo and uniforms
+PASS undo refreshes browser to original IDs
+PASS redo refreshes browser to edited IDs
+Failures: 0

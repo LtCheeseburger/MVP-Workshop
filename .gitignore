@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+*.user
+publish-tmp/
+release/
+test-output*/
+test-output*
+research/
+docs/**/*.png
+!src/**/Assets/*.png

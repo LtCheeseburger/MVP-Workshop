@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/MVPWorkshop.Core/MVPWorkshop.Core.csproj" />
+  <Project Path="src/MVPWorkshop.App/MVPWorkshop.App.csproj" />
+  <Project Path="src/MVPWorkshop.Probe/MVPWorkshop.Probe.csproj" />
+</Solution>

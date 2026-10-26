@@ -1,0 +1,63 @@
+Reproduced from the game data
+  · Shape geometry, vertex colours, strip restarts and per-draw texture matrices (texel-unit UVs) from the paired .o
+  · TAR clamp / repeat addressing, alpha-test and GS source-over blend (the only blend state APT geometry uses)
+  · Placement colour transform: multiply (RGBA) and add (RGB) applied per fragment, concatenated through nested clips
+  · Clip-depth masks as per-pixel stencil; imports resolved across movies; EditText alignment, multiline and word-wrap fields
+  · Text outlines from the game's own TrueType faces (with kern pairs when present), localisation from 10_easo.loc
+  · Scripts: locals, parameters, registers, objects/arrays, this-relative properties, timers, stop()/gotoAndStop(), InitActions
+
+Still approximate
+  · Colour pipeline is modulate-then-add, evidenced by the placement data; the VU1 TextureApt/GouraudApt microcode is not disassembled
+  · Text is rasterised with WPF anti-aliasing, +2 px field gutter and no hinting; the console glyph rasteriser is not reproduced
+  · Screens are populated at runtime by the game (screen manager, EASO, network, rosters); those calls are listed below and not executed
+  · Fields without a script-set value show their authored placeholder text; runtime values (undefined here) concatenate as empty
+  · Components the game initialises from its screens (player-info bars, spreadsheets, menus) keep their authored colours and layout
+  · Stage is cleared to black: the movie's authored BackgroundColor (#FF999999) is the Flash editor colour, and the game composites these screens over its own scene
+  · Output is 854×480 stage pixels, not the PS2's 640×448 frame buffer; no depth buffer (APT is painter-ordered)
+
+Detected in this movie
+  · bgPS2: External constructor: TextFormat
+  · bgPS2: External method: [function].includeCode
+  · bgPS2: External method: gMainScreen.gEasoLoaded
+  · bgPS2: External method: undefined.loadMovie
+  · External constructor: TextFormat
+  · External method: .onControlLoaded
+  · External method: .onTitleLoaded
+  · External method: [function].includeCode
+  · External method: btnStartGame.disable
+  · External method: chatBox.createTextField
+  · External method: chatBox.logic_init
+  · External method: chatBox/m_refFM.addItemAtIndex
+  · External method: EASO_GameAdaptor.IsBotRequested
+  · External method: EASO_GameSetupAdaptor.GameModeHasSettings
+  · External method: EASO_GameSetupAdaptor.GetPrimaryUserSettingGroupID
+  · External method: EASO_GameSetupAdaptor.InitializeGameSetup
+  · External method: EASO_MenuAdaptor.GetMenuItemCount
+  · External method: EASO_MenuAdaptor.InitializeMenuAdaptor
+  · External method: EASO_MenuAdaptor.LoadMenu
+  · External method: EASO_PlayerInfoAdaptor.GetNumberOfParameters
+  · External method: EASO_PlayerInfoAdaptor.InitializePlayerInfo
+  · External method: EASO_SettingsAdaptor.InitializeSettings
+  · External method: gEASO/gChat.registerChatBox
+  · External method: gEaso/gEAMssngr.clearEAMessengerKeyHandler
+  · External method: gFM.addItem
+  · External method: gFM.clearAllItems
+  · External method: gFM.selectItem
+  · External method: gFM.selectItemByIdx
+  · External method: gMainScreen.gEasoLoaded
+  · External method: gScreenTitle.setTitle
+  · External method: gSM.setOnExitScreen
+  · External method: playerInfoBar0.logic_init
+  · External method: playerInfoBar0/m_refFM.addItemAtIndex
+  · External method: playerInfoBar1.logic_init
+  · External method: playerInfoBar1/m_refFM.addItemAtIndex
+  · External method: this._parent.chatBox/m_scrollbarName.setInfo
+  · External method: this.tempTxt0.setNewTextFormat
+  · External method: this.tempTxt0.setTextFormat
+  · External method: undefined.reset
+  · External method: undefined.undefined
+  · Missing localisation key optionMenu/m_strTitle
+
+
+Localised strings read by scripts (10_easo.loc):
+  WAIT_FOR_OPP = Waiting for Opponent

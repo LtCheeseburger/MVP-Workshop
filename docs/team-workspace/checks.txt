@@ -1,0 +1,25 @@
+PASS LSU: workspace and all relationship sections
+PASS LSU: roster rows visible
+PASS LSU: player editable source action
+PASS MSU · Mississippi State: workspace and all relationship sections
+PASS MSU · Mississippi State: roster rows visible
+PASS MSU · Mississippi State: player editable source action
+PASS UVA · Virginia: workspace and all relationship sections
+PASS UVA · Virginia: roster rows visible
+PASS UVA · Virginia: player editable source action
+PASS DAT edit immediately refreshes player data
+PASS related source edit marks team workspace edited
+PASS open workspace rebuilds and retains section
+PASS workspace retains selected player
+PASS undo refreshes player data
+PASS redo refreshes player data
+PASS section 2: relevant player fields visible
+PASS section 2: direct source rows
+PASS section 2: opens exact existing asset document
+PASS section 3: relevant player fields visible
+PASS section 3: direct source rows
+PASS section 3: opens exact existing asset document
+PASS section 4: relevant player fields visible
+PASS section 4: direct source rows
+PASS section 4: opens exact existing asset document
+Failures: 0
