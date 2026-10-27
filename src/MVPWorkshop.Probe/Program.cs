@@ -704,12 +704,12 @@ switch (args[0])
         int files = 0, ok = 0, nomodel = 0, failed = 0; long tris = 0;
         foreach (var n in root.EnumerateDeep())
         {
-            if (n.IsFolder || n.Extension != ".ord" || !n.Path.Contains(filt, StringComparison.OrdinalIgnoreCase)) continue;
+            if (n.IsFolder || n.Extension is not (".ord" or ".o") || !n.Path.Contains(filt, StringComparison.OrdinalIgnoreCase)) continue;
             files++;
             try
             {
                 var (data, partner) = n.ReadElfJoined();
-                if (partner is null) { nomodel++; continue; }
+                if (partner is null && ElfFile.NeedsLinkPartner(data)) { nomodel++; continue; }
                 var obj = MVPWorkshop.Core.Formats.Eagl.RelocatedObject.Load(data);
                 if (!MVPWorkshop.Core.Formats.Eagl.EaglReader.LooksLikeModel(obj)) { nomodel++; continue; }
                 var f = MVPWorkshop.Core.Formats.Eagl.EaglReader.Read(obj);
@@ -727,6 +727,7 @@ switch (args[0])
                     }
                     tris += mesh.Indices.Count / 3;
                     var inBox = mesh.Positions.Count(p => p.X >= m.BoundsMin.X - 0.5f && p.X <= m.BoundsMax.X + 0.5f && p.Y >= m.BoundsMin.Y - 0.5f && p.Y <= m.BoundsMax.Y + 0.5f);
+                    if (args.Contains("--streams")) foreach (var d in mesh.Draws) Console.Write(d.StreamInfo);
                     if (args.Contains("--states"))
                         foreach (var d in mesh.Draws)
                             Console.WriteLine($"   draw {d.Index,3} part {d.Part,2} tex {d.Texture,-5} tris {d.TriangleCount,4} alpha {(d.TriangleCount == 0 || mesh.Colors.Count == 0 ? 1 : Enumerable.Range(d.FirstTriangle * 3, d.TriangleCount * 3).Average(i => mesh.Colors[mesh.Indices[i]].W)):0.00}  {d.State}");

@@ -215,7 +215,13 @@ public partial class MainWindow : Window
                         var terminal = group.Where(g => g.Key.Split('/').Length == depth + 1).ToList();
                         foreach (var leaf in terminal)
                             foreach (var pack in leaf.Value.GroupBy(n => n.Container.Length > 0 ? n.Container : n.Parent?.Name ?? "Files"))
-                                children.Add(new TreeItem(pack.Key, depth + 1, pack.Select(n => new TreeItem(n, depth + 2))));
+                            {
+                                // mixed archives (stadiums) get Models / Textures / Data folders so the models are easy to find
+                                var kinds = pack.GroupBy(AssetCatalog.Kind).OrderBy(k => k.Key == "Models" ? 0 : 1).ThenBy(k => k.Key).ToList();
+                                children.Add(kinds.Count > 1 && pack.Count() > 12
+                                    ? new TreeItem(pack.Key, depth + 1, kinds.Select(k => new TreeItem(k.Key, depth + 2, k.Select(n => new TreeItem(n, depth + 3)))))
+                                    : new TreeItem(pack.Key, depth + 1, pack.Select(n => new TreeItem(n, depth + 2))));
+                            }
                         AddGroups(children, group.Where(g => g.Key.Split('/').Length > depth + 1), depth + 1);
                         target.Add(new TreeItem(group.Key, depth, children));
                     }
@@ -236,9 +242,9 @@ public partial class MainWindow : Window
                     }
                     teamRoot.Children.Add(shared);
                 }
-                var order = new[] { "UI", "Teams", "Players", "Audio", "Video", "Textures", "Data", "System" };
+                var order = new[] { "Models", "Teams", "Players", "Animations", "UI", "Audio", "Video", "Textures", "Data", "System" };
                 _categoryRoots = roots.OrderBy(r => Array.IndexOf(order, r.Name) is var rank && rank >= 0 ? rank : int.MaxValue).ToList();
-                foreach (var item in _categoryRoots.Where(r => r.Name is "UI" or "Teams")) item.IsExpanded = true;
+                foreach (var item in _categoryRoots.Where(r => r.Name is "Models" or "Teams")) item.IsExpanded = true;
             }
             catch (Exception ex) { Log.Error("Asset categories: " + ex.Message); SetStatus("Category indexing failed; use Files and archives."); return; }
         }

@@ -10,6 +10,8 @@ public static class AssetCatalog
         var p = "/" + node.Path.Replace('\\', '/').ToUpperInvariant() + "/";
         var ext = node.Extension;
         bool Has(string segment) => p.Contains("/" + segment + "/", StringComparison.Ordinal);
+        if (ext == ".orl") return "System/Link fragments (.orl, opened with their .ord)";
+        if (ModelCategory(node, Has) is { } model) return model;
         if (Has("UNIFORMS.BIG") || Has("UNIFORM") || Has("UNIFORMS")) return "Teams/Uniforms";
         if (Has("STADIUM")) return "Teams/Stadiums/3D stadiums";
         if (Has("STADIUMS.BIG") || Has("SMSTAD.BIG") || Has("CWSTHMBS.BIG")) return "Teams/Stadiums/Menu artwork";
@@ -23,8 +25,8 @@ public static class AssetCatalog
         if (Has("FRONTEND")) return "UI/Menu artwork and shared resources";
         if (Has("DATABASE")) return "Teams/Rosters and databases";
         if (Has("GHEAD.BIG")) return "Players/Heads and faces";
-        if (Has("ANIMS")) return "Players/Animations";
-        if (Has("GEOMETRY.BIG") || Has("MODELS.BIG")) return "Players/Models and equipment";
+        if (Has("ANIMS")) return "Animations/" + (ext == ".ord" ? "Animation banks" : "Bank lists and data");
+        if (Has("GEOMETRY.BIG") || Has("MODELS.BIG")) return "Players/Uniform and body textures";
         if (Has("AUDIO")) return "Audio/Banks and streams";
         if (Has("IGSHAPES")) return "UI/In-game HUD";
         return node.FormatInfo.Category switch
@@ -37,6 +39,36 @@ public static class AssetCatalog
             _ => "Data/Other assets",
         };
     }
+
+    /// <summary>3D models outside stadium archives, grouped by what they are (stadium models stay with their stadium).</summary>
+    private static string? ModelCategory(AssetNode node, Func<string, bool> has)
+    {
+        var ext = node.Extension;
+        if (ext is not (".ord" or ".o") || has("ANIMS") || has("APTANIMS") || has("STADIUM")) return null;
+        if (ext == ".o" && !has("MODELS") && !has("MISC") && !has("MISCMOD.BIG")) return null;
+        var stem = System.IO.Path.GetFileNameWithoutExtension(node.Name).ToLowerInvariant();
+        if (stem.EndsWith("shadow") || stem.EndsWith("shadw")) return "Models/Shadows";
+        if (stem.EndsWith("body")) return "Models/Players/Bodies";
+        if (stem.EndsWith("head") || stem.EndsWith("_morph") || stem == "heye") return "Models/Players/Heads and eyes";
+        if (stem.StartsWith("bat") || stem.StartsWith("brknbat") || stem.StartsWith("ball") || stem.StartsWith("glove") || stem.StartsWith("helm")) return "Models/Equipment";
+        if (stem.StartsWith("crowd")) return "Models/Crowd";
+        if (has("MISC") || has("MISCMOD.BIG")) return "Models/Scenery and props";
+        return "Models/Other";
+    }
+
+    /// <summary>What a leaf is, for splitting a mixed archive (a stadium, say) into Models / Textures / Data folders.</summary>
+    public static string Kind(AssetNode node) => node.Extension switch
+    {
+        ".ord" or ".o" => "Models",
+        ".orl" => "Link fragments",
+        _ => node.FormatInfo.Category switch
+        {
+            FormatCategory.Texture => "Textures",
+            FormatCategory.Audio => "Audio",
+            FormatCategory.Ui => "UI",
+            _ => "Data",
+        },
+    };
 
     public static SortedDictionary<string, List<AssetNode>> Build(IEnumerable<AssetNode> nodes)
     {

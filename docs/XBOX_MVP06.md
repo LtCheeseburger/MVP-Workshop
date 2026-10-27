@@ -46,10 +46,12 @@ Same relocated-object container and symbol names (`__Model`, `__Skeleton`, `__Bo
 * `__RM:::…` — render method (one draw). Its stream table is a run of {pointer, vertexCount}: position (3×f32), UV (2×f32), optional second UV, colour (4 bytes),
   normal (3×f32) or packed normal (4 bytes), and a 2-byte skin stream (listed with count 0).
 * Index buffer — after the `EAGLAnimationBuffer` constant slot: {pointer, indexCount} to a header and a u16 triangle-strip index array (header + 0x20).
+* **Split pairs across archives**: `hibody`, `mehead`, `lohead`, `crowd01` and `crowd02` keep their `.ord` in `initstaz.big/initstay.big/models`
+  and their `.orl` in `initprgz.big/initpurge.big/models`. `AssetNode.ReadElfJoined` falls back to the same path in sibling (and once-nested) BIG archives.
+  `lohead` joins but has no render program (variations only).
 * Skin: 16-byte weight records `{w0, w1, w2, packed bones}`; bone indices are skeleton indices (no palette). See "Xbox (MVP 06) skinning" in [FORMATS.md](FORMATS.md).
 
 ## Limitations
-* **No skin-weight animation on Xbox models** — geometry, textures and skeleton are shown; posed/animated deformation is not supported for the Xbox layout.
 * **Teams workspace**: stadium and uniform tables are not yet resolved for Xbox; the Teams/uniform/stadium workspaces are PS2-only.
 * **DXT replacement is lossy** (block fit); logos with fine detail may show artefacts. Dimensions must be multiples of 4.
 * XPR0 images are view-only; unusual XPR0 pixel formats are not decoded.

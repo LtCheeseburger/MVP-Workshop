@@ -98,12 +98,14 @@ public static class EaglXboxReader
         Dictionary<int, VertexBuffer> byData, Dictionary<string, VertexBuffer> buffers, string modelName, int variant, ref int lastTable)
     {
         string? texture = null, textureSymbol = null, state = null;
+        var lines = false;   // ParentRM_MVPFieldLine & co. draw a line strip; the viewer only renders triangles
         for (var at = rm; at < limit; at += 4)
         {
             var ext = o.External(at);
             if (ext is null) continue;
             if (texture is null && ext.Contains("SHAPENAME=", StringComparison.Ordinal)) { texture = EaglReader.TextureName(ext); textureSymbol = ext; }
             else if (state is null && ext.StartsWith("__EAGL::GeoPrimState:::", StringComparison.Ordinal)) state = ext;
+            if (ext.StartsWith("ParentRM_", StringComparison.Ordinal) && ext.EndsWith("Line", StringComparison.Ordinal)) lines = true;
         }
 
         // Most RMs inherit their GeoPrimState from a runtime parent RM. Cut-out textures (DXT1 punch-through, foliage, fences) still rely on an alpha test there.
@@ -219,6 +221,20 @@ public static class EaglXboxReader
             }
         }
 
+        // Rigid objects (bats, ball, props) have no animation-buffer slot; the RM itself holds {→count, …, →indices}, the index data
+        // sitting 0x20 after the u32 count (a 0x30-byte index-buffer header with the count at +0x10).
+        var countAt = -1;
+        for (var at = rm; indices is null && at + 12 <= limit; at += 4)
+        {
+            if (o.Ptr(at) is not { } cp || o.Ptr(at + 8) is not { } dp || dp != cp + 0x20 || byData.ContainsKey(dp)) continue;
+            if (cp + 4 > o.Data.Length) continue;
+            var count = o.U32(cp);
+            if (count < 3 || dp + count * 2L > o.Data.Length) continue;
+            var list = new List<int>((int)count);
+            for (var i = 0; i < count; i++) list.Add(Bin.U16LE(o.Data, dp + i * 2));
+            if (list.All(v => v < n)) { indices = list; countAt = cp; }
+        }
+
         var info = new System.Text.StringBuilder();
         info.AppendLine($"; render method @0x{rm:X}  texture {texture ?? "-"}  {n:N0} vertices");
         foreach (var vb in streams)
@@ -226,14 +242,15 @@ public static class EaglXboxReader
             var kind = vb.Stride switch { 12 or 6 when vb == pos => compressed ? "position (3×u16 in bbox)" : "position (3×f32)", 12 => "normal (3×f32)", 8 when vb == uvStream => "UV (2×f32)", 8 => "UV set 2 (2×f32)", 4 when vb == colorStream => "colour (BGRA8)", 4 => "packed normal? (4 bytes, not decoded)", 2 => "skin entry (s16 = 4·index − 96)", _ => $"stride {vb.Stride}" };
             info.AppendLine($"  {vb.Name,-34} {kind,-34} {vb.Stride,2} B × {vb.Count,5}  data @0x{vb.Data:X}");
         }
-        info.AppendLine(indices is null ? "  no index buffer: vertices are consumed as a triangle strip" : $"  index buffer: {indices.Count:N0} × u16 (triangle strip) @0x{o.Ptr(slot + 16):X}");
+        if (lines) info.AppendLine("  line-strip render method (ParentRM_…Line): not drawn, triangles only");
+        info.AppendLine(indices is null ? "  no index buffer: vertices are consumed as a triangle strip" : $"  index buffer: {indices.Count:N0} × u16 (triangle strip) @0x{(countAt >= 0 ? countAt + 0x20 : o.Ptr(slot + 16)):X}");
         var draw = new EaglDraw
         {
             StreamInfo = info.ToString(),
             Index = mesh.Draws.Count, ChainOffset = -1, Texture = texture, TextureSymbol = textureSymbol, PrimState = state,
             FirstTriangle = mesh.Indices.Count / 3, Part = index, VertexCount = n,
         };
-        var order = indices ?? Enumerable.Range(0, n).ToList();
+        var order = lines ? [] : indices ?? Enumerable.Range(0, n).ToList();
         for (var i = 2; i < order.Count; i++)
         {
             int a = order[i - 2], b = order[i - 1], c = order[i];

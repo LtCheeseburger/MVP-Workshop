@@ -169,7 +169,8 @@ public sealed class AssetNode
         var ext = Extension;
         if (Parent is null || ext is not (".ord" or ".orl")) return (self, null);
         var stem = System.IO.Path.GetFileNameWithoutExtension(Name);
-        var partner = Parent.Children.FirstOrDefault(c => c.Name.Equals(stem + (ext == ".ord" ? ".orl" : ".ord"), StringComparison.OrdinalIgnoreCase));
+        var partnerName = stem + (ext == ".ord" ? ".orl" : ".ord");
+        var partner = Parent.Children.FirstOrDefault(c => c.Name.Equals(partnerName, StringComparison.OrdinalIgnoreCase)) ?? FindSplitPartner(partnerName);
         if (partner is null) return (self, null);
         var (ord, orl) = ext == ".ord" ? (self, partner.ReadAll()) : (partner.ReadAll(), self);
         return ElfFile.NeedsLinkPartner(ord) ? (ElfFile.JoinSplit(ord, orl), partner) : (self, null);
@@ -281,6 +282,30 @@ public sealed class AssetNode
                 : () => new MemoryByteSource(Open().ReadBytes(st.Offset, (int)st.Length));
             return new AssetNode($"{baseName}_{i:D4}.asf", this, false, s.Length, open, $"SCHl stream #{i} @0x{s.Offset:X}");
         }).ToList();
+    }
+
+    /// <summary>
+    /// Xbox ships some split pairs across two nested archives (<c>initstaz.big/initstay.big/models/hibody.ord</c> with
+    /// <c>initprgz.big/initpurge.big/models/hibody.orl</c>). Look for the same path below the outermost archive in sibling BIG
+    /// archives (and the BIGs nested directly in them).
+    /// </summary>
+    private AssetNode? FindSplitPartner(string partnerName)
+    {
+        // folders between this node and its innermost BIG, and the outermost archive of the chain
+        var inner = new List<string> { partnerName };
+        var p = Parent;
+        for (; p is not null && p.Format != FormatId.BigArchive; p = p.Parent) inner.Insert(0, p.Name);
+        var outer = p;
+        while (outer?.Parent is { IsFolder: false } up) outer = up;
+        if (outer?.Parent is null) return null;
+        var path = string.Join('/', inner);
+        foreach (var sibling in outer.Parent.Children.Where(c => c != outer && c.Format == FormatId.BigArchive))
+        {
+            if (sibling.Resolve(path) is { } hit) return hit;
+            foreach (var nested in sibling.Children.Where(c => c.Format == FormatId.BigArchive))
+                if (nested.Resolve(path) is { } nestedHit) return nestedHit;
+        }
+        return null;
     }
 
     /// <summary>Depth-first enumeration including container contents (expands archives).</summary>
