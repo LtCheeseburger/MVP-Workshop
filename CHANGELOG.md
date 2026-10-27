@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.0.2 — 2026-10-27
+
+### Added
+- **Models** section in the Categories browser: player bodies, heads and eyes, equipment (bats, ball), crowd, scenery and props, and shadows, with each model in one place.
+- **Animations** section listing all 270 animation banks separately from their bank lists.
+- Mixed archives (stadiums) are split into **Models / Textures / Data** folders.
+- Xbox high-detail player body (`hibody`), `mehead`, `lohead` and the crowd models now open: their `.ord`/`.orl` halves live in different archives (`initstaz.big` / `initprgz.big`) and are joined automatically.
+
+### Fixed
+- Xbox rigid models (bats, ball, `misc` props, stadium fields, clouds, mounds) were drawn as one long triangle strip, producing spikes and shredded shapes. They now use their own index buffers.
+- Stadium field line draws (`ParentRM_…Line`) were drawn as triangles, making large white spikes across the infield. Line draws are now skipped (the viewer renders triangles only).
+- Texture archives formerly labelled "Players/Models and equipment" are now "Players/Uniform and body textures".
+- `.orl` link fragments are listed under System instead of next to every model.
+
+### Docs
+- `XBOX_MVP06.md`: removed the outdated "no skin-weight animation on Xbox" limitation; documented cross-archive split pairs.
+
 ## 1.0.0 — 2026-10-25
 
 First release under the **MVP-Workshop** name (formerly "MVP07 Asset Tool", last version 0.9.0-beta.1).
