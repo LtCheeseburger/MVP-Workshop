@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.3 — 2026-10-27
+
+### Added
+- **Animate tab:** banks have plain names and groups (Gameplay, Signature batting stances, Signature pitching motions, Face & hands, Cutscenes, Crowd), and the main gameplay bank opens by default.
+- Each clip shows once, with its body and root halves playing together. It gets a readable title decoded from its name (`r_stepagr135ltostand90l` → "Step aggressive 135° L to stand 90° L"), plus the raw name, frame count and length.
+- Clips are grouped by role (Batting, Pitching, Catcher, Fielding, Running, Umpire, Hands, Facial, Dugout, Cutscene, Crowd…), with a category filter and search on the title or raw name.
+- **Parts tab on player bodies:** parts are named from the model's name table ("Catcher's mask", "Chest protector", "Fielder's glove"…) and grouped by body area.
+- **Batter / Fielder / Catcher / All kit** presets show one role's loadout, so alternate caps, helmets, pants and gear no longer overlap. Fielder is the default.
+- Probe: `anim-names` lists every clip in every bank.
+
 ## 1.0.2 — 2026-10-27
 
 ### Added
