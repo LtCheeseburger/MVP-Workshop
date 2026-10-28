@@ -911,6 +911,21 @@ switch (args[0])
         Console.WriteLine($"extracted {count}");
         break;
     }
+    case "anim-names":
+    {
+        // anim-names <game> [bank]: list decoded animation names (with frame counts) per bank
+        var n = Find("DATA/ANIMS/ANIMS.BIG") ?? throw new FileNotFoundException();
+        foreach (var c in n.Children.Where(c => c.Extension == ".ord" && (args.Length < 3 || c.Name.StartsWith(args[2], StringComparison.OrdinalIgnoreCase))))
+        {
+            var (data, partner) = c.ReadElfJoined();
+            if (partner is null) continue;
+            var o = MVPWorkshop.Core.Formats.Eagl.RelocatedObject.Load(data);
+            if (!MVPWorkshop.Core.Formats.Eagl.EaglAnimBank.LooksLikeBank(o)) continue;
+            var bank = MVPWorkshop.Core.Formats.Eagl.EaglAnimBank.Read(o);
+            Console.WriteLine($"{c.Name} [{bank.Name}] {bank.Anims.Count}: " + string.Join(" ", bank.Anims.Select(a => $"{a.Name}({a.Frames})")));
+        }
+        break;
+    }
     case "banks":
     {
         // banks <game> <outDir>: export every ANIMS.BIG .ord/.orl pair joined, for research

@@ -56,7 +56,7 @@ public sealed partial class ModelView
         _file = EaglReader.Read(_obj, variant);
         var keep = _parts.Where(p => !p.Visible).Select(p => p.Part.Index).ToHashSet();
         LoadModel(_file.Models[Math.Max(0, index)]);
-        foreach (var p in _parts) if (keep.Contains(p.Part.Index)) p.Visible = false;
+        SetPartsVisible(p => !keep.Contains(p.Part.Index));
         Log.Info($"{_node.Name}: variation {variant}, {_model.Mesh.Positions.Count:N0} vertices");
     }
 

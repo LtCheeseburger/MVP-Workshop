@@ -27,6 +27,8 @@ public sealed partial class ModelView : Grid
         public required string Label { get; init; }
         public required string Detail { get; init; }
         public required Brush Swatch { get; init; }
+        public string Group { get; init; } = "Parts";
+        public PlayerRole Roles { get; init; } = PlayerRole.All;
         public Action? Changed { get; set; }
         public bool Visible { get => _visible; set { if (Set(ref _visible, value)) Changed?.Invoke(); } }
     }
@@ -76,9 +78,10 @@ public sealed partial class ModelView : Grid
         _node = node; _obj = obj; _file = file; _setExtra = setExtra;
         LoadMorphs();
         _model = file.Models.FirstOrDefault(m => m.Mesh.Positions.Count > 0) ?? file.Models[0];
-        var args = Environment.GetCommandLineArgs(); // dev aid for --snapshot runs: --shade N, --noblend
+        var args = Environment.GetCommandLineArgs(); // dev aid for --snapshot runs: --shade N, --noblend, --kit N, --left-tab N
         if (Array.IndexOf(args, "--shade") is var si and > 0 && int.TryParse(args[si + 1], out var sh)) _shading = sh;
         if (args.Contains("--noblend")) _blending = false;
+        if (Array.IndexOf(args, "--kit") is var ki and > 0 && int.TryParse(args[ki + 1], out var kit)) _preset = kit;
 
         var tabs = new TabControl { Tag = Ui.Res("PanelAlt") };
         tabs.Items.Add(new TabItem { Header = "3D Model", Content = Build3D() });
@@ -140,9 +143,11 @@ public sealed partial class ModelView : Grid
         viewArea.Children.Add(hint);
 
         // left panel
-        var partsList = new ListBox { ItemsSource = _parts, ItemTemplate = PartTemplate(), Background = Ui.Res("PanelBg") };
-        var allOn = B.Button("All", null, (_, _) => { foreach (var p in _parts) p.Visible = true; });
-        var allOff = B.Button("None", null, (_, _) => { foreach (var p in _parts) p.Visible = false; });
+        _partsList = new ListBox { ItemTemplate = PartTemplate(), Background = Ui.Res("PanelBg"), IsSynchronizedWithCurrentItem = false };
+        VirtualizingPanel.SetIsVirtualizingWhenGrouping(_partsList, true);
+        _partsList.GroupStyle.Add(new GroupStyle { HeaderTemplate = GroupHeaderTemplate() });
+        var allOn = B.Button("All", null, (_, _) => SetPartsVisible(_ => true));
+        var allOff = B.Button("None", null, (_, _) => SetPartsVisible(_ => false));
         var partsHeader = new DockPanel { Margin = new Thickness(10, 6, 6, 4) };
         var ph = B.Text("PARTS", "Muted", 11, FontWeights.SemiBold);
         partsHeader.Children.Add(ph);
@@ -177,10 +182,12 @@ public sealed partial class ModelView : Grid
         }
 
         var leftTabs = new TabControl { Tag = Ui.Res("PanelBg") };
-        leftTabs.Items.Add(new TabItem { Header = "Parts", Content = B.Rows((partsHeader, B.Auto), (partsList, B.Star())) });
+        _presetBar.Margin = new Thickness(10, 0, 6, 4);
+        leftTabs.Items.Add(new TabItem { Header = "Parts", Content = B.Rows((partsHeader, B.Auto), (_presetBar, B.Auto), (_partsList, B.Star())) });
         leftTabs.Items.Add(new TabItem { Header = "Pose", Content = BuildPosePanel() });
         leftTabs.Items.Add(new TabItem { Header = "Animate", Content = BuildAnimPanel() });
         leftTabs.Items.Add(new TabItem { Header = $"Shapes{(_morphs is null ? "" : $" ({_morphs.Shapes.Count})")}", Content = BuildShapesPanel() });
+        if (Array.IndexOf(Environment.GetCommandLineArgs(), "--left-tab") is var lt and > 0) leftTabs.SelectedIndex = int.Parse(Environment.GetCommandLineArgs()[lt + 1]);
         var left = B.Rows((modelPanel, B.Auto), (texPanel, B.Auto), (leftTabs, B.Star()));
         left.Background = Ui.Res("PanelBg");
 
@@ -198,6 +205,53 @@ public sealed partial class ModelView : Grid
         }
         var center = B.Rows((toolbar, B.Auto), (viewArea, B.Star()));
         return B.Cols((left, B.Px(270)), (B.VSplit(), B.Px(4)), (center, B.Star()));
+    }
+
+    private ListBox? _partsList;
+    private readonly WrapPanel _presetBar = new();
+    private bool _partsBatch;
+    private int _preset = 1; // Fielder: one cap, one glove, no overlapping alternates
+
+    /// <summary>Toggle many parts with one rebuild.</summary>
+    private void SetPartsVisible(Func<PartItem, bool> visible)
+    {
+        _partsBatch = true;
+        try { foreach (var p in _parts) p.Visible = visible(p); }
+        finally { _partsBatch = false; }
+        Rebuild();
+    }
+
+    /// <summary>Player bodies hold every piece of kit at once; presets show one role's loadout.</summary>
+    private void BuildPresetBar(bool loadouts)
+    {
+        _presetBar.Children.Clear();
+        _presetBar.Visibility = loadouts ? Visibility.Visible : Visibility.Collapsed;
+        if (!loadouts) return;
+        PlayerRole[] roles = [PlayerRole.Batter, PlayerRole.Fielder, PlayerRole.Catcher, PlayerRole.All];
+        void Apply(int i)
+        {
+            _preset = i;
+            var role = roles[i];
+            SetPartsVisible(p => role == PlayerRole.All || (p.Roles & role) != 0);
+        }
+        var seg = B.Segments("", ["Batter", "Fielder", "Catcher", "All kit"], _preset, Apply);
+        seg.ToolTip = "Show one role's loadout. Alternates (extra caps, helmets, pants styles, wristbands, glasses) stay off; tick them in the list.";
+        _presetBar.Children.Add(seg);
+        var role = roles[_preset];
+        _partsBatch = true;
+        foreach (var p in _parts) p.Visible = role == PlayerRole.All || (p.Roles & role) != 0;
+        _partsBatch = false;
+    }
+
+    private static DataTemplate GroupHeaderTemplate()
+    {
+        var t = new FrameworkElementFactory(typeof(TextBlock));
+        t.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("Name"));
+        t.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
+        t.SetValue(TextBlock.FontSizeProperty, 11.0);
+        t.SetValue(TextBlock.ForegroundProperty, Ui.Res("Accent"));
+        t.SetValue(MarginProperty, new Thickness(4, 8, 0, 2));
+        return new DataTemplate { VisualTree = t };
     }
 
     private static DataTemplate PartTemplate()
@@ -268,17 +322,29 @@ public sealed partial class ModelView : Grid
     {
         _model = m;
         _parts.Clear();
+        var infos = EaglPartNames.For(m);
         foreach (var p in m.Parts)
         {
             var tris = p.Draws.Sum(d => d.TriangleCount);
+            var info = infos?[p.Index];
             var item = new PartItem
             {
-                Part = p, Label = string.Join(", ", p.Textures), Detail = $"part {p.Index} · {p.Draws.Count} draws · {tris:N0} tris",
+                Part = p,
+                Label = info?.Title ?? string.Join(", ", p.Textures),
+                Detail = info is null ? $"part {p.Index} · {p.Draws.Count} draws · {tris:N0} tris" : $"{info.Code} · {string.Join(", ", p.Textures)} · {tris:N0} tris",
+                Group = info?.Group ?? "Parts", Roles = info?.Roles ?? PlayerRole.All,
                 Swatch = new SolidColorBrush(PartColors[p.Index % PartColors.Length]),
             };
-            item.Changed = Rebuild;
+            item.Changed = () => { if (!_partsBatch) Rebuild(); };
             _parts.Add(item);
         }
+        if (_partsList is not null)
+        {
+            var view = new System.Windows.Data.ListCollectionView(_parts.OrderBy(p => Array.IndexOf(EaglPartNames.GroupOrder, p.Group)).ThenBy(p => p.Part.Index).ToList());
+            if (infos is not null) view.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(nameof(PartItem.Group)));
+            _partsList.ItemsSource = view;
+        }
+        BuildPresetBar(infos is not null && EaglPartNames.HasLoadouts(infos));
         if (_drawsGrid is not null)
             _drawsGrid.ItemsSource = m.Mesh.Draws.Select(d => new DrawRow(d, d.Index, d.Part, d.Texture ?? "", d.ChainOffset < 0 ? "streams" : $"0x{d.ChainOffset:X}", d.Batches, d.VertexCount, d.TriangleCount,
                 d.PrimState is null ? "" : $"{d.State} · {d.PrimState.Replace("__EAGL::GeoPrimState:::RUNTIME_ALLOC::", "")}")).ToList();

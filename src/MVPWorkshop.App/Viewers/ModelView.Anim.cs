@@ -31,8 +31,19 @@ public sealed partial class ModelView
     private sealed record AnimRow(EaglAnim Anim)
     {
         public string Name => Anim.Name;
-        public string Detail => $"{Anim.Frames} frames · {Anim.Summary}";
         public override string ToString() => Name;
+    }
+
+    /// <summary>One list entry per clip: the body half (_e) paired with its root half (_r).</summary>
+    private sealed record ClipRow(EaglAnim Anim, string Clip, string Category, string Title)
+    {
+        public string Detail => $"{Clip} · {Anim.Frames} frames · {Anim.Frames / 30.0:0.0}s";
+        public override string ToString() => Title;
+    }
+
+    private sealed record BankChoice(AssetNode Node, string Bank, string Group, string Title)
+    {
+        public override string ToString() => Title == Bank ? $"{Group} · {Bank}" : $"{Group} · {Title}  ({Bank})";
     }
 
     /// <summary>World matrices for the current animation frame (plus manual pose on top), or null when not animating.</summary>
@@ -57,31 +68,53 @@ public sealed partial class ModelView
             return new TextBlock { Text = "Animations need a skinned model with a __Skeleton.", Foreground = Ui.Res("Muted"), Margin = new Thickness(12), TextWrapping = TextWrapping.Wrap };
 
         var banksNode = MainWindow.Instance?.FindNode("DATA/ANIMS/ANIMS.BIG");
-        var banks = banksNode?.Children.Where(c => c.Extension == ".ord").OrderBy(c => c.Name).ToList() ?? [];
-        var bankPick = new ComboBox { ItemsSource = banks.Select(b => System.IO.Path.GetFileNameWithoutExtension(b.Name)).ToList(), Margin = new Thickness(0, 4, 0, 0) };
-        var filter = new TextBox { Margin = new Thickness(0, 6, 0, 0), ToolTip = "Filter animations" };
-        _animList = new ListBox { Background = Ui.Res("PanelBg"), ItemTemplate = AnimTemplate() };
+        var groupOrder = new[] { "Gameplay", "Signature batting stances", "Signature pitching motions", "Face & hands", "Cutscenes", "Crowd", "Other" };
+        var banks = (banksNode?.Children.Where(c => c.Extension == ".ord") ?? [])
+            .Select(c => (Node: c, Name: System.IO.Path.GetFileNameWithoutExtension(c.Name)))
+            .Select(x => new BankChoice(x.Node, x.Name, EaglAnimNames.BankGroup(x.Name), EaglAnimNames.BankTitle(x.Name)))
+            .OrderBy(b => Array.IndexOf(groupOrder, b.Group)).ThenBy(b => b.Bank == "DEF_BANK" ? "" : b.Bank).ToList();
+        var bankPick = new ComboBox { ItemsSource = banks, Margin = new Thickness(0, 4, 0, 0) };
+        var catPick = new ComboBox { Margin = new Thickness(0, 6, 0, 0) };
+        var filter = new TextBox { Margin = new Thickness(0, 6, 0, 0), ToolTip = "Search by readable title or raw clip name (e.g. \"catch high\" or \"f_runthrow\")" };
+        _animList = new ListBox { Background = Ui.Res("PanelBg"), ItemTemplate = AnimTemplate(), IsSynchronizedWithCurrentItem = false };
+        VirtualizingPanel.SetIsVirtualizingWhenGrouping(_animList, true);
+        _animList.GroupStyle.Add(new GroupStyle { HeaderTemplate = GroupHeaderTemplate() });
         List<AnimRow> rows = [];
+        List<ClipRow> clips = [];
+        const string allCats = "All categories";
 
-        void ApplyFilter() => _animList.ItemsSource = filter.Text.Length == 0 ? rows : rows.Where(r => r.Name.Contains(filter.Text, StringComparison.OrdinalIgnoreCase)).ToList();
+        void ApplyFilter()
+        {
+            var cat = catPick.SelectedItem as string;
+            var q = filter.Text.Trim();
+            var shown = clips.Where(c => (cat is null || cat.StartsWith(allCats, StringComparison.Ordinal) || cat.StartsWith(c.Category + "  (", StringComparison.Ordinal))
+                && (q.Length == 0 || q.Split(' ', StringSplitOptions.RemoveEmptyEntries).All(w => c.Title.Contains(w, StringComparison.OrdinalIgnoreCase) || c.Clip.Contains(w, StringComparison.OrdinalIgnoreCase)))).ToList();
+            var view = new System.Windows.Data.ListCollectionView(shown);
+            view.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(nameof(ClipRow.Category)));
+            _animList.ItemsSource = view;
+        }
         filter.TextChanged += (_, _) => ApplyFilter();
+        catPick.SelectionChanged += (_, _) => ApplyFilter();
 
         bankPick.SelectionChanged += async (_, _) =>
         {
-            if (bankPick.SelectedIndex < 0) return;
-            var node = banks[bankPick.SelectedIndex];
-            _animStatus.Text = $"Decoding {node.Name}…";
+            if (bankPick.SelectedItem is not BankChoice choice) return;
+            _animStatus.Text = $"Decoding {choice.Bank}…";
             try
             {
-                var bank = await Task.Run(() => LoadBank(node));
+                var bank = await Task.Run(() => LoadBank(choice.Node));
                 rows = bank.Anims.Select(a => new AnimRow(a)).ToList();
+                clips = ToClips(bank.Anims);
+                var counts = clips.GroupBy(c => c.Category).OrderBy(g => Array.IndexOf(EaglAnimNames.CategoryOrder, g.Key)).Select(g => $"{g.Key}  ({g.Count()})").ToList();
+                catPick.ItemsSource = new[] { $"{allCats}  ({clips.Count})" }.Concat(counts).ToList();
+                catPick.SelectedIndex = 0;
                 ApplyFilter();
-                var mismatch = bank.Anims.Count(a => a.SkeletonHash16 != (Skeleton!.Hash & 0xFFFF));
-                _animStatus.Text = $"{bank.Anims.Count} animations" + (mismatch > 0 ? $" · {mismatch} target another skeleton" : "") + (bank.Warnings.Count > 0 ? $" · {bank.Warnings.Count} warnings" : "");
+                var mismatch = clips.Count(c => c.Anim.SkeletonHash16 != (Skeleton!.Hash & 0xFFFF));
+                _animStatus.Text = $"{clips.Count} clips" + (mismatch > 0 ? $" · {mismatch} target another skeleton" : "") + (bank.Warnings.Count > 0 ? $" · {bank.Warnings.Count} warnings" : "");
             }
             catch (Exception ex) { _animStatus.Text = "Failed: " + ex.Message; }
         };
-        _animList.SelectionChanged += (_, _) => { if (_animList.SelectedItem is AnimRow r) SelectAnim(r.Anim, rows); };
+        _animList.SelectionChanged += (_, _) => { if (_animList.SelectedItem is ClipRow r) SelectAnim(r.Anim, rows); };
 
         _playButton = B.Button("Play", "", (_, _) => TogglePlay(), "Primary");
         var stop = B.Button("Bind pose", null, (_, _) => { StopAnim(); });
@@ -108,8 +141,10 @@ public sealed partial class ModelView
         top.Children.Add(B.Cols((_frameSlider, B.Star()), (_frameText, B.Px(70))));
         top.Children.Add(opts);
         top.Children.Add(_animStatus);
+        top.Children.Add(catPick);
         top.Children.Add(filter);
         if (banksNode is null) top.Children.Add(B.Text("Open the game folder to browse animation banks.", "Bad", 11));
+        else bankPick.SelectedItem = banks.FirstOrDefault(b => b.Bank == "DEF_BANK");
         return B.Rows((top, B.Auto), (_animList, B.Star()));
     }
 
@@ -122,11 +157,19 @@ public sealed partial class ModelView
         return bank;
     }
 
+    /// <summary>One row per clip: prefer the _e (body) half; halves without a partner still get a row.</summary>
+    private static List<ClipRow> ToClips(IEnumerable<EaglAnim> anims) =>
+        anims.GroupBy(a => EaglAnimNames.ClipName(a.Name))
+            .Select(g => new ClipRow(g.FirstOrDefault(a => a.Name.EndsWith("_e", StringComparison.Ordinal)) ?? g.First(),
+                g.Key, EaglAnimNames.Category(g.Key), EaglAnimNames.Title(g.Key)))
+            .OrderBy(c => Array.IndexOf(EaglAnimNames.CategoryOrder, c.Category)).ThenBy(c => c.Title, StringComparer.OrdinalIgnoreCase).ToList();
+
     private static DataTemplate AnimTemplate()
     {
         var sp = new FrameworkElementFactory(typeof(StackPanel));
-        var t1 = new FrameworkElementFactory(typeof(TextBlock)); t1.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(AnimRow.Name)));
-        var t2 = new FrameworkElementFactory(typeof(TextBlock)); t2.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(AnimRow.Detail)));
+        sp.SetValue(FrameworkElement.MarginProperty, new Thickness(4, 1, 0, 1));
+        var t1 = new FrameworkElementFactory(typeof(TextBlock)); t1.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(ClipRow.Title)));
+        var t2 = new FrameworkElementFactory(typeof(TextBlock)); t2.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(ClipRow.Detail)));
         t2.SetValue(TextBlock.ForegroundProperty, Ui.Res("Faint")); t2.SetValue(TextBlock.FontSizeProperty, 10.5);
         sp.AppendChild(t1); sp.AppendChild(t2);
         return new DataTemplate { VisualTree = sp };
