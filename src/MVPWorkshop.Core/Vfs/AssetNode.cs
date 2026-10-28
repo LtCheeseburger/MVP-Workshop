@@ -1,5 +1,6 @@
 using MVPWorkshop.Core.Formats;
 using MVPWorkshop.Core.IO;
+using MVPWorkshop.Core.Install;
 
 namespace MVPWorkshop.Core.Vfs;
 
@@ -30,6 +31,10 @@ public sealed class AssetNode
     /// <summary>Directory index when this node is an entry of a BIGF archive; lets edits find the entry again even if names repeat.</summary>
     public int? BigIndex { get; init; }
     public string? DiskPath { get; init; }
+    /// <summary>An archive the loose install laid out as a folder (<c>name_big/</c>); shown as <c>name.big</c>.</summary>
+    public bool IsLooseArchive { get; init; }
+    /// <summary>An <c>.xsh</c> the loose install laid out as a folder of DDS files; its bytes are rebuilt from them.</summary>
+    public bool IsLooseTexturePack { get; init; }
     public IsoImage? DiscImage { get; init; }
     public IsoEntry? DiscEntry { get; init; }
     public bool IsCompressed { get; private set; }
@@ -294,15 +299,15 @@ public sealed class AssetNode
         // folders between this node and its innermost BIG, and the outermost archive of the chain
         var inner = new List<string> { partnerName };
         var p = Parent;
-        for (; p is not null && p.Format != FormatId.BigArchive; p = p.Parent) inner.Insert(0, p.Name);
+        for (; p is not null && p.Format != FormatId.BigArchive && !p.IsLooseArchive; p = p.Parent) inner.Insert(0, p.Name);
         var outer = p;
-        while (outer?.Parent is { IsFolder: false } up) outer = up;
+        while (outer?.Parent is { } up && (!up.IsFolder || up.IsLooseArchive)) outer = up;
         if (outer?.Parent is null) return null;
         var path = string.Join('/', inner);
-        foreach (var sibling in outer.Parent.Children.Where(c => c != outer && c.Format == FormatId.BigArchive))
+        foreach (var sibling in outer.Parent.Children.Where(c => c != outer && (c.IsLooseArchive || c.Format == FormatId.BigArchive)))
         {
             if (sibling.Resolve(path) is { } hit) return hit;
-            foreach (var nested in sibling.Children.Where(c => c.Format == FormatId.BigArchive))
+            foreach (var nested in sibling.Children.Where(c => c.IsLooseArchive || c.Format == FormatId.BigArchive))
                 if (nested.Resolve(path) is { } nestedHit) return nestedHit;
         }
         return null;
@@ -366,9 +371,21 @@ public static class GameFileSystem
         var di = new DirectoryInfo(path);
         var list = new List<AssetNode>();
         foreach (var d in di.EnumerateDirectories().OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase))
-            list.Add(new AssetNode(d.Name, parent, true, 0, null, "disk") { DiskPath = d.FullName });
+        {
+            if (LooseInstall.IsTextureFolder(d.FullName))
+            {
+                var dir = d.FullName;
+                var size = d.EnumerateFiles().Sum(f => f.Length);
+                list.Add(new AssetNode(d.Name, parent, false, size, () => new MemoryByteSource(LooseInstall.BuildTexturePack(dir)), "loose DDS folder") { DiskPath = dir, IsLooseTexturePack = true });
+            }
+            else if (LooseInstall.ArchiveName(d.FullName) is { } archive)
+                list.Add(new AssetNode(archive, parent, true, 0, null, "loose archive folder") { DiskPath = d.FullName, IsLooseArchive = true });
+            else
+                list.Add(new AssetNode(d.Name, parent, true, 0, null, "disk") { DiskPath = d.FullName });
+        }
         foreach (var f in di.EnumerateFiles().OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase))
         {
+            if (f.Name.Equals(LooseInstall.ArchiveMetaName, StringComparison.OrdinalIgnoreCase)) continue;
             var fi = f;
             list.Add(new AssetNode(f.Name, parent, false, f.Length, () => new FileRangeByteSource(fi.FullName, 0, fi.Length), "disk") { DiskPath = f.FullName });
         }

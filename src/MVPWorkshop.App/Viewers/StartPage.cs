@@ -23,7 +23,7 @@ public static class StartPage
         sp.Children.Add(new TextBlock { Text = "MVP 07 NCAA Baseball (PS2) and MVP 06 NCAA Baseball (Xbox) · asset explorer, editor and format research workbench", Foreground = Ui.Res("Muted"), FontSize = 13 });
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 28, 0, 0) };
-        actions.Children.Add(B.Button("Open Game Folder", "", (_, _) => w.PromptOpenFolder(), "Primary"));
+        actions.Children.Add(B.Button("Open Game (MVP06.exe)", "", (_, _) => w.PromptOpenGame(), "Primary"));
         sp.Children.Add(actions);
 
         if (settings.Recent.Count > 0)
@@ -42,7 +42,7 @@ public static class StartPage
         var grid = new UniformGridish(3);
         foreach (var (g, title, body, brush) in new[]
         {
-            ("", "BIGF archives", "Nested archives and RefPack (10 FB) compression are unpacked transparently.", "Accent"),
+            ("", "Loose install", "Point it at MVP06.exe: archive folders (name_big) and .xsh DDS folders are read as the game sees them.", "Accent"),
             ("", "SSH textures", "PS2 PAL4/PAL8/RGBA and EA GST textures; Xbox .xsh DXT1/DXT3, PAL8 and BGRA textures with Morton un-swizzling.", "Good"),
             ("", "EA audio", "SCHl streams and BNKl banks — EA-XA, PS-ADPCM and MicroTalk speech decode and playback.", "Info"),
             ("", "ELF objects", "Executables, IRX modules and .ord/.o model objects — sections and symbols.", "Bad"),
@@ -56,7 +56,7 @@ public static class StartPage
         sp.Children.Add(Section("TIPS"));
         foreach (var tip in new[]
         {
-            "Double-click a file in the Data Explorer to open it. Archives expand like folders.",
+            "Double-click a file in the Data Explorer to open it. A texture pack opens from its folder of DDS files.",
             "Categories groups UI, Teams (uniforms, stadiums, logos, rosters), Players, Audio and more. Switch to Files and archives for original paths.",
             "Open UI → Menus and layouts for visual menus. Preview edits affect only the canvas; Export PNG saves what you see.",
             "Ctrl+F searches every file name across all archives; terms are AND-ed (e.g. “ghead face”).",

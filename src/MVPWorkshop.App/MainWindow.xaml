@@ -57,8 +57,8 @@
       <Border Grid.Row="1" Background="{StaticResource PanelBg}" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,1">
         <DockPanel Margin="8,0" LastChildFill="False">
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-            <Button Style="{StaticResource Tool}" Click="OpenFolder_Click" ToolTip="Open a game folder (Ctrl+O)">
-              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE838;" Style="{StaticResource Glyph}" Foreground="{StaticResource Accent}"/><TextBlock Text="Open Game Folder" Margin="7,0,0,0"/></StackPanel>
+            <Button Style="{StaticResource Tool}" Click="OpenFolder_Click" ToolTip="Open the installed game: select its MVP06.exe (Ctrl+O)">
+              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE838;" Style="{StaticResource Glyph}" Foreground="{StaticResource Accent}"/><TextBlock Text="Open Game" Margin="7,0,0,0"/></StackPanel>
             </Button>
             <Button Style="{StaticResource Tool}" Click="OpenIso_Click" ToolTip="Open an ISO9660 disc image for project editing">
               <TextBlock Text="Open ISO"/>

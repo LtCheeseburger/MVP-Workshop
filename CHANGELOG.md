@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.4 — 2026-10-28
+
+### Changed
+- **Starts empty and asks for the game:** on launch the tool asks for `MVP06.exe` and opens the install's `game\` folder. The last game is no longer reopened automatically (`--game` still works). The toolbar and Start page say **Open Game**.
+
+### Added
+- **Loose install support** for the MVP 06 port (`docs/LOOSE_ASSETS.md` in the port): `name_big/` folders with a `_big.json` open as `name.big` archives (nested too), and `.xsh/` folders of DDS files open as texture packs, rebuilt byte-identical from `xsh.meta` and the DDS files. Categories, search and every viewer work as before.
+- **Export Mod** writes an edited loose texture pack as a DDS folder in the install layout, after checking it rebuilds exactly.
+- `XshFolder`: splits an `.xsh` into DDS files and builds it back (test `tests/LooseTextures`).
+
 ## 1.0.3 — 2026-10-27
 
 ### Added

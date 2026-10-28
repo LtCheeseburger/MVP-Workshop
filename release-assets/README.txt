@@ -1,4 +1,4 @@
-MVP-Workshop 1.0.3  (win-x64, self-contained, no install needed, no .NET required)
+MVP-Workshop 1.0.4  (win-x64, self-contained, no install needed, no .NET required)
 
 WHAT IT DOES
   Asset explorer and editor for two games:
@@ -12,15 +12,16 @@ SUPPORTED FILE TYPES
   Xbox       : .xsh textures, .xbx images, .xfn fonts, .vp6 movies, .xbe header, Xbox EAGL models
 
 HOW TO OPEN A GAME
-  1. Run MVP-Workshop.exe.
-  2. Click "Open Game Folder" (Ctrl+O) and pick the folder that contains SLUS_xxx.xx (PS2) or default.xbe (Xbox).
-     "Open ISO" opens a PS2 disc image.
-  3. From a command line: MVP-Workshop.exe --game "D:\path\to\game"
-  The last game you opened is reopened automatically on the next start.
+  1. Run MVP-Workshop.exe. It starts with nothing loaded and asks where the game is.
+  2. MVP 06 port (loose install): pick MVP06.exe in the install folder. Its game\ folder is read as the game sees it:
+     archive folders (name_big) open as archives and .xsh texture folders open from their DDS files.
+     "Open Game" (Ctrl+O) asks again at any time. "Open ISO" opens a PS2 disc image.
+  3. From a command line: MVP-Workshop.exe --game "D:\path	o\game"
 
 WHERE MOD OUTPUT GOES
   The game folder is never written to. Edits live in memory or in a project file (.mvpwproj; older .mvp07proj files also open).
   "Export Mod" writes only the changed archives to a separate output folder, by default "mod_output" next to the game folder.
+  For a loose install, an edited texture pack is written as a folder of DDS files, matching the install layout.
   "Export ISO" builds a new ISO (PS2).
 
 MOVIES

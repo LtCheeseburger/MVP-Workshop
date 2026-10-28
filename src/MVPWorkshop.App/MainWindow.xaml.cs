@@ -8,6 +8,7 @@ using MVPWorkshop.App.Viewers;
 using MVPWorkshop.Core.Editing;
 using MVPWorkshop.Core.Formats;
 using MVPWorkshop.Core.IO;
+using MVPWorkshop.Core.Install;
 using MVPWorkshop.Core.Vfs;
 using Microsoft.Win32;
 
@@ -72,10 +73,11 @@ public partial class MainWindow : Window
             var startupArgs = Environment.GetCommandLineArgs();
             var gameArgument = Array.IndexOf(startupArgs, "--game");
             var requestedGame = gameArgument >= 0 && gameArgument + 1 < startupArgs.Length ? startupArgs[gameArgument + 1] : null;
-            var auto = requestedGame ?? (_settings.LastGameFolder is { } last && (Directory.Exists(last) || File.Exists(last)) ? last : FindDefaultGameFolder());
-            if (auto is not null) LoadGame(auto);
+            // the tool starts empty and asks for the installed game; --game (tests, snapshots) skips the question
+            if (requestedGame is not null) LoadGame(requestedGame);
             Snapshot.RunIfRequested(this);
             SelfTest.RunIfRequested(this);
+            if (startupArgs.Length == 1) Dispatcher.BeginInvoke(PromptOpenGame, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         };
     }
 
@@ -128,17 +130,6 @@ public partial class MainWindow : Window
     }
 
     // ---------------------------------------------------------------- game loading
-
-    private static string? FindDefaultGameFolder()
-    {
-        // Fallback when there is no --game argument or last-opened game: walk up from the exe looking for a sibling "game" folder (PS2 SLUS/SLES executable or Xbox default.xbe).
-        for (var d = new DirectoryInfo(AppContext.BaseDirectory); d is not null; d = d.Parent)
-        {
-            var g = Path.Combine(d.FullName, "game");
-            if (Directory.Exists(g) && (Directory.EnumerateFiles(g, "SL??_*").Any() || File.Exists(Path.Combine(g, "default.xbe")))) return g;
-        }
-        return null;
-    }
 
     public void LoadGame(string folder, bool confirm = true)
     {
@@ -458,12 +449,21 @@ public partial class MainWindow : Window
 
     // ---------------------------------------------------------------- toolbar
 
-    private void OpenFolder_Click(object sender, RoutedEventArgs e) => PromptOpenFolder();
+    private void OpenFolder_Click(object sender, RoutedEventArgs e) => PromptOpenGame();
 
-    public void PromptOpenFolder()
+    /// <summary>Asks for the installed game's MVP06.exe and loads its loose <c>game/</c> folder.</summary>
+    public void PromptOpenGame()
     {
-        var dlg = new OpenFolderDialog { Title = "Select the extracted game folder (contains SLUS_xxx.xx or default.xbe, and DATA)", InitialDirectory = _settings.LastGameFolder ?? "" };
-        if (dlg.ShowDialog(this) == true) LoadGame(dlg.FolderName);
+        var last = _settings.LastGameFolder is { } g && Directory.Exists(g) ? Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(g)) : null;
+        var dlg = new OpenFileDialog { Title = "Where is the game? Select MVP06.exe in the install folder", Filter = "Game executable|*.exe;default.xbe|All files|*.*", InitialDirectory = last ?? "" };
+        if (dlg.ShowDialog(this) != true) return;
+        if (LooseInstall.GameFolderFor(dlg.FileName, out var error) is not { } game)
+        {
+            MessageBox.Show(this, error, "Open game", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (!LooseInstall.IsLoose(game)) Log.Warn($"{game} has no loose archive folders (_big.json); it is read as packed .big files. Run the game's setup to install loose assets.");
+        LoadGame(game);
     }
 
     private void OpenFile_Click(object sender, RoutedEventArgs e)

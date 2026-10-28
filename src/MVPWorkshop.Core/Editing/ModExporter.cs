@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using MVPWorkshop.Core.Formats;
 using MVPWorkshop.Core.IO;
+using MVPWorkshop.Core.Install;
 using MVPWorkshop.Core.Vfs;
 
 namespace MVPWorkshop.Core.Editing;
@@ -74,11 +75,18 @@ public static class ModExporter
                 var bytes = RebuildStored(file, session.Overrides, reencodeAll: false);
                 var dest = Path.Combine(outputFolder, rel);
                 Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+                var compared = 0;
+                if (file.IsLooseTexturePack)
+                {
+                    // loose installs hold textures as DDS folders; the write itself checks the folder rebuilds these bytes
+                    if (!LooseInstall.WriteTexturePack(bytes, dest, out var error)) { report.Problems.Add($"{rel}: {error}"); continue; }
+                    report.Files.Add(new ExportedFile(rel, bytes.Length, Convert.ToHexString(SHA256.HashData(bytes)), group.Count(), group.Count()));
+                    continue;
+                }
                 var tmp = dest + ".tmp";
                 File.WriteAllBytes(tmp, bytes);
                 File.Move(tmp, dest, overwrite: true);
 
-                var compared = 0;
                 if (verify)
                 {
                     progress?.Invoke($"Verifying {rel}");
