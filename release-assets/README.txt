@@ -13,7 +13,7 @@ SUPPORTED FILE TYPES
 
 HOW TO OPEN A GAME
   1. Run MVP-Workshop.exe. It starts with nothing loaded and asks where the game is.
-  2. MVP 06 port (loose install): pick MVP06.exe in the install folder. Its game\ folder is read as the game sees it:
+  2. MVP 06 port (loose install): pick MVP06.exe in the install folder. Its assets\ folder (game\ also works) is read as the game sees it:
      archive folders (name_big) open as archives and .xsh texture folders open from their DDS files.
      "Open Game" (Ctrl+O) asks again at any time. "Open ISO" opens a PS2 disc image.
   3. From a command line: MVP-Workshop.exe --game "D:\path	o\game"

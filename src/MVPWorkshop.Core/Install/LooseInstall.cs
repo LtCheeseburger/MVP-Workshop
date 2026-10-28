@@ -3,22 +3,23 @@ using MVPWorkshop.Core.Formats;
 namespace MVPWorkshop.Core.Install;
 
 /// <summary>
-/// The port's loose install (docs/LOOSE_ASSETS.md in the port): <c>MVP06.exe</c> beside <c>game/</c>, every BIG archive
+/// The port's loose install (docs/LOOSE_ASSETS.md in the port): <c>MVP06.exe</c> beside <c>assets/</c> (or <c>game/</c>), every BIG archive
 /// written out as a <c>name_big/</c> folder with a <c>_big.json</c>, and every SHPX <c>.xsh</c> as a folder of DDS files.
 /// </summary>
 public static class LooseInstall
 {
     public const string ArchiveMetaName = "_big.json";
-    public const string GameFolderName = "game";
+    /// <summary>Folders beside MVP06.exe that hold the game files, in the order the runtime checks them.</summary>
+    public static readonly string[] GameFolderNames = ["assets", "game"];
 
-    /// <summary>The <c>game/</c> folder for the picked executable (MVP06.exe in the install root, or game/default.xbe); null with the reason.</summary>
+    /// <summary>The game folder for the picked executable (assets/ or game/ beside MVP06.exe, or the folder of a picked default.xbe); null with the reason.</summary>
     public static string? GameFolderFor(string exePath, out string? error)
     {
         error = null;
         var dir = Path.GetDirectoryName(Path.GetFullPath(exePath))!;
-        foreach (var candidate in new[] { Path.Combine(dir, GameFolderName), dir })
+        foreach (var candidate in GameFolderNames.Select(n => Path.Combine(dir, n)).Append(dir))
             if (File.Exists(Path.Combine(candidate, "default.xbe"))) return candidate;
-        error = $"No {GameFolderName}/default.xbe next to {Path.GetFileName(exePath)}. Pick the MVP06.exe of an installed game.";
+        error = $"No assets/default.xbe next to {Path.GetFileName(exePath)}. Pick the MVP06.exe of an installed game.";
         return null;
     }
 
