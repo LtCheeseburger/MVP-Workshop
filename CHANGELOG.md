@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.7 — 2026-10-28
+
+### Added
+- **Import folder…** in the texture viewer: replaces every image of a pack at once from a folder of pictures named after the slots (`hat.png`, `merf.tga`, `lega.png`…). A review list shows what each slot gets; the import is one undo step.
+- In a uniform, **`torf` and `llod` are made for you** when the folder has none: `torf` is `tors` with its top quadrants mirrored, and `llod` (the low-detail atlas) gets the new torso, legs and hat scaled into place.
+- **4K textures:** Xbox textures can be imported at up to 4096×4096, converted to the slot's format with the original mip count.
+
+### Fixed
+- Categorizing a loose install took over a minute; it now takes a few seconds.
+
 ## 1.0.6 — 2026-10-28
 
 First release with the built-in updater, and the first public build since 1.0.3: it includes everything in 1.0.4 and 1.0.5 below. From here on the Workshop updates itself.
