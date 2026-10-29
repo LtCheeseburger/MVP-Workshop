@@ -293,6 +293,7 @@ public sealed class TextureView : Grid
 
     private static (byte[] Bgra, int W, int H) LoadPicture(string path)
     {
+        if (PictureFile.Handles(path)) return PictureFile.Decode(path);
         var decoder = BitmapDecoder.Create(new Uri(path), BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
         var frame = new FormatConvertedBitmap(decoder.Frames[0], PixelFormats.Bgra32, null, 0);
         if ((long)frame.PixelWidth * frame.PixelHeight > 16777216) throw new InvalidDataException("Import exceeds the 16-million-pixel limit.");
@@ -322,6 +323,9 @@ public sealed class TextureView : Grid
         catch (Exception ex) { MessageBox.Show(owner, ex.Message, "PCSX2 export failed"); }
     }
 
+    /// <summary>Replace the selected image from a picture the user picks (the tree's Replace image… command).</summary>
+    internal void ReplaceSelectedImage() => ReplaceCurrent();
+
     private async void ReplaceCurrent(string? path = null)
     {
         if (_list.SelectedItem is not Entry e || e.Image is not { } img || _ssh is null) { Log.Warn("Select a texture in the list first."); return; }
@@ -331,7 +335,7 @@ public sealed class TextureView : Grid
         var owner = Window.GetWindow(this);
         if (path is null)
         {
-            var dlg = new Microsoft.Win32.OpenFileDialog { Title = $"Replace “{img.DisplayName}” ({h.Width}×{h.Height})", Filter = "Images|*.png;*.bmp;*.jpg;*.jpeg;*.gif;*.tif;*.tiff|All files|*.*" };
+            var dlg = new Microsoft.Win32.OpenFileDialog { Title = $"Replace “{img.DisplayName}” ({h.Width}×{h.Height})", Filter = "Images|*.png;*.tga;*.dds;*.bmp;*.jpg;*.jpeg;*.gif;*.tif;*.tiff|All files|*.*" };
             if (dlg.ShowDialog(owner) != true) return;
             path = dlg.FileName;
         }

@@ -36,6 +36,8 @@ public sealed class EditSession
     private readonly List<Change> _undo = [], _redo = [];
     private int _cleanId;         // Id of the newest saved-kind change at the last project save (0 = none)
     private int _nextId = 1;
+    private readonly SortedDictionary<string, byte[]> _added = new(StringComparer.OrdinalIgnoreCase);  // new files for a mod, by game path
+    private bool _addedDirty;
 
     public EditSession(AssetNode gameRoot, string outputFolder)
     {
@@ -61,7 +63,16 @@ public sealed class EditSession
     public string? RedoLabel => _redo.Count > 0 ? _redo[^1].Description : null;
 
     /// <summary>True when the set of saved changes differs from the last saved project (or from the start when never saved).</summary>
-    public bool IsDirty => TopSavedId != _cleanId;
+    public bool IsDirty => TopSavedId != _cleanId || _addedDirty;
+
+    /// <summary>
+    /// Files that don't exist in the game, for a .mvpmod (a new archive member or texture): game path in the loose
+    /// layout ('/' separated) → contents. Exported by MvpModExporter only.
+    /// </summary>
+    public IReadOnlyDictionary<string, byte[]> Added => _added;
+    public void AddFile(string gamePath, byte[] data) { _added[gamePath.Replace('\\', '/')] = data; _addedDirty = true; Notify(); }
+    public bool RemoveAdded(string gamePath) { if (!_added.Remove(gamePath)) return false; _addedDirty = true; Notify(); return true; }
+    internal void LoadAdded(IEnumerable<(string Path, byte[] Data)> files) { foreach (var (p, d) in files) _added[p] = d; }
     private int TopSavedId => _undo.LastOrDefault(c => c.Kind == ChangeKind.Saved)?.Id ?? 0;
     public int ModifiedAssetCount => _overrides.Count;
     public int PreviewOnlyCount => _undo.Count(c => c.Kind == ChangeKind.PreviewOnly);
@@ -178,7 +189,7 @@ public sealed class EditSession
     }
 
     /// <summary>Call after the project file was written so unsaved-change tracking restarts from here.</summary>
-    public void MarkSaved() { _cleanId = TopSavedId; Notify(); }
+    public void MarkSaved() { _cleanId = TopSavedId; _addedDirty = false; Notify(); }
 
     /// <summary>Replace the saved-change set wholesale (project load). Clears history.</summary>
     internal void Load(IEnumerable<(string Key, byte[] Bytes)> edits)

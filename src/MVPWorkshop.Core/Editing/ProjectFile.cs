@@ -21,6 +21,7 @@ public static class ProjectFile
         public string OutputFolder { get; set; } = "";
         public DateTime Saved { get; set; }
         public List<Entry> Edits { get; set; } = [];
+        public List<Entry> Added { get; set; } = [];  // new files for a mod: Path is the game path
     }
 
     private sealed class Entry
@@ -58,6 +59,13 @@ public static class ProjectFile
                 Notes = session.History.Where(c => c.Kind == ChangeKind.Saved && c.Key.Equals(key, StringComparison.OrdinalIgnoreCase)).Select(c => c.Description).ToList(),
             });
         }
+        foreach (var (path, bytes) in session.Added)
+        {
+            var file = $"{++n:D4}.bin";
+            File.WriteAllBytes(Path.Combine(data, file), bytes);
+            keep.Add(file);
+            manifest.Added.Add(new Entry { Path = path, File = file, Size = bytes.Length, Sha256 = Hash(bytes) });
+        }
         foreach (var stale in Directory.EnumerateFiles(data, "*.bin").Where(f => !keep.Contains(Path.GetFileName(f)))) File.Delete(stale);
 
         var tmp = projectPath + ".tmp";
@@ -94,6 +102,15 @@ public static class ProjectFile
             edits.Add((e.Key, bytes));
         }
         session.Load(edits);
+        var added = new List<(string, byte[])>();
+        foreach (var e in m.Added)
+        {
+            var path = Path.Combine(DataFolder(projectPath), e.File);
+            var bytes = File.Exists(path) ? File.ReadAllBytes(path) : null;
+            if (bytes is null || !Hash(bytes).Equals(e.Sha256, StringComparison.OrdinalIgnoreCase)) { warnings.Add($"{e.Path}: the added file's data is missing or damaged; skipped."); continue; }
+            added.Add((e.Path, bytes));
+        }
+        session.LoadAdded(added);
         session.ProjectPath = projectPath;
         return session;
     }

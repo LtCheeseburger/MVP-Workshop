@@ -3,8 +3,11 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using MVPWorkshop.App.Viewers;
 using MVPWorkshop.Core.Editing;
 using MVPWorkshop.Core.IO;
+using MVPWorkshop.Core.Formats;
+using MVPWorkshop.Core.Vfs;
 using Microsoft.Win32;
 
 namespace MVPWorkshop.App;
@@ -12,12 +15,83 @@ namespace MVPWorkshop.App;
 // .mvpmod export and test runs for the port's loose install (docs/MVPMOD.md in the port)
 public partial class MainWindow
 {
+    // ---- tree right-click: replace a texture image, add a file here, export raw ----
+
+    private void Tree_RightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        // right-click selects the item under the mouse, so the menu acts on it
+        if ((e.OriginalSource as DependencyObject).FindAncestor<TreeViewItem>() is { } item) item.IsSelected = true;
+    }
+
+    private void Tree_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        var menu = Tree.ContextMenu!;
+        menu.Items.Clear();
+        if (SelectedNode is not { } n) { e.Handled = true; return; }
+        void Add(string text, Action act) { var i = new MenuItem { Header = text }; i.Click += (_, _) => act(); menu.Items.Add(i); }
+        var texture = n.IsLooseTexturePack || n.Parent?.IsLooseTexturePack == true || n.Format is FormatId.SshTexture;
+        if (texture) Add("Replace image… (PNG, TGA, DDS…)", () => ReplaceImage(n));
+        if (!n.IsFolder || n.IsLooseTexturePack) Add("Open", () => OpenAsset(n));
+        if (Editor.Session is { } s && MvpModExporter.SessionProblem(s) is null) Add("Add new file here…", () => AddFile_Click(this, new RoutedEventArgs()));
+        if (!n.IsFolder) Add("Export raw…", () => Exporter.SaveRaw(n));
+        if (menu.Items.Count == 0) e.Handled = true;
+    }
+
+    /// <summary>Opens the texture (a DDS file opens its pack with that image selected) and starts Replace image on it.</summary>
+    private void ReplaceImage(AssetNode n)
+    {
+        OpenAsset(n);
+        if (Docs.SelectedItem is not DocumentTab { Content: { } content }) return;
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (FindTextureView(content) is { } view) view.ReplaceSelectedImage();
+            else Log.Warn($"{n.Name}: open it and use Replace image in the texture viewer.");
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    private static TextureView? FindTextureView(DependencyObject d)
+    {
+        if (d is TextureView v) return v;
+        foreach (var child in LogicalTreeHelper.GetChildren(d).OfType<DependencyObject>())
+            if (FindTextureView(child) is { } found) return found;
+        return null;
+    }
+
     private void TestMod_Click(object sender, RoutedEventArgs e)
     {
         if (!CheckPlayerDrafts()) return;
         if (Editor.Session is not { } s) { Log.Warn("Open a game folder first."); return; }
         if (MvpModExporter.SessionProblem(s) is { } why) { MessageBox.Show(this, why, "Test in Game", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         ExportMvpMod(test: true);
+    }
+
+    /// <summary>
+    /// A new file for the mod, in the selected folder, archive or texture's folder of the loose install: a new archive
+    /// member, a new texture pack (.xsh, laid out as DDS files) or any other file. Listed under Changes.
+    /// </summary>
+    private void AddFile_Click(object sender, RoutedEventArgs e)
+    {
+        if (Editor.Session is not { } s) { Log.Warn("Open a game folder first."); return; }
+        if (MvpModExporter.SessionProblem(s) is { } why) { MessageBox.Show(this, why, "Add File", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        // the folder on disk the new file goes into: the selected folder or archive, or the one holding the selection
+        var at = SelectedNode;
+        while (at is not null && !(at.DiskPath is not null && Directory.Exists(at.DiskPath) && !at.IsLooseTexturePack)) at = at.Parent;
+        if (at is null) { MessageBox.Show(this, "Select the folder or archive the new file goes into.", "Add File", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        var dlg = new OpenFileDialog { Title = $"Add files to {at.Name} in the mod", Multiselect = true };
+        if (dlg.ShowDialog(this) != true) return;
+        var folder = Path.GetRelativePath(s.GameRoot.DiskPath!, at.DiskPath!).Replace('\\', '/');
+        foreach (var file in dlg.FileNames)
+        {
+            var path = (folder == "." ? "" : folder + "/") + Path.GetFileName(file).ToLowerInvariant();
+            if (File.Exists(Path.Combine(s.GameRoot.DiskPath!, path)) || Directory.Exists(Path.Combine(s.GameRoot.DiskPath!, path)))
+            {
+                MessageBox.Show(this, $"{path} already exists in the game. Open it and replace it instead.", "Add File", MessageBoxButton.OK, MessageBoxImage.Information);
+                continue;
+            }
+            s.AddFile(path, File.ReadAllBytes(file));
+            Log.Info($"Added {path} to the mod");
+        }
+        ShowChanges_Click(this, e);
     }
 
     /// <summary>
@@ -28,7 +102,7 @@ public partial class MainWindow
     {
         var s = Editor.Session!;
         if (_exporting) return;
-        if (s.Overrides.Count == 0)
+        if (!MvpModExporter.HasChanges(s))
         {
             MessageBox.Show(this, s.PreviewOnlyCount > 0 ? "Nothing can be packed: the only changes are preview-only (they can't be written into game files)." : "There are no edited assets yet.", "Mod", MessageBoxButton.OK, MessageBoxImage.Information);
             return;

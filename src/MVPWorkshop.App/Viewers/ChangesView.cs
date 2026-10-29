@@ -14,6 +14,7 @@ public sealed class ChangesView : Grid, IDisposable
 {
     private sealed record Row(int Step, string Kind, string Asset, string What, string Detail, string Time, Change Change);
     private sealed record FileRow(string Asset, string Size, string Target);
+    private const string NewFile = "new file in the mod (.mvpmod)";
 
     private readonly DataGrid _history = B.Grid();
     private readonly DataGrid _assets = B.Grid();
@@ -45,6 +46,10 @@ public sealed class ChangesView : Grid, IDisposable
             {
                 if (_history.SelectedItem is Row r && s() is { } sess && sess.GameRoot.Resolve(r.Change.Key) is { } node) sess.Revert(node);
             }, "Outline", "Drop all saved edits of the asset in the selected row (undoable)"),
+            B.Button("Remove added file", "", (_, _) =>
+            {
+                if (_assets.SelectedItem is FileRow { Target: NewFile } r) s()?.RemoveAdded(r.Asset);
+            }, "Outline", "Take the selected new file (bottom list) out of the mod"),
             B.Separator(),
             B.Button("Save Project", "", (_, _) => MainWindow.Instance?.SaveProject(false), "Outline"),
             B.Button("Export Mod…", "", (_, _) => MainWindow.Instance?.ExportMod(), "Primary", "Rebuild the edited archives into the output folder and verify them"));
@@ -102,10 +107,11 @@ public sealed class ChangesView : Grid, IDisposable
             var orig = node?.StoredSize ?? 0;
             return new FileRow(node?.Path ?? kv.Key, $"{Bin.Size(node?.UnpackedSize ?? orig)} → {Bin.Size(kv.Value.Length)}", node is null ? "(missing)" : ModExporter.RelativePath(s.GameRoot, ModExporter.DiskFileOf(node)));
         }).OrderBy(r => r.Asset).ToList();
+        assets.AddRange(s.Added.Select(kv => new FileRow(kv.Key, Bin.Size(kv.Value.Length), NewFile)));
         _assets.ItemsSource = assets;
 
         var files = assets.Select(a => a.Target).Distinct().Count();
-        _summary.Text = s.Overrides.Count == 0 && s.PreviewOnlyCount == 0 ? "No changes yet" : $"{s.Overrides.Count} saved asset change(s) in {files} file(s)" + (s.PreviewOnlyCount > 0 ? $"  ·  {s.PreviewOnlyCount} preview-only" : "");
+        _summary.Text = s.Overrides.Count == 0 && s.PreviewOnlyCount == 0 && s.Added.Count == 0 ? "No changes yet" : $"{s.Overrides.Count} saved asset change(s) in {files} file(s)" + (s.Added.Count > 0 ? $"  ·  {s.Added.Count} new file(s)" : "") + (s.PreviewOnlyCount > 0 ? $"  ·  {s.PreviewOnlyCount} preview-only" : "");
         _detail.Text = s.IsDirty ? "The project has unsaved changes." : s.Overrides.Count > 0 ? "Project is saved." : "";
         _output.Text = $"Output folder:  {s.OutputFolder}";
     }

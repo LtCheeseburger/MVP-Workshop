@@ -54,6 +54,8 @@ public static class MvpModExporter
     public const int Layout = 1;  // docs/LOOSE_ASSETS.md
 
     /// <summary>Why this session can't be packed as a .mvpmod; null when it can.</summary>
+    public static bool HasChanges(EditSession session) => session.Overrides.Count > 0 || session.Added.Count > 0;
+
     public static string? SessionProblem(EditSession session)
     {
         var root = session.GameRoot.DiskPath;
@@ -63,7 +65,7 @@ public static class MvpModExporter
     }
 
     /// <summary>The changed files as game path → bytes, in the loose layout.</summary>
-    public static Dictionary<string, byte[]> Collect(EditSession session, List<string> problems)
+    public static Dictionary<string, byte[]> Collect(EditSession session, List<string> problems, List<string> refpack)
     {
         var root = session.GameRoot;
         var files = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
@@ -102,6 +104,22 @@ public static class MvpModExporter
             }
             catch (Exception ex) { problems.Add($"{rel}: {ex.Message}"); }
         }
+
+        // new files: a native .xsh becomes a texture folder; members added to an archive are RefPack-packed by the
+        // runtime (mod.json "refpack"), as the disc stores nearly all of them
+        foreach (var (path, data) in session.Added)
+        {
+            if (path.EndsWith(".big", StringComparison.OrdinalIgnoreCase)) { problems.Add($"{path} is a packed archive; add its members instead."); continue; }
+            if (files.ContainsKey(path) || File.Exists(Path.Combine(root.DiskPath!, path)) || Directory.Exists(Path.Combine(root.DiskPath!, path)))
+            {
+                problems.Add($"{path} already exists in the game; edit it instead of adding it.");
+                continue;
+            }
+            if (path.EndsWith(".xsh", StringComparison.OrdinalIgnoreCase) && XshFolder.Split(data) is { } parts)
+                foreach (var (name, part) in parts) files[path + "/" + name] = part;
+            else files[path] = data;
+            if (path.Contains("_big/", StringComparison.OrdinalIgnoreCase)) refpack.Add(path);
+        }
         return files;
     }
 
@@ -112,7 +130,7 @@ public static class MvpModExporter
         return info.Length == data.Length && File.ReadAllBytes(path).AsSpan().SequenceEqual(data);
     }
 
-    public static string ModJson(ModInfo info, string xbeSha1)
+    public static string ModJson(ModInfo info, string xbeSha1, IReadOnlyList<string>? refpack = null)
     {
         var j = new JsonObject
         {
@@ -126,6 +144,7 @@ public static class MvpModExporter
             ["layout"] = Layout,
         };
         if (info.AffectsSaves) j["affectsSaves"] = true;
+        if (refpack is { Count: > 0 }) j["refpack"] = new JsonArray([.. refpack.Select(r => (JsonNode)r)]);
         return j.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
 
@@ -140,11 +159,12 @@ public static class MvpModExporter
         if (full.StartsWith(Path.GetFullPath(root).TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)) { report.Problems.Add("The mod can't be written inside the game folder."); return report; }
 
         progress?.Invoke("Collecting changed files");
-        var files = Collect(session, report.Problems);
+        var refpack = new List<string>();
+        var files = Collect(session, report.Problems, refpack);
         if (report.Problems.Count > 0) return report;
         if (files.Count == 0) { report.Problems.Add("Nothing differs from the installed game."); return report; }
         var sha = Convert.ToHexStringLower(SHA1.HashData(File.ReadAllBytes(Path.Combine(root, "default.xbe"))));
-        var json = ModJson(info, sha);
+        var json = ModJson(info, sha, refpack);
 
         progress?.Invoke($"Writing {Path.GetFileName(output)}");
         if (asFolder)

@@ -85,6 +85,9 @@
             <Button Style="{StaticResource Tool}" Click="ExportMod_Click" ToolTip="Loose install: pack your edits as a .mvpmod for the launcher. Disc or packed folder: rebuild the edited archives into the mod output folder (Ctrl+E). Original game files are never modified.">
               <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE896;" Style="{StaticResource Glyph}" Foreground="{StaticResource Good}"/><TextBlock Text="Export Mod" Margin="7,0,0,0"/></StackPanel>
             </Button>
+            <Button Style="{StaticResource Tool}" Click="AddFile_Click" ToolTip="Add a new file to the mod, in the selected folder or archive of the loose install (a new member, texture pack or other file). Listed under Changes.">
+              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE710;" Style="{StaticResource Glyph}"/><TextBlock Text="Add File" Margin="7,0,0,0"/></StackPanel>
+            </Button>
             <Button Style="{StaticResource Tool}" Click="TestMod_Click" ToolTip="Start the installed game with your edits as a temporary mod (loose installs). Nothing is installed or changed.">
               <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE768;" Style="{StaticResource Glyph}"/><TextBlock Text="Test in Game" Margin="7,0,0,0"/></StackPanel>
             </Button>
@@ -143,7 +146,8 @@
             <ComboBox x:Name="BrowseMode" Grid.Row="2" Margin="10,0,10,8" SelectedIndex="0" SelectionChanged="BrowseMode_SelectionChanged" ToolTip="Browse assets by purpose or original archive path">
               <ComboBoxItem Content="Categories"/><ComboBoxItem Content="Files and archives"/>
             </ComboBox>
-            <TreeView x:Name="Tree" Grid.Row="3" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" SelectedItemChanged="Tree_SelectedItemChanged" MouseDoubleClick="Tree_MouseDoubleClick" KeyDown="Tree_KeyDown">
+            <TreeView x:Name="Tree" Grid.Row="3" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" SelectedItemChanged="Tree_SelectedItemChanged" MouseDoubleClick="Tree_MouseDoubleClick" KeyDown="Tree_KeyDown" PreviewMouseRightButtonDown="Tree_RightButtonDown" ContextMenuOpening="Tree_ContextMenuOpening">
+              <TreeView.ContextMenu><ContextMenu/></TreeView.ContextMenu>
               <TreeView.ItemTemplate>
                 <HierarchicalDataTemplate DataType="{x:Type local:TreeItem}" ItemsSource="{Binding Children}">
                   <Grid ToolTip="{Binding Node.Path}">
