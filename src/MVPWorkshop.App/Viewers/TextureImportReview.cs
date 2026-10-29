@@ -42,15 +42,17 @@ internal sealed class TextureImportReview : Window
         panel.Children.Add(new TextBlock { Text = "Choose the size to save at:", Margin = new Thickness(0, 12, 0, 4), FontWeight = FontWeights.SemiBold });
 
         int best = 1;
-        for (int k = 1; k <= SshWriter.MaxUpscale; k++)
+        var maxScale = SshWriter.MaxUpscaleFor(file, image);
+        for (int k = 1; k <= maxScale; k++)
         {
             string? why = k == 1 ? null : saveBlocker ?? SshWriter.ResizeUnsupported(file, image, h.Width * k, h.Height * k);
+            if (file.IsXbox && k > 1 && why is not null) continue;  // Xbox lists only the sizes it can save
             var rb = new RadioButton { Content = k == 1 ? $"Original size ({h.Width}×{h.Height}) — safest" : $"{k}× upscale ({h.Width * k}×{h.Height * k})", IsEnabled = why is null, ToolTip = why, Margin = new Thickness(0, 2, 0, 2) };
             _sizes.Add((k, rb)); panel.Children.Add(rb);
             if (why is null && (k == 1 || (h.Width * k <= width && h.Height * k <= height))) best = k;
         }
         _sizes.First(s => s.Scale == best).Button.IsChecked = true;
-        panel.Children.Add(new TextBlock { Text = "Upscales are capped at 4×. Larger sizes are experimental: the game's UVs and video memory aren't adjusted.", Foreground = Ui.Res("Muted"), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) });
+        panel.Children.Add(new TextBlock { Text = file.IsXbox ? $"Xbox textures can be saved up to {SshWriter.MaxXboxSide}×{SshWriter.MaxXboxSide}; the size closest to your picture is picked." : "Upscales are capped at 4×. Larger sizes are experimental: the game's UVs and video memory aren't adjusted.", Foreground = Ui.Res("Muted"), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) });
 
         panel.Children.Add(new TextBlock { Text = "Resize method (used when your picture isn't exactly the chosen size):", Margin = new Thickness(0, 12, 0, 0) });
         panel.Children.Add(_sampling);

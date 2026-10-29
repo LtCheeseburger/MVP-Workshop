@@ -82,7 +82,7 @@ public static class AssetCatalog
     {
         var groups = new SortedDictionary<string, List<AssetNode>>(StringComparer.OrdinalIgnoreCase);
         // a loose texture folder is listed by its DDS files, not as the .xsh they rebuild
-        foreach (var node in nodes.Where(n => !n.IsFolder && !n.IsContainer && !n.IsLooseTexturePack))
+        foreach (var node in nodes.Where(n => !n.IsFolder && !n.IsLooseTexturePack && !n.IsContainer))
         {
             var category = Category(node);
             if (!groups.TryGetValue(category, out var list)) groups[category] = list = [];

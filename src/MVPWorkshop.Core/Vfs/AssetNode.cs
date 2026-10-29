@@ -63,6 +63,8 @@ public sealed class AssetNode
         {
             if (IsFolder) return FormatId.Folder;
             if (_format is { } f) return f;
+            // a loose DDS folder is always an SHPX pack; detecting it would rebuild the whole pack from its DDS files
+            if (IsLooseTexturePack) return (_format = FormatId.SshTexture).Value;
             try
             {
                 _format = FormatDetector.Detect(Name, Open());
@@ -323,7 +325,7 @@ public sealed class AssetNode
         {
             var n = stack.Pop();
             yield return n;
-            if ((n.IsContainer || n.IsLooseTexturePack) && (descend?.Invoke(n) ?? true))
+            if ((n.IsLooseTexturePack || n.IsContainer) && (descend?.Invoke(n) ?? true))
                 for (var i = n.Children.Count - 1; i >= 0; i--) stack.Push(n.Children[i]);
         }
     }

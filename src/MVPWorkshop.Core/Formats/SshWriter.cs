@@ -114,8 +114,15 @@ public static class SshWriter
         return (o, nw, nh);
     }
 
-    /// <summary>Largest allowed texture upscale factor.</summary>
+    /// <summary>Largest allowed texture upscale factor (PS2).</summary>
     public const int MaxUpscale = 4;
+
+    /// <summary>Largest side of an Xbox texture; the port's loose DDS files take any size (docs/LOOSE_ASSETS.md).</summary>
+    public const int MaxXboxSide = 4096;
+
+    /// <summary>The largest upscale factor offered for this image.</summary>
+    public static int MaxUpscaleFor(SshFile file, SshImage img) =>
+        file.IsXbox ? Math.Max(1, MaxXboxSide / Math.Max(img.Header.Width, img.Header.Height)) : MaxUpscale;
 
     /// <summary>Storage restrictions for experimental native upscales. Consumer/VRAM compatibility is a separate runtime concern.</summary>
     public static string? ResizeUnsupported(SshFile file, SshImage img, int width, int height)
@@ -123,7 +130,16 @@ public static class SshWriter
         if (Unsupported(file, img) is { } why) return why;
         var h = img.Header;
         if (width == h.Width && height == h.Height) return null;
-        if (file.IsXbox) return "Native resizing of Xbox textures is not verified; use the original dimensions.";
+        if (file.IsXbox)
+        {
+            // rebuilt through the DDS layout (XshFolder), as the port does for a loose texture folder
+            if (width <= 0 || height <= 0 || width > MaxXboxSide || height > MaxXboxSide) return $"Xbox textures can be up to {MaxXboxSide}×{MaxXboxSide}.";
+            var t = img.TypeMasked;
+            if (t is not (0x60 or 0x61 or 0x7D)) return $"{SshFile.TypeName(h.Type)} can only be replaced at its original size.";
+            if (t == 0x7D && (!XboxTexture.IsPowerOfTwo(width) || !XboxTexture.IsPowerOfTwo(height))) return "This texture needs power-of-two sides.";
+            if (t != 0x7D && (width % 4 != 0 || height % 4 != 0)) return "DXT textures need sides that are multiples of 4.";
+            return null;
+        }
         if (width > 2048 || height > 2048 || width < h.Width || height < h.Height || width <= 0 || height <= 0) return "Native upscales must stay between source dimensions and 2048×2048.";
         int scale = width / h.Width;
         if (scale is < 2 or > MaxUpscale || width != h.Width * scale || height != h.Height * scale)
@@ -164,6 +180,11 @@ public static class SshWriter
         {
             if (!allowResize) throw new ArgumentException($"The picture is {width}×{height} but this image is {h.Width}×{h.Height}.");
             if (ResizeUnsupported(file, img, width, height) is { } resizeWhy) throw new NotSupportedException(resizeWhy);
+        }
+        if (resizing && file.IsXbox)
+        {
+            var built = XshFolder.ReplaceImage(file.Data, img.Index, bgra, width, height, out var error) ?? throw new NotSupportedException(error);
+            return new SshReplaceResult(built, $"resized to {width}×{height} in the slot's format ({SshFile.TypeName(h.Type)}), mips rebuilt");
         }
         var t = h.Type & 0x7F;
         var notes = new List<string>();

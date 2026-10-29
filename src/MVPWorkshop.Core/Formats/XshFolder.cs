@@ -132,15 +132,42 @@ public static class XshFolder
         return true;
     }
 
+    /// <summary>
+    /// Replaces the image at directory entry <paramref name="dirIndex"/> with a BGRA picture at any size, the way the
+    /// runtime builds a loose texture folder: converted to the slot's format with its mip count. Null with a reason when it can't.
+    /// </summary>
+    public static byte[]? ReplaceImage(byte[] xsh, int dirIndex, byte[] bgra, int w, int h, out string? error)
+    {
+        error = null;
+        if (Split(xsh) is not { } parts || !ReadMeta(parts[MetaName], out _, out var images)) { error = "This texture pack can't be laid out as DDS files, so it can only be replaced at its original size."; return null; }
+        var fileIndex = images.FindIndex(i => i.DirIndex == dirIndex);
+        if (fileIndex < 0 || !images[fileIndex].Dds) { error = "This image is stored raw (PAL8 or an odd layout) and can only be replaced at its original size."; return null; }
+        var slot = images[fileIndex].Header[0];
+        var oldMips = BinaryPrimitives.ReadUInt16LittleEndian(images[fileIndex].Header.AsSpan(14)) >> 12;
+        if (slot == 0x7D && !(XboxTexture.IsPowerOfTwo(w) && XboxTexture.IsPowerOfTwo(h))) { error = $"{w}x{h}: this texture needs power-of-two sides."; return null; }
+        if (slot != 0x7D && (w % 4 != 0 || h % 4 != 0)) { error = $"{w}x{h}: DXT textures need sides that are multiples of 4."; return null; }
+        // a linear BGRA DDS with the slot's mip count; FromDds swizzles it, or encodes it to DXT
+        var mips = slot == 0x7D ? Math.Min(oldMips, (int)Math.Log2(Math.Max(w, h))) : 0;
+        var chain = new MemoryStream();
+        var (lv, lw, lh) = (bgra, w, h);
+        for (var m = 0; m <= mips; m++)
+        {
+            chain.Write(lv);
+            if (m < mips) (lv, lw, lh) = Half(lv, lw, lh);
+        }
+        parts[images[fileIndex].File] = WriteDds(0x7D, w, h, mips, chain.ToArray(), swizzled: false);
+        return Build(parts[MetaName], n => parts.GetValueOrDefault(n), out error);
+    }
+
     // ---- DDS ----
 
     const uint DdsdCaps = 0x1, DdsdHeight = 0x2, DdsdWidth = 0x4, DdsdPitch = 0x8, DdsdPixelFormat = 0x1000, DdsdMipMapCount = 0x20000, DdsdLinearSize = 0x80000;
     const uint DdpfAlphaPixels = 0x1, DdpfFourCC = 0x4, DdpfRgb = 0x40;
 
-    static byte[] WriteDds(int type, int w, int h, int mips, ReadOnlySpan<byte> px)
+    static byte[] WriteDds(int type, int w, int h, int mips, ReadOnlySpan<byte> px, bool swizzled = true)
     {
         var data = px.ToArray();
-        if (type == 0x7D)
+        if (type == 0x7D && swizzled)
         {
             // each level is swizzled on its own
             var pos = 0;
