@@ -78,6 +78,8 @@ public partial class MainWindow : Window
             Snapshot.RunIfRequested(this);
             SelfTest.RunIfRequested(this);
             if (startupArgs.Length == 1) Dispatcher.BeginInvoke(PromptOpenGame, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            // a normal launch checks for a newer build in the background (tests and snapshots pass arguments)
+            if (startupArgs.Length == 1) _ = CheckForUpdates(manual: false);
         };
     }
 
