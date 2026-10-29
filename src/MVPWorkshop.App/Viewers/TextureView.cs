@@ -95,6 +95,7 @@ public sealed class TextureView : Grid
             emulatorButton,
             B.Separator(),
             B.Button("Replace image…", "", (_, _) => ReplaceCurrent(), "Primary", "Pick a picture (or drop one onto this view) to replace the selected texture. Up to 4× upscale."),
+            B.Button("Import folder…", "", (_, _) => ImportFolder(), "Outline", "Replace every image in this pack at once from a folder of pictures named after the slots (hat.png, merf.tga…)."),
             B.Segments("Colours", ["New palette", "Keep palette"], 0, i => _paletteMode = i == 1 ? PaletteMode.KeepExisting : PaletteMode.Rebuild));
         toolbar.ToolTip = null;
         if (ssh?.IsXbox == true) alphaToggle.Visibility = emulatorButton.Visibility = paletteSegments.Visibility = Visibility.Collapsed;   // PS2-only options (GS alpha, PCSX2 dumps, CSM palettes)
@@ -355,6 +356,40 @@ public sealed class TextureView : Grid
         if (MainWindow.Instance is { } main && !await main.PreviewReplacementImpact(_node)) return;
         bool upscaled = tw != h.Width || th != h.Height;
         ReplaceWith(img.Index, bgra, Path.GetFileName(path), upscaled ? tw : h.Width, upscaled ? th : h.Height);
+    }
+
+    /// <summary>Replace every slot that has a picture of the same name in a folder, as one change.</summary>
+    internal async void ImportFolder()
+    {
+        if (_ssh is null) return;
+        if (_node.Format != FormatId.SshTexture) { Log.Warn($"{_node.Name} is an Xbox packed resource; it can be viewed and exported but not replaced."); return; }
+        if (Editor.Session is not { } session) { Log.Warn("Open a game folder first."); return; }
+        var owner = Window.GetWindow(this);
+        if (session.SaveBlocker(_node) is { } blocker) { MessageBox.Show(owner, blocker, "Import folder", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = $"Folder of pictures for {_node.Name} (named after the slots: {string.Join(", ", _ssh.Images.Take(4).Select(i => i.Tag))}…)" };
+        if (dlg.ShowDialog(owner) != true) return;
+        var folder = dlg.FolderName;
+        var ssh = _ssh;
+        var palette = _paletteMode;
+        try
+        {
+            Mouse.OverrideCursor = Cursors.Wait;
+            var (rows, unused) = await Task.Run(() => TextureFolderImport.Plan(ssh, folder, LoadPicture, img => SshWriter.Unsupported(ssh, img)));
+            Mouse.OverrideCursor = null;
+            if (rows.All(r => r.File is null)) { MessageBox.Show(owner, $"No picture in {folder} is named after a slot of {_node.Name} ({string.Join(", ", ssh.Images.Select(i => i.Tag))}).", "Import folder", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+            if (new FolderImportReview(_node.Name, folder, rows, unused) { Owner = owner }.ShowDialog() != true) return;
+            if (MainWindow.Instance is { } main && !await main.PreviewReplacementImpact(_node)) return;
+            Mouse.OverrideCursor = Cursors.Wait;
+            var status = new Progress<string>(t => MainWindow.Instance?.SetStatus(t));
+            var data = await Task.Run(() => TextureFolderImport.Apply(ssh.Data, rows, LoadPicture, palette, t => ((IProgress<string>)status).Report(t)));
+            var count = rows.Count(r => r.Replaces);
+            var what = $"Import {count} image(s) from {Path.GetFileName(folder)}";
+            Editor.Apply(_node, data, what);
+            Log.Info($"{_node.Name}: {what} ({string.Join(", ", rows.Where(r => r.Replaces).Select(r => $"{r.Image.Tag} {r.Width}×{r.Height}"))})");
+            MainWindow.Instance?.SetStatus($"{_node.Name}: replaced {count} image(s)");
+        }
+        catch (Exception ex) { Log.Error($"Import folder: {ex.Message}"); MessageBox.Show(owner, ex.Message, "Import folder", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        finally { Mouse.OverrideCursor = null; }
     }
 
     /// <summary>Dropping an image file anywhere on the viewer starts a replace of the selected texture.</summary>
