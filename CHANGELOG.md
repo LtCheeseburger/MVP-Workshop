@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.6 — 2026-10-28
+
+First release with the built-in updater, and the first public build since 1.0.3: it includes everything in 1.0.4 and 1.0.5 below. From here on the Workshop updates itself.
+
 ## 1.0.5 — 2026-10-28
 
 ### Added

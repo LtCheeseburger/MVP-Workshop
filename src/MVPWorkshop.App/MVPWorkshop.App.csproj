@@ -9,10 +9,10 @@
     <RootNamespace>MVPWorkshop.App</RootNamespace>
     <Product>MVP-Workshop</Product>
     <ApplicationIcon>Assets\MvpWorkshop.ico</ApplicationIcon>
-    <Version>1.0.5</Version>
-    <AssemblyVersion>1.0.5.0</AssemblyVersion>
-    <FileVersion>1.0.5.0</FileVersion>
-    <InformationalVersion>1.0.5</InformationalVersion>
+    <Version>1.0.6</Version>
+    <AssemblyVersion>1.0.6.0</AssemblyVersion>
+    <FileVersion>1.0.6.0</FileVersion>
+    <InformationalVersion>1.0.6</InformationalVersion>
     <Company>MVP-Workshop</Company>
     <Copyright>MVP-Workshop contributors</Copyright>
     <Description>Asset explorer and editor for MVP 07 NCAA Baseball (PS2) and MVP 06 NCAA Baseball (Xbox)</Description>
