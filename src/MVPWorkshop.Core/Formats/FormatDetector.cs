@@ -8,6 +8,7 @@ public enum FormatId
     Empty,
     Folder,
     BigArchive,
+    DdsImage,
     SchlStream,
     SchlContainer,
     EaBank,
@@ -83,6 +84,7 @@ public static class FormatDetector
         [FormatId.BilgSkeleton] = new(FormatId.BilgSkeleton, "GLD Skeleton", FormatCategory.Model, "", "BILG skeleton / bone layout"),
         [FormatId.PfrFont] = new(FormatId.PfrFont, "PFR Font", FormatCategory.Font, "", "Bitstream Portable Font Resource"),
         [FormatId.AdachiFont] = new(FormatId.AdachiFont, "PF Font", FormatCategory.Font, "", "Network GUI bitmap font"),
+        [FormatId.DdsImage] = new(FormatId.DdsImage, "DDS Image", FormatCategory.Texture, "", "DirectDraw Surface image (a loose install's texture, one image of its .xsh)"),
         [FormatId.RawRgb] = new(FormatId.RawRgb, "Raw RGB Image", FormatCategory.Texture, "", "Headerless 24-bit RGB image"),
         [FormatId.Ps2Overlay] = new(FormatId.Ps2Overlay, "Code Overlay", FormatCategory.Code, "", "Raw MIPS code overlay"),
         [FormatId.OffsetPack] = new(FormatId.OffsetPack, "OFF-indexed Pack", FormatCategory.Data, "", "Headerless record pack split by the matching .OFF index", true),
@@ -104,6 +106,7 @@ public static class FormatDetector
             case "BNKl" or "BNKb": return FormatId.EaBank;
             case "ASFT": return FormatId.AsfLut;
             case "SHPS" or "ShpS" or "SHPX": return FormatId.SshTexture;
+            case "DDS ": return FormatId.DdsImage;
             case "MPCh": return FormatId.MpcMovie;
             case "MVhd": return FormatId.Vp6Movie;
             case "XBEH": return FormatId.XboxExecutable;

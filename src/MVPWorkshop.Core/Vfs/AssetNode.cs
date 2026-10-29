@@ -145,7 +145,7 @@ public sealed class AssetNode
             var hash = part.LastIndexOf('#');
             int? idx = hash > 0 && int.TryParse(part.AsSpan(hash + 1), out var v) ? v : null;
             var name = idx is null ? part : part[..hash];
-            n = n.IsContainer || n.IsFolder ? n.Children.FirstOrDefault(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && (idx is null || c.BigIndex == idx)) : null;
+            n = n.IsContainer || n.IsLooseTexturePack ? n.Children.FirstOrDefault(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && (idx is null || c.BigIndex == idx)) : null;
             if (n is null) return null;
         }
         return n;
@@ -203,6 +203,7 @@ public sealed class AssetNode
     private List<AssetNode> BuildChildren()
     {
         if (IsFolder && DiskPath is not null) return GameFileSystem.ListDirectory(this, DiskPath);
+        if (IsLooseTexturePack) return GameFileSystem.ListTextureFolder(this, DiskPath!);
         if (IsFolder) return [];
         return Format switch
         {
@@ -322,7 +323,7 @@ public sealed class AssetNode
         {
             var n = stack.Pop();
             yield return n;
-            if (n.IsContainer && (descend?.Invoke(n) ?? true))
+            if ((n.IsContainer || n.IsLooseTexturePack) && (descend?.Invoke(n) ?? true))
                 for (var i = n.Children.Count - 1; i >= 0; i--) stack.Push(n.Children[i]);
         }
     }
@@ -365,6 +366,13 @@ public static class GameFileSystem
         var fi = new FileInfo(path);
         return new AssetNode(fi.Name, null, false, fi.Length, () => new FileRangeByteSource(fi.FullName, 0, fi.Length), "disk") { DiskPath = fi.FullName };
     }
+
+    /// <summary>The image files of a loose texture folder (its xsh.meta stays hidden), in file order.</summary>
+    internal static List<AssetNode> ListTextureFolder(AssetNode pack, string path) =>
+        new DirectoryInfo(path).EnumerateFiles().Where(f => !f.Name.Equals(XshFolder.MetaName, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(f => new AssetNode(f.Name, pack, false, f.Length, () => new FileRangeByteSource(f.FullName, 0, f.Length), "loose DDS file") { DiskPath = f.FullName })
+            .ToList();
 
     internal static List<AssetNode> ListDirectory(AssetNode parent, string path)
     {

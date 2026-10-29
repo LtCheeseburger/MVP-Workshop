@@ -42,7 +42,7 @@ public static class TeamAssetCatalog
         var native = new Regex("^[uf](\\d{3})[a-z]\\.[sx]sh$", RegexOptions.IgnoreCase);
         var menu = new Regex("^(\\d{3})[a-z]?\\.[sx]sh$", RegexOptions.IgnoreCase);
         var logo = new Regex("^l(\\d{3})\\.[sx]sh$", RegexOptions.IgnoreCase);
-        foreach (var node in nodes.Where(n => !n.IsFolder && n.Extension != ".big"))
+        foreach (var node in nodes.Where(n => !n.IsFolder && n.Extension != ".big" && n.Parent is not { IsLooseTexturePack: true }))
         {
             cancellation.ThrowIfCancellationRequested();
             var path = node.Path;

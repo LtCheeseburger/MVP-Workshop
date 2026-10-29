@@ -205,13 +205,16 @@ public partial class MainWindow : Window
                         var children = new List<TreeItem>();
                         var terminal = group.Where(g => g.Key.Split('/').Length == depth + 1).ToList();
                         foreach (var leaf in terminal)
-                            foreach (var pack in leaf.Value.GroupBy(n => n.Container.Length > 0 ? n.Container : n.Parent?.Name ?? "Files"))
+                            foreach (var pack in leaf.Value.GroupBy(AssetCatalog.PackName))
                             {
+                                // DDS files of a loose install stay together under their texture folder
+                                IEnumerable<TreeItem> Leaves(IEnumerable<AssetNode> nodes, int d) => nodes.GroupBy(n => n.Parent is { IsLooseTexturePack: true } t ? t : n)
+                                    .Select(g => g.Key.IsLooseTexturePack ? new TreeItem(g.Key.Name, d, g.Select(n => new TreeItem(n, d + 1))) : new TreeItem(g.Key, d));
                                 // mixed archives (stadiums) get Models / Textures / Data folders so the models are easy to find
                                 var kinds = pack.GroupBy(AssetCatalog.Kind).OrderBy(k => k.Key == "Models" ? 0 : 1).ThenBy(k => k.Key).ToList();
                                 children.Add(kinds.Count > 1 && pack.Count() > 12
-                                    ? new TreeItem(pack.Key, depth + 1, kinds.Select(k => new TreeItem(k.Key, depth + 2, k.Select(n => new TreeItem(n, depth + 3)))))
-                                    : new TreeItem(pack.Key, depth + 1, pack.Select(n => new TreeItem(n, depth + 2))));
+                                    ? new TreeItem(pack.Key, depth + 1, kinds.Select(k => new TreeItem(k.Key, depth + 2, Leaves(k, depth + 3))))
+                                    : new TreeItem(pack.Key, depth + 1, Leaves(pack, depth + 2)));
                             }
                         AddGroups(children, group.Where(g => g.Key.Split('/').Length > depth + 1), depth + 1);
                         target.Add(new TreeItem(group.Key, depth, children));
@@ -242,7 +245,7 @@ public partial class MainWindow : Window
         if (generation != _catalogGeneration || BrowseMode.SelectedIndex != 0) return;
         _roots.Clear();
         foreach (var item in _categoryRoots) _roots.Add(item);
-        SetStatus($"{_searchIndex?.Count(n => !n.IsFolder && !n.IsContainer):N0} assets categorized · original paths retained");
+        SetStatus($"{_searchIndex?.Count(n => !n.IsFolder && !n.IsContainer && !n.IsLooseTexturePack):N0} assets categorized · original paths retained");
     }
 
     // ---------------------------------------------------------------- documents

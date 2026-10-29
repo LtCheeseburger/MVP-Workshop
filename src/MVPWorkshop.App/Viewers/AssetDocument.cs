@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using MVPWorkshop.App.Controls;
@@ -145,7 +146,9 @@ public static class AssetDocument
 
 public static class ViewerFactory
 {
-    public static FrameworkElement Build(AssetNode node, IByteSource src, Action<List<Prop>> setExtra) => node.Format switch
+    public static FrameworkElement Build(AssetNode node, IByteSource src, Action<List<Prop>> setExtra) => node.Parent is { IsLooseTexturePack: true } pack
+        ? LooseImage(node, pack, setExtra)
+        : node.Format switch
     {
         FormatId.BigArchive or FormatId.SchlContainer => new ArchiveView(node),
         FormatId.SshTexture => new TextureView(SshFile.Read(src.ReadAll()), node, setExtra),
@@ -187,6 +190,16 @@ public static class ViewerFactory
         tabs.Loaded += (_, _) => { Editor.Changed -= Changed; Editor.Changed += Changed; Changed(); };
         tabs.Unloaded += (_, _) => Editor.Changed -= Changed;
         return tabs;
+    }
+
+    /// <summary>One DDS (or raw) file of a loose texture folder: its whole .xsh, with this image selected, so edits go through the pack.</summary>
+    private static FrameworkElement LooseImage(AssetNode image, AssetNode pack, Action<List<Prop>> setExtra)
+    {
+        var view = new TextureView(SshFile.Read(pack.ReadAll()), pack, setExtra);
+        var meta = File.ReadAllBytes(Path.Combine(pack.DiskPath!, XshFolder.MetaName));
+        if (XshFolder.ReadMeta(meta, out _, out var images) && images.FirstOrDefault(i => i.File.Equals(image.Name, StringComparison.OrdinalIgnoreCase)) is { } hit)
+            view.SelectedImageIndex = hit.DirIndex;
+        return view;
     }
 
     private static FrameworkElement ElfJoined(AssetNode node, Action<List<Prop>> setExtra)

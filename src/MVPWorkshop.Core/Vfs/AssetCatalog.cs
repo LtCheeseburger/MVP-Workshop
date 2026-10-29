@@ -70,10 +70,19 @@ public static class AssetCatalog
         },
     };
 
+    /// <summary>The archive (or folder) a leaf is listed under; loose archive folders count as archives and loose texture folders are skipped.</summary>
+    public static string PackName(AssetNode node)
+    {
+        for (var p = node.Parent; p is not null; p = p.Parent)
+            if (!p.IsLooseTexturePack && (!p.IsFolder || p.IsLooseArchive)) return p.Name;
+        return node.Parent?.Name ?? "Files";
+    }
+
     public static SortedDictionary<string, List<AssetNode>> Build(IEnumerable<AssetNode> nodes)
     {
         var groups = new SortedDictionary<string, List<AssetNode>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var node in nodes.Where(n => !n.IsFolder && !n.IsContainer))
+        // a loose texture folder is listed by its DDS files, not as the .xsh they rebuild
+        foreach (var node in nodes.Where(n => !n.IsFolder && !n.IsContainer && !n.IsLooseTexturePack))
         {
             var category = Category(node);
             if (!groups.TryGetValue(category, out var list)) groups[category] = list = [];

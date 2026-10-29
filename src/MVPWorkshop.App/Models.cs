@@ -106,6 +106,7 @@ public sealed class TreeItem : Observable
     {
         // Avoid reading every file just to draw the tree: only probe extensions that can be containers.
         var e = n.Extension;
+        if (n.IsLooseTexturePack) return true;
         return e is ".big" or ".ast" or ".dat" or ".viv" || n.Name.EndsWith(".big", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -116,7 +117,7 @@ public sealed class TreeItem : Observable
         Children.Clear();
         try
         {
-            if (!Node.IsContainer) return;
+            if (!Node.IsContainer && !Node.IsLooseTexturePack) return;
             foreach (var c in Node.Children) Children.Add(new TreeItem(c, Depth + 1));
             if (Node.LoadError is { } err) Log.Warn($"{Node.Name}: {err}");
         }
