@@ -82,8 +82,11 @@
             <Button Style="{StaticResource Tool}" Click="ShowChanges_Click" ToolTip="Every pending change, saved or preview-only">
               <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE81C;" Style="{StaticResource Glyph}"/><TextBlock x:Name="ChangesLabel" Text="Changes" Margin="7,0,0,0"/></StackPanel>
             </Button>
-            <Button Style="{StaticResource Tool}" Click="ExportMod_Click" ToolTip="Rebuild the edited archives into the mod output folder and verify them (Ctrl+E). Original game files are never modified.">
+            <Button Style="{StaticResource Tool}" Click="ExportMod_Click" ToolTip="Loose install: pack your edits as a .mvpmod for the launcher. Disc or packed folder: rebuild the edited archives into the mod output folder (Ctrl+E). Original game files are never modified.">
               <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE896;" Style="{StaticResource Glyph}" Foreground="{StaticResource Good}"/><TextBlock Text="Export Mod" Margin="7,0,0,0"/></StackPanel>
+            </Button>
+            <Button Style="{StaticResource Tool}" Click="TestMod_Click" ToolTip="Start the installed game with your edits as a temporary mod (loose installs). Nothing is installed or changed.">
+              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE768;" Style="{StaticResource Glyph}"/><TextBlock Text="Test in Game" Margin="7,0,0,0"/></StackPanel>
             </Button>
             <Border Width="1" Background="{StaticResource Line}" Margin="8,9"/>
             <Button Style="{StaticResource Tool}" Click="ExportIso_Click" ToolTip="Export edits to a new ISO image; extracted projects use an original ISO layout template">

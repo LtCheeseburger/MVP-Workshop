@@ -687,6 +687,8 @@ public partial class MainWindow : Window
         if (!CheckPlayerDrafts()) return;
         if (Editor.Session is not { } s) { Log.Warn("Open a game folder first."); return; }
         if (_exporting) return;
+        // the port's loose install: edits become a .mvpmod the launcher loads (docs/MVPMOD.md in the port)
+        if (MvpModExporter.SessionProblem(s) is null) { ExportMvpMod(test: false); return; }
         if (s.Overrides.Count == 0)
         {
             MessageBox.Show(this, s.PreviewOnlyCount > 0 ? "Nothing can be exported: the only changes are preview-only (they cannot be written into game files)." : "There are no edited assets to export.", "Export Mod", MessageBoxButton.OK, MessageBoxImage.Information);

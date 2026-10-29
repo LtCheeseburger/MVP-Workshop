@@ -150,6 +150,9 @@ public sealed class Settings
     /// <summary>Game folder to output folder chosen for it (default: a mod_output folder next to the game folder).</summary>
     public Dictionary<string, string> OutputFolders { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public string? LastProject { get; set; }
+    /// <summary>Game folder to the .mvpmod details last used for it, and where it was saved.</summary>
+    public Dictionary<string, MVPWorkshop.Core.Editing.ModInfo> ModInfos { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> ModPaths { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string> Recent { get; set; } = [];
 
     private static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MVP-Workshop", "settings.json");
