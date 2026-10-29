@@ -15,7 +15,7 @@ internal sealed class FolderImportReview : Window
         var replacing = rows.Count(r => r.Replaces);
         var panel = new StackPanel { Margin = new Thickness(18) };
         panel.Children.Add(new TextBlock { Text = $"{packName}: {replacing} of {rows.Count} image(s) will be replaced from {folder}.", TextWrapping = TextWrapping.Wrap, FontWeight = FontWeights.SemiBold });
-        panel.Children.Add(new TextBlock { Text = "Pictures are matched to slots by file name (hat.png → hat). Each one is saved at the largest size the slot allows that fits inside the picture, converted to the slot's format with its mips rebuilt.", TextWrapping = TextWrapping.Wrap, Foreground = Ui.Res("Muted"), Margin = new Thickness(0, 4, 0, 10) });
+        panel.Children.Add(new TextBlock { Text = "Pictures are matched to slots by file name (hat.png → hat). In a uniform, torf (the mirrored torso) and llod (the low-detail atlas) are made from your torso, legs and hat unless the folder has its own. Each one is saved at the largest size the slot allows that fits inside the picture, converted to the slot's format with its mips rebuilt.", TextWrapping = TextWrapping.Wrap, Foreground = Ui.Res("Muted"), Margin = new Thickness(0, 4, 0, 10) });
 
         var grid = new Grid();
         foreach (var w in new[] { 90.0, 110, 190, 110, double.NaN })
@@ -36,9 +36,9 @@ internal sealed class FolderImportReview : Window
             var h = r.Image.Header;
             var row = grid.RowDefinitions.Count;
             Row(row, false, r.Image.Tag, $"{h.Width}×{h.Height}",
-                r.File is null ? "—" : $"{Path.GetFileName(r.File)}" + (r.PictureWidth > 0 ? $" ({r.PictureWidth}×{r.PictureHeight})" : ""),
+                r.File is null ? (r.MadeFrom is { } made ? "made from " + made : "—") : $"{Path.GetFileName(r.File)}" + (r.PictureWidth > 0 ? $" ({r.PictureWidth}×{r.PictureHeight})" : ""),
                 r.Replaces ? $"{r.Width}×{r.Height}" : "—",
-                r.Replaces ? (r.Width != r.PictureWidth || r.Height != r.PictureHeight ? "replace (resampled)" : "replace") : r.Problem!);
+                r.Replaces ? (r.MadeFrom is not null ? "made" : r.Width != r.PictureWidth || r.Height != r.PictureHeight ? "replace (resampled)" : "replace") : r.Problem!);
             if (!r.Replaces)
                 foreach (var t in grid.Children.OfType<TextBlock>().Where(t => Grid.GetRow(t) == row)) t.Foreground = Ui.Res("Muted");
             i++;
