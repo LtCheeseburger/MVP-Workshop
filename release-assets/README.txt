@@ -1,4 +1,4 @@
-MVP-Workshop 1.0.4  (win-x64, self-contained, no install needed, no .NET required)
+MVP-Workshop 1.0.5  (win-x64, self-contained, no install needed, no .NET required)
 
 WHAT IT DOES
   Asset explorer and editor for two games:

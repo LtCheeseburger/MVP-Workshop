@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.5 — 2026-10-28
+
+### Added
+- **Export .mvpmod** from a loose install: only the files that differ from the install go in, at their loose paths (just the changed DDS images of a texture pack). **Test in Game** starts MVP06.exe with the changes as a temporary mod.
+- **Mod details** (name, id, version, author, description, affects saves) with an optional **icon** (a square PNG, 64-256 px, saved as `icon.png`).
+- New files can be added to a mod; the save shows warnings for anything the port won't take.
+- **TGA and DDS import** in the texture viewer's Replace image: the picture is converted to the slot's format with mips rebuilt and alpha kept.
+- Right-click menu in the asset tree.
+
 ## 1.0.4 — 2026-10-28
 
 ### Changed
