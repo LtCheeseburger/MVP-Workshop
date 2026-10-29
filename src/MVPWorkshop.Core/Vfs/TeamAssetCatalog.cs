@@ -73,15 +73,15 @@ public static class TeamAssetCatalog
         var profiles = new List<TeamProfile>();
         var workspace = new TeamWorkspaceSources(nodes);
         var currentRoster = rosterBytes ?? roster.ReadAll();
-        foreach (var team in TeamRoster.Read(currentRoster))
+        foreach (var team in TeamRoster.Read(currentRoster, TeamRoster.IsXbox(roster)))
         {
             cancellation.ThrowIfCancellationRequested();
             var profile = new TeamProfile { Team = team, Roster = roster };
             workspace.Populate(profile, currentRoster);
             foreach (var (category, node) in uniformAssets.GetValueOrDefault(team.UniformId, []))
-                profile.Assets.Add(new(category, node, $"roster.bin @0x{team.Offset + 164:X}: 9-bit asset slot = {team.UniformId}; executable format u%03d%c / f%03d%c"));
+                profile.Assets.Add(new(category, node, $"roster.bin @0x{team.Offset + 164:X}: {team.UniformBits}: uniform slot {team.UniformId}; executable format u%03d%c / f%03d%c"));
             foreach (var node in logoAssets.GetValueOrDefault(team.LogoId, []))
-                profile.Assets.Add(new("Logos", node, $"roster.bin @0x{team.Offset + 164:X}, bits 1–9: logo slot {team.LogoId}; LOGOS.BIG/l{team.LogoId:D3}.ssh"));
+                profile.Assets.Add(new("Logos", node, $"roster.bin @0x{team.Offset + 164:X}, {team.LogoBits}: logo slot {team.LogoId}; LOGOS.BIG/l{team.LogoId:D3}"));
             profile.StadiumEvidence = stadiumError;
             void AddStadium(int stadiumId, string prefix, string evidence)
             {

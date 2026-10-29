@@ -15,7 +15,7 @@ public sealed class TeamAssignmentView : Grid
     public TeamAssignmentView(TeamProfile profile)
     {
         var nodes = MainWindow.Instance!.GameRoot!.EnumerateDeep().ToList();
-        var current = TeamRoster.Read(profile.Roster.ReadAll()).Single(t => t.RosterIndex == profile.Team.RosterIndex);
+        var current = TeamRoster.Read(profile.Roster.ReadAll(), TeamRoster.IsXbox(profile.Roster)).Single(t => t.RosterIndex == profile.Team.RosterIndex);
         var source = profile.Roster.ReadAll();
         var box = new StackPanel { Margin = new Thickness(12) };
         var status = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8) };
@@ -46,9 +46,9 @@ public sealed class TeamAssignmentView : Grid
             return pick;
         }
         // Compatibility is based on resolved native uniform sheets / logo assets, not an arbitrary numeric input.
-        var uniform = Pick($"Uniform family: current {current.UniformId:D3} · roster @0x{current.Offset + 164:X}, bits 10–18",
+        var uniform = Pick($"Uniform family: current {current.UniformId:D3} · roster @0x{current.Offset + 164:X}, {current.UniformBits}",
             AssetFamilies(@"^u(\d{3})[a-z]\.ssh$", "/MODELS.BIG/", true), current.UniformId);
-        var logo = Pick($"Logo family: current {current.LogoId:D3} · roster @0x{current.Offset + 164:X}, bits 1–9",
+        var logo = Pick($"Logo family: current {current.LogoId:D3} · roster @0x{current.Offset + 164:X}, {current.LogoBits}",
             AssetFamilies(@"^l(\d{3})\.ssh$", "/LOGOS.BIG/", false), current.LogoId);
         StadiumAssignments? map = null;
         string? mapError = null;
@@ -65,7 +65,7 @@ public sealed class TeamAssignmentView : Grid
             try
             {
                 if (map is null) throw new InvalidOperationException("A decoded executable stadium table is required.");
-                draft = TeamAssignmentEditor.Patch(source, current.RosterIndex, ((Choice)logo.SelectedItem).Id, ((Choice)uniform.SelectedItem).Id, ((Choice)stadium.SelectedItem).Id);
+                draft = TeamAssignmentEditor.Patch(source, current.RosterIndex, ((Choice)logo.SelectedItem).Id, ((Choice)uniform.SelectedItem).Id, ((Choice)stadium.SelectedItem).Id, TeamRoster.IsXbox(profile.Roster));
                 var proposed = TeamAssetCatalog.Build(nodes, draft).Single(p => p.Team.RosterIndex == current.RosterIndex);
                 preview.Content = new TeamView(proposed, assignmentPreview: true);
                 status.Text = $"Current: logo {current.LogoId}, uniform {current.UniformId}, stadium {current.StadiumId}. Proposed: logo {proposed.Team.LogoId}, uniform {proposed.Team.UniformId}, stadium {proposed.Team.StadiumId}.\n" + proposed.StadiumEvidence + "\n" + (Editor.Session?.SaveBlocker(profile.Roster) ?? "Ready to apply to the project; unknown bytes and unrelated packed bits verified unchanged.");

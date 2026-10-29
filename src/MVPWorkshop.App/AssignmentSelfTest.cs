@@ -50,7 +50,7 @@ public static class AssignmentSelfTest
             foreach (var pick in picks) pick.SelectedIndex = (pick.SelectedIndex + 1) % pick.Items.Count;
             int Id(ComboBox pick) => (int)pick.SelectedItem.GetType().GetProperty("Id")!.GetValue(pick.SelectedItem)!;
             var uniform = Id(picks[0]); var logo = Id(picks[1]); var stadium = Id(picks[2]);
-            Check("draft selections leave roster unchanged", TeamRoster.Read(profile.Roster.ReadAll()).Single(t => t.RosterIndex == before.RosterIndex) == before);
+            Check("draft selections leave roster unchanged", TeamRoster.Read(profile.Roster.ReadAll(), TeamRoster.IsXbox(profile.Roster)).Single(t => t.RosterIndex == before.RosterIndex) == before);
             var apply = Descendants<Button>(editor).Single(b => b.Tag?.ToString() == "ApplyTeamAssignments");
             Check("reviewed draft can be applied", apply.IsEnabled);
             apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

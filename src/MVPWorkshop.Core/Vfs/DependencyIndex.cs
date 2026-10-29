@@ -185,10 +185,10 @@ public sealed class DependencyIndex
                         asset.Evidence, profile.Roster.Path + " · " + team.Location);
                 if (!profile.Assets.Any(a => a.Category.StartsWith("Uniforms/", StringComparison.Ordinal)))
                     Link(team, null, $"uniform family {profile.Team.UniformId:D3}", RelationshipKind.DecodedAssignment,
-                        "Decoded uniform slot has no native or menu family assets", $"{profile.Roster.Path} @0x{profile.Team.Offset + 164:X}, bits 10–18", true);
+                        "Decoded uniform slot has no native or menu family assets", $"{profile.Roster.Path} @0x{profile.Team.Offset + 164:X}, {profile.Team.UniformBits}", true);
                 if (!profile.Assets.Any(a => a.Category == "Logos"))
                     Link(team, null, $"LOGOS.BIG/l{profile.Team.LogoId:D3}.ssh", RelationshipKind.DecodedAssignment,
-                        "Decoded logo slot has no logo asset", $"{profile.Roster.Path} @0x{profile.Team.Offset + 164:X}, bits 1–9", true);
+                        "Decoded logo slot has no logo asset", $"{profile.Roster.Path} @0x{profile.Team.Offset + 164:X}, {profile.Team.LogoBits}", true);
                 if (profile.StadiumCode != null && !profile.Assets.Any(a => a.Category.StartsWith("Stadium/Assigned ", StringComparison.Ordinal)))
                     Link(team, null, profile.StadiumCode, RelationshipKind.DecodedAssignment, profile.StadiumEvidence,
                         $"{profile.Roster.Path} @0x{profile.Team.Offset + 168:X}, bits 4–9", true);

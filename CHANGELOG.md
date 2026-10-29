@@ -11,6 +11,10 @@
 - **Export Mod** writes an edited loose texture pack as a DDS folder in the install layout, after checking it rebuilds exactly.
 - `XshFolder`: splits an `.xsh` into DDS files and builds it back (test `tests/LooseTextures`).
 
+### Fixed
+- **Xbox school assignments:** the roster was read with the PS2 bit layout, so every Xbox school got the wrong logo and uniform (Alabama showed Loyola Marymount's). On Xbox the logo and uniform start at bit 0, not bit 1; all 128 schools now match `teaminfo.csv`. Assignment edits write the same layout.
+- Opening a DDS file selected the wrong image in packs whose directory order differs from file order.
+
 ## 1.0.3 — 2026-10-27
 
 ### Added

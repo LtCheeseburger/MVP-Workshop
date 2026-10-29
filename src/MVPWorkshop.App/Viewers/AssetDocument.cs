@@ -197,8 +197,9 @@ public static class ViewerFactory
     {
         var view = new TextureView(SshFile.Read(pack.ReadAll()), pack, setExtra);
         var meta = File.ReadAllBytes(Path.Combine(pack.DiskPath!, XshFolder.MetaName));
-        if (XshFolder.ReadMeta(meta, out _, out var images) && images.FirstOrDefault(i => i.File.Equals(image.Name, StringComparison.OrdinalIgnoreCase)) is { } hit)
-            view.SelectedImageIndex = hit.DirIndex;
+        // the viewer lists images in file order, the order xsh.meta numbers the files in (not the directory order)
+        if (XshFolder.ReadMeta(meta, out _, out var images) && images.FindIndex(i => i.File.Equals(image.Name, StringComparison.OrdinalIgnoreCase)) is >= 0 and var at)
+            view.SelectedImageIndex = at;
         return view;
     }
 
