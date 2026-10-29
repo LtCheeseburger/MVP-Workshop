@@ -199,6 +199,22 @@ sealed class ModInfoDialog : Window
         var version = Field("Version", info.Version);
         var author = Field("Author", info.Author);
         var description = Field("Description", info.Description, multi: true);
+        var icon = Field("Icon (PNG)", info.IconPath);
+        icon.Margin = new Thickness(0, 4, 150, 0);
+        var iconButtons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 4, 0, 0) };
+        var browse = new Button { Content = "Browse…", MinWidth = 70, Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(8, 2, 8, 2) };
+        var clear = new Button { Content = "None", MinWidth = 60, Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(8, 2, 8, 2) };
+        browse.Click += (_, _) =>
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Mod icon: a square PNG, 64-256 px", Filter = "PNG image (*.png)|*.png" };
+            if (dlg.ShowDialog(this) == true) icon.Text = dlg.FileName;
+        };
+        clear.Click += (_, _) => icon.Text = "";
+        iconButtons.Children.Add(browse);
+        iconButtons.Children.Add(clear);
+        Grid.SetRow(iconButtons, grid.RowDefinitions.Count - 1);
+        Grid.SetColumn(iconButtons, 1);
+        grid.Children.Add(iconButtons);
         // the id follows the name until it's typed in
         var idTyped = info.Id != "";
         name.TextChanged += (_, _) => { if (!idTyped) id.Text = ModInfo.IdFrom(name.Text); };
@@ -222,7 +238,7 @@ sealed class ModInfoDialog : Window
         var cancel = new Button { Content = "Cancel", IsCancel = true, MinWidth = 80, Padding = new Thickness(10, 4, 10, 4) };
         ok.Click += (_, _) =>
         {
-            var candidate = new ModInfo { Name = name.Text, Id = id.Text.Trim(), Version = version.Text.Trim(), Author = author.Text, Description = description.Text, AffectsSaves = saves.IsChecked == true };
+            var candidate = new ModInfo { Name = name.Text, Id = id.Text.Trim(), Version = version.Text.Trim(), Author = author.Text, Description = description.Text, AffectsSaves = saves.IsChecked == true, IconPath = icon.Text.Trim().Trim('"') };
             if (candidate.Problem() is { } why) { error.Text = why; return; }
             info.Name = candidate.Name;
             info.Id = candidate.Id;
@@ -230,6 +246,7 @@ sealed class ModInfoDialog : Window
             info.Author = candidate.Author;
             info.Description = candidate.Description;
             info.AffectsSaves = candidate.AffectsSaves;
+            info.IconPath = candidate.IconPath;
             DialogResult = true;
         };
         buttons.Children.Add(ok);

@@ -17,6 +17,8 @@ public sealed class ModInfo
     public string Author { get; set; } = "";
     public string Description { get; set; } = "";
     public bool AffectsSaves { get; set; }
+    /// <summary>A PNG on disk that goes in as icon.png; empty for none.</summary>
+    public string IconPath { get; set; } = "";
 
     /// <summary>Why the port would refuse these values; null when they're fine.</summary>
     public string? Problem()
@@ -25,6 +27,22 @@ public sealed class ModInfo
         if (Name.Trim() == "") return "Give the mod a name.";
         var parts = Version.Split('.');
         if (parts.Length != 3 || parts.Any(p => !int.TryParse(p, out _))) return "The version must look like 1.0.0.";
+        return IconProblem(IconPath);
+    }
+
+    /// <summary>Why the port wouldn't take this file as icon.png (a square PNG, 64-256 px); null when it's fine or empty.</summary>
+    public static string? IconProblem(string path)
+    {
+        if (path == "") return null;
+        if (!File.Exists(path)) return $"The icon {Path.GetFileName(path)} doesn't exist.";
+        var head = new byte[24];
+        using (var f = File.OpenRead(path)) if (f.Read(head) < head.Length) return "The icon isn't a PNG.";
+        ReadOnlySpan<byte> sig = [0x89, (byte)'P', (byte)'N', (byte)'G', 13, 10, 26, 10];
+        if (!head.AsSpan(0, 8).SequenceEqual(sig) || !head.AsSpan(12, 4).SequenceEqual("IHDR"u8)) return "The icon isn't a PNG.";
+        var w = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(head.AsSpan(16));
+        var h = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(head.AsSpan(20));
+        if (w != h) return $"The icon must be square; it is {w}x{h}.";
+        if (w < 64 || w > 256) return $"The icon must be 64 to 256 px; it is {w}x{h}.";
         return null;
     }
 
@@ -172,6 +190,7 @@ public static class MvpModExporter
             if (Directory.Exists(full)) Directory.Delete(full, true);
             Directory.CreateDirectory(full);
             File.WriteAllText(Path.Combine(full, "mod.json"), json);
+            if (info.IconPath != "") File.Copy(info.IconPath, Path.Combine(full, "icon.png"));
             foreach (var (rel, data) in files)
             {
                 var dest = Path.Combine(full, "files", rel.Replace('/', Path.DirectorySeparatorChar));
@@ -186,6 +205,7 @@ public static class MvpModExporter
             using (var zip = ZipFile.Open(tmp, ZipArchiveMode.Create))
             {
                 using (var w = new StreamWriter(zip.CreateEntry("mod.json").Open())) w.Write(json);
+                if (info.IconPath != "") zip.CreateEntryFromFile(info.IconPath, "icon.png", CompressionLevel.NoCompression);
                 foreach (var (rel, data) in files.OrderBy(f => f.Key, StringComparer.OrdinalIgnoreCase))
                 {
                     using var s = zip.CreateEntry("files/" + rel, CompressionLevel.Optimal).Open();
