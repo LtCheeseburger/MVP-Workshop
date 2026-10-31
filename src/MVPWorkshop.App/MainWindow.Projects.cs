@@ -100,6 +100,7 @@ public partial class MainWindow
 
     private void RefreshRecentProjects()
     {
+        if (_docs.FirstOrDefault(d => !d.CanClose)?.Content is TaskStartView) return;
         if (_docs.FirstOrDefault(d => !d.CanClose) is { } start) start.Content = StartPage.Build(this, _settings);
     }
 

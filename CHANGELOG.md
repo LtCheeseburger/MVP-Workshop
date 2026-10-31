@@ -3,6 +3,7 @@
 ## Unreleased — 2026-10-30
 
 ### Added
+- Opening a loose installation shows a task-first Start page with a school picker and Uniforms, Logos, Stadium, Roster, Menus/UI, Audio and Textures cards. Tasks open the existing school editor or confirmed source list. Recent edits are attributed to school roster/player records rather than every school sharing a database.
 - Diagnostics checks edits in the background after a short debounce and shows errors/warnings with asset navigation and a badge count. Export and Test in Game wait for validation; invalid texture storage, packed archives, mod details, and corrupt PNG icons block output. Preview-only edits, missing references, confirmed shared-school impact, and save-data changes without AffectsSaves produce warnings.
 - Exports capture the current edit bytes so background validation and packing use the same changes without altering the viewer overlay.
 - File > Open mod opens an existing `.mvpmod` as an editable project over the loose install. Existing files become overrides, new files become Added, DDS folders rebuild as textures, and metadata/icons survive re-export with the patch version incremented. A SHA-1 mismatch prompts before applying; unsafe or duplicate ZIP paths are rejected.
@@ -17,6 +18,7 @@
 - Expanded asset right-click menu in the tree and search results: Open, Replace image, Import file over this, Add new file here, Export raw, Extract folder, Revert, Revert everything in here, Show in Changes, Dependencies, and Copy name / path / SHA-1.
 
 ### Fixed
+- A mod shipping `xsh.meta` must include its complete replacement texture folder; missing images are rejected without changing the active project.
 - Document tabs show the Added marker only for Added assets, rather than showing it on Start and utility tabs.
 - Explorer context menus select and act on the clicked asset, including search results, regardless of the open document. Add and extract keep that asset as their target.
 - Extract folder preserves a loose texture pack as `.xsh.raw` alongside its DDS folder, avoiding a file/directory collision.

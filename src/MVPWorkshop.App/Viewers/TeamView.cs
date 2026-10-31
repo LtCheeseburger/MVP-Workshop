@@ -14,6 +14,8 @@ public sealed class TeamView : Grid
     public UniformWorkspaceState UniformState { get; }
     public PlayerWorkspaceState PlayerState { get; }
     public int SelectedSection { get => _tabs.SelectedIndex; set => _tabs.SelectedIndex = value; }
+    public string SelectedSectionName => (_tabs.SelectedItem as TabItem)?.Header.ToString() ?? "";
+    public void SelectSection(string name) => _tabs.SelectedItem = _tabs.Items.OfType<TabItem>().FirstOrDefault(t => t.Header.ToString()!.StartsWith(name, StringComparison.Ordinal)) ?? _tabs.SelectedItem;
     public int SelectedPlayerSlot
     {
         get => (_players?.SelectedItem as TeamPlayer)?.Slot ?? 1;

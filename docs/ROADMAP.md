@@ -43,7 +43,8 @@ each lands as its own commit and is checked in the running app.
 
 ## 5. Team workspaces
 
-- [ ] Task-first start page: Uniforms, Logos, Stadium, Roster, Menus/UI, Audio, Textures, scoped to a school
+- [x] Task-first start page: school picker and Uniforms, Logos, Stadium, Roster, Menus/UI, Audio, Textures
+      tasks open scoped workspaces; recent edits match the school's roster/player records
 - [ ] "This team only" vs "everyone" on every replace (fork a loose copy and repoint the assignment)
 - [ ] Uniform editor on the player model with team colours
 

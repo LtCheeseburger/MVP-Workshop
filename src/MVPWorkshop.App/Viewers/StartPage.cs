@@ -9,6 +9,7 @@ public static class StartPage
 {
     public static FrameworkElement Build(MainWindow w, Settings settings)
     {
+        if (w.GameRoot?.DiskPath is { } game && MVPWorkshop.Core.Install.LooseInstall.IsLoose(game)) return new TaskStartView(w, settings);
         var sp = new StackPanel { Margin = new Thickness(48, 40, 48, 40), MaxWidth = 880, HorizontalAlignment = HorizontalAlignment.Left };
 
         var logo = new Image

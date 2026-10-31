@@ -387,6 +387,8 @@ public partial class MainWindow : Window
     public void OpenTeam(TeamProfile profile)
     {
         if (_teamTabs.TryGetValue(profile, out var existing) && _docs.Contains(existing)) { Docs.SelectedItem = existing; return; }
+        existing = _teamTabs.FirstOrDefault(pair => pair.Key.Roster == profile.Roster && pair.Key.Team.RosterIndex == profile.Team.RosterIndex && _docs.Contains(pair.Value)).Value;
+        if (existing is not null) { Docs.SelectedItem = existing; return; }
         var team = profile.Team;
         var tab = new DocumentTab { Title = profile.Label, Glyph = "", Content = new TeamView(profile),
             Props = [new("Team", "School", team.Name), new("Team", "Roster index", team.RosterIndex.ToString()), new("Team", "Asset ID", team.UniformId.ToString()), new("Team", "Roster source", $"{profile.Roster.Path} @0x{team.Offset:X}"), new("Stadium", "Evidence", profile.StadiumEvidence)] };
@@ -560,8 +562,11 @@ public partial class MainWindow : Window
             item.Children.Clear();
             foreach (var group in profile.Assets.GroupBy(a => a.Category))
                 item.Children.Add(new TreeItem(group.Key, 2, group.Select(a => new TreeItem(a.Asset, 3) { SchoolScope = profile })));
-            if (_teamTabs.TryGetValue(profile, out var tab) && _docs.Contains(tab))
+            var tab = _teamTabs.FirstOrDefault(pair => pair.Key.Roster == profile.Roster && pair.Key.Team.RosterIndex == profile.Team.RosterIndex && _docs.Contains(pair.Value)).Value;
+            if (tab is not null)
             {
+                foreach (var oldKey in _teamTabs.Where(pair => pair.Value == tab && pair.Key != profile).Select(pair => pair.Key).ToList()) _teamTabs.Remove(oldKey);
+                _teamTabs[profile] = tab;
                 var selected = (tab.Content as TeamView)?.SelectedSection ?? 0;
                 var playerSlot = (tab.Content as TeamView)?.SelectedPlayerSlot ?? 1;
                 var uniformState = sameSession ? (tab.Content as TeamView)?.UniformState : null;
