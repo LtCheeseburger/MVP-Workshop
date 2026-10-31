@@ -114,6 +114,7 @@
               <MenuItem Header="Add file…" Click="AddFile_Click" InputGestureText=""/>
             </MenuItem>
             <MenuItem Header="_View">
+              <MenuItem Header="Bookmarks" Click="Bookmarks_Click" InputGestureText="Ctrl+B / Ctrl+Shift+B"/>
               <MenuItem Header="Search assets" Command="{x:Static local:MainWindow.FocusSearchCmd}" InputGestureText="Ctrl+F"/>
               <MenuItem Click="ShowChanges_Click"><MenuItem.Header><TextBlock x:Name="ChangesLabel" Text="Changes"/></MenuItem.Header></MenuItem>
               <MenuItem Header="Log" Click="LogToggle_Click" x:Name="LogToggle" IsCheckable="True" IsChecked="True" InputGestureText=""/>
@@ -213,10 +214,18 @@
                         <TextBlock Text="{Binding Path}" Foreground="{StaticResource Faint}" FontSize="10.5" TextTrimming="CharacterEllipsis"/>
                       </StackPanel>
                     </Grid>
+
                   </DataTemplate>
                 </ListBox.ItemTemplate>
               </ListBox>
             </Grid>
+            <DockPanel x:Name="BookmarkPane" Grid.Row="4" Visibility="Collapsed" Background="{StaticResource PanelBg}">
+              <StackPanel DockPanel.Dock="Top" Margin="10">
+                <Button Content="Back to explorer" Click="CloseBookmarks_Click"/>
+                <TextBox x:Name="BookmarkSearch" Margin="0,8,0,0" ToolTip="Filter bookmarks by name or folder" TextChanged="BookmarkSearch_Changed"/>
+              </StackPanel>
+              <TreeView x:Name="BookmarkTree"/>
+            </DockPanel>
           </Grid>
         </Border>
         <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch"/>

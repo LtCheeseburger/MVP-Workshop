@@ -63,6 +63,7 @@ public partial class MainWindow
         if (s is not null && (s.IsModified(n) || s.HasOverrideBelow(n))) Add("Show in Changes", () => ShowChanges_Click(this, new RoutedEventArgs()));
         Sep();
         Add("Dependencies", () => ShowDependencies(n));
+        Add("Bookmark", () => { var list = GameBookmarks(); if (list.All(b => b.Key != n.Key)) list.Add(new AssetBookmark { Key = n.Key, Name = n.Name }); _settings.Save(); ShowBookmarks(); });
         Add("Copy name", () => Copy(n.Name));
         Add("Copy path", () => Copy(n.Path));
         if (!n.IsFolder) Add("Copy SHA-1", () => Copy(Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(s?.GetBytes(n) ?? n.ReadOriginal()))));
@@ -72,7 +73,7 @@ public partial class MainWindow
 
     private static void Copy(string text)
     {
-        try { Clipboard.SetText(text); } catch (System.Runtime.InteropServices.ExternalException) { Log.Warn("The clipboard is busy; try again."); }
+        try { Clipboard.SetText(text); } catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException or UnauthorizedAccessException) { Log.Warn("The clipboard is unavailable; try again."); }
     }
 
     /// <summary>Replaces an asset's bytes with a file from disk, as one undoable change.</summary>

@@ -60,6 +60,14 @@ public partial class MainWindow : Window
         Editor.Changed += OnEditorChanged;
         Closing += OnClosing;
         InitializeProjects();
+        PreviewKeyDown += (_, e) =>
+        {
+            if (e.Key == Key.B && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
+            {
+                BookmarkSelection((Keyboard.Modifiers & ModifierKeys.Shift) != 0);
+                e.Handled = true;
+            }
+        };
         StateChanged += (_, _) =>
         {
             MaxGlyph.Text = WindowState == WindowState.Maximized ? "" : "";
@@ -144,6 +152,7 @@ public partial class MainWindow : Window
             var openedGame = GameFileSystem.OpenGame(folder);
             ClearRecovery();
             foreach (var document in _docs.Where(d => d.CanClose).ToList()) _docs.Remove(document);
+            BookmarkPane.Visibility = Visibility.Collapsed;
             _gameRoot = openedGame;
             var output = _settings.OutputFolders.TryGetValue(folder, out var chosen) ? chosen : ModExporter.DefaultOutputFolder(folder);
             Editor.Attach(new EditSession(_gameRoot, output));

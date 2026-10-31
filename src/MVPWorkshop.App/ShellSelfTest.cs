@@ -21,6 +21,38 @@ public partial class MainWindow
         try
         {
             await Task.Delay(600);
+            ShowBookmarks();
+            Check("bookmarks pane opens", BookmarkPane.Visibility == Visibility.Visible);
+            CloseBookmarks_Click(this, new RoutedEventArgs());
+            Check("bookmarks pane switches back to explorer", BookmarkPane.Visibility == Visibility.Collapsed);
+            var bookmarkSettings = new Settings();
+            bookmarkSettings.Bookmarks["game-a"] = [new AssetBookmark { Key = "asset-key", Name = "Logo", Folder = "Uniforms" }];
+            var restored = System.Text.Json.JsonSerializer.Deserialize<Settings>(System.Text.Json.JsonSerializer.Serialize(bookmarkSettings))!;
+            Check("bookmarks persist asset keys, folders and names per game", restored.Bookmarks["game-a"].Single() is { Key: "asset-key", Name: "Logo", Folder: "Uniforms" } && !restored.Bookmarks.ContainsKey("game-b"));
+            if (_gameRoot is not null)
+            {
+                var assets = await GetAssetIndex();
+                var node = assets.First(n => !n.IsFolder);
+                var key = BookmarkGame;
+                var previous = _settings.Bookmarks.GetValueOrDefault(key);
+                try
+                {
+                    _settings.Bookmarks[key] = [new AssetBookmark { Key = node.Key, Name = "Present", Folder = "Team" }, new AssetBookmark { Key = "missing-key", Name = "Missing", Folder = "Team" }];
+                    ShowBookmarks();
+                    var group = (TreeViewItem)BookmarkTree.Items[0];
+                    Check("bookmarks group into folders", (string)group.Header == "Team" && group.Items.Count == 2);
+                    Check("missing bookmarks are greyed", ((TreeViewItem)group.Items[1]).Opacity < 1);
+                    BookmarkSearch.Text = "Present";
+                    ShowBookmarks();
+                    Check("bookmark filter retains matching folder", BookmarkTree.Items.Count == 1 && ((TreeViewItem)BookmarkTree.Items[0]).Items.Count == 1);
+                    BookmarkSearch.Clear();
+                }
+                finally
+                {
+                    if (previous is null) _settings.Bookmarks.Remove(key); else _settings.Bookmarks[key] = previous;
+                    CloseBookmarks_Click(this, new RoutedEventArgs());
+                }
+            }
             Width = 1000; Height = 620;
             var a = new DocumentTab { Title = "First", Content = new TextBlock { Text = "First document" } };
             var b = new DocumentTab { Title = "Second", Content = new TextBlock { Text = "Second document" } };

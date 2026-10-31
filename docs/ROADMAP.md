@@ -16,7 +16,7 @@ each lands as its own commit and is checked in the running app.
       dirty marker in the title; Save / Don't save / Cancel on close and source switches; crash recovery
 - [x] Menu bar (File / Edit / View / Tools / Help) with shortcuts; Test in Game as the main button;
       a slimmer toolbar; Close all tabs (Ctrl+Shift+W) and drag tabs to reorder
-- [ ] Bookmarks (folders, filter, Ctrl+B)
+- [x] Bookmarks (folders, rename/move, filter, Ctrl+B / Ctrl+Shift+B, missing assets, Find in explorer)
 - [ ] Options window (game exe, autosave interval, default folders), crash handler with "copy report"
 
 ## 2. The mod is the project

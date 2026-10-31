@@ -150,6 +150,7 @@ public sealed class DocumentTab : Observable
 
 public sealed class Settings
 {
+    public Dictionary<string, List<AssetBookmark>> Bookmarks { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public string? LastGameFolder { get; set; }
     /// <summary>Game folder to output folder chosen for it (default: a mod_output folder next to the game folder).</summary>
     public Dictionary<string, string> OutputFolders { get; set; } = new(StringComparer.OrdinalIgnoreCase);
