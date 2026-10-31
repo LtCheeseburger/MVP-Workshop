@@ -20,6 +20,8 @@ public static class SelfTest
     public static async void RunIfRequested(MainWindow w)
     {
         var args = Environment.GetCommandLineArgs();
+        var textureFolderTest = Array.IndexOf(args, "--texture-folder-selftest");
+        if (textureFolderTest >= 0 && textureFolderTest + 1 < args.Length) { w.RunTextureFolderCheck(args[textureFolderTest + 1]); return; }
         var conflictTest = Array.IndexOf(args, "--conflicts-selftest");
         if (conflictTest >= 0 && conflictTest + 1 < args.Length) { w.RunConflictsCheck(args[conflictTest + 1]); return; }
         var gameLogTest = Array.IndexOf(args, "--game-log-selftest");

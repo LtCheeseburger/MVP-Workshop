@@ -1,11 +1,13 @@
 using System.Diagnostics;
 using MVPWorkshop.Core.Formats;
 
+if (args.Length == 1 && args[0] == "roundtrip") return RoundTripChecks.Run();
+
 // LooseTextures check <game dir>   every .xsh splits into a folder and builds back byte-identical (through the DDS files)
 // LooseTextures split <game dir>   replaces each .xsh that splits with its folder, in place (a test install only)
 if (args.Length != 2 || args[0] is not ("check" or "split"))
 {
-    Console.Error.WriteLine("usage: LooseTextures check|split <game dir>");
+    Console.Error.WriteLine("usage: LooseTextures roundtrip | check|split <game dir>");
     return 2;
 }
 var split = args[0] == "split";

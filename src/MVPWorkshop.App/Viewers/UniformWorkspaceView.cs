@@ -148,6 +148,7 @@ public sealed class UniformWorkspaceView : Grid
             catch(Exception ex) { status.Text=ex.Message; }
         },"Primary"));
         replace.Children.Add(B.Button("Open texture editor",null,(_,_)=> { if(tags.SelectedIndex>=0)MainWindow.Instance?.OpenAsset(textures[tags.SelectedIndex].Pack); },"Outline"));
+        replace.Children.Add(B.Button("Export uniform set as PNGs",null,(_,_)=>TexturePackExport.ExportSchool(profile),"Outline"));
         var sidebar = new StackPanel(); sidebar.Children.Add(status); sidebar.Children.Add(glyphs);
         var dirt=new WrapPanel();
         foreach(var region in new[]{"dcht","dbtl","dbtr","dlll","dllr","dlul","dlur"})

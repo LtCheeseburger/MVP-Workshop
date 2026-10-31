@@ -77,6 +77,8 @@ public sealed class TextureView : Grid
         var alphaToggle = B.Toggle("PS2 alpha ×2", true, v => { _opt.ScaleAlpha = v; ShowSelected(); });
         var emulatorButton = B.Button("PCSX2 replacement…", null, (_, _) => ExportEmulatorReplacement(), "Outline", "Export an external image at its imported size using an existing PCSX2 base-level dump filename");
         var paletteSegments = B.Segments("Palette", ["Auto", "CSM", "Linear"], 0, i => { _opt.PaletteSwizzle = i switch { 1 => true, 2 => false, _ => null }; ShowSelected(); });
+        var packExport = B.Button("Export pack as PNGs", null, (_, _) => TexturePackExport.ExportPack(_node), "Outline", "Export index-qualified slot names for unchanged folder re-import");
+        packExport.IsEnabled = ssh is not null;
         var toolbar = B.Toolbar(
             B.Button("", "", (_, _) => SetZoom(_zoom / 1.25), tip: "Zoom out (Ctrl+wheel)"),
             _zoomText,
@@ -92,6 +94,7 @@ public sealed class TextureView : Grid
             B.Separator(),
             B.Button("PNG", "", (_, _) => ExportCurrent(), "Outline", "Export the current image as PNG"),
             B.Button("All", "", (_, _) => ExportAll(), "Outline", "Export every image in this pack as PNG"),
+            packExport,
             emulatorButton,
             B.Separator(),
             B.Button("Replace image…", "", (_, _) => ReplaceCurrent(), "Primary", "Pick a picture (or drop one onto this view) to replace the selected texture. Up to 4× upscale."),
@@ -292,7 +295,7 @@ public sealed class TextureView : Grid
 
     // ---------------------------------------------------------------- replacing images
 
-    private static (byte[] Bgra, int W, int H) LoadPicture(string path)
+    internal static (byte[] Bgra, int W, int H) LoadPicture(string path)
     {
         if (PictureFile.Handles(path)) return PictureFile.Decode(path);
         var decoder = BitmapDecoder.Create(new Uri(path), BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
@@ -359,6 +362,14 @@ public sealed class TextureView : Grid
     }
 
     /// <summary>Replace every slot that has a picture of the same name in a folder, as one change.</summary>
+    internal static bool ApplyFolderResult(AssetNode node, byte[] baseline, byte[] data, string description)
+    {
+        if (!node.ReadAll().AsSpan().SequenceEqual(baseline)) throw new InvalidOperationException("The texture changed while the folder was being imported. Review the import again.");
+        if (data.AsSpan().SequenceEqual(baseline)) return false;
+        Editor.Apply(node, data, description);
+        return true;
+    }
+
     internal async void ImportFolder()
     {
         if (_ssh is null) return;
@@ -384,7 +395,12 @@ public sealed class TextureView : Grid
             var data = await Task.Run(() => TextureFolderImport.Apply(ssh.Data, rows, LoadPicture, palette, t => ((IProgress<string>)status).Report(t)));
             var count = rows.Count(r => r.Replaces);
             var what = $"Import {count} image(s) from {Path.GetFileName(folder)}";
-            Editor.Apply(_node, data, what);
+            if (!ApplyFolderResult(_node, ssh.Data, data, what))
+            {
+                Log.Info($"{_node.Name}: imported PNGs are unchanged; native texture bytes and project history were kept.");
+                MainWindow.Instance?.SetStatus($"{_node.Name}: no texture changes");
+                return;
+            }
             Log.Info($"{_node.Name}: {what} ({string.Join(", ", rows.Where(r => r.Replaces).Select(r => $"{r.Image.Tag} {r.Width}×{r.Height}"))})");
             MainWindow.Instance?.SetStatus($"{_node.Name}: replaced {count} image(s)");
         }

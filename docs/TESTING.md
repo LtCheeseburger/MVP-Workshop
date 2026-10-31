@@ -9,7 +9,7 @@ From PowerShell 7 on Windows, with the .NET 9 SDK:
 This is the same entry point used by `.github/workflows/verify.yml` for pushes,
 pull requests and manual runs. It builds the solution and every test project in
 Release mode, runs the self-contained console suites, generates new synthetic
-fixtures, and runs nine WPF checks. A nonzero command exit, missing desktop report,
+fixtures, and runs ten WPF checks. A nonzero command exit, missing desktop report,
 `FAIL` report line or desktop timeout fails the run. Desktop tests run sequentially
 because they use modal dialogs and the clipboard.
 
@@ -33,7 +33,7 @@ normal user preferences and recent-project lists separate.
 | Tasks | School/player record attribution and undo |
 | Textures | Synthetic format/dimension/swizzle round trips, editing/export and resize behavior |
 | PlayerEditor | Synthetic player records, value spans, drafts, undo/redo, project and export round trips |
-| LooseTextures | Synthetic XSH split/rebuild byte identity |
+| LooseTextures | Synthetic XSH split/rebuild and PNG-folder round trips, duplicate tags, native-byte retention |
 | Install | Install synthetic files, then verify the resulting manifest |
 | WPF shell | Menus, tabs, bookmarks and shortcut behavior |
 | WPF explorer | Real context-menu dispatch, dialogs, filters, Added files, export/revert and unchanged fixture hashes |
@@ -44,6 +44,7 @@ normal user preferences and recent-project lists separate.
 | WPF tasks | School selection, all seven task routes, workspace reuse and recent edits |
 | WPF game-log | Live polling into Diagnostics, source labels, navigation and session clearing |
 | WPF conflicts | Nonblocking warnings, asset navigation and successful conflicting exports |
+| WPF texture-folder | Export edited packs and school sets, actual PNG decoding, unchanged re-import, output guards |
 
 `tests/Fixtures` is the fixture generator. `tests/DataEdits` currently has no tracked
 source project. `tests/TeamAssignments` is built, but its exact LSU/player-key and

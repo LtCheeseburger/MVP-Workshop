@@ -54,6 +54,7 @@ public partial class MainWindow
         if (!n.IsFolder || n.IsLooseTexturePack) Add("Open", () => OpenAsset(n));
         Sep();
         if (texture) Add("Replace image… (PNG, TGA, DDS…)", () => ReplaceImage(n));
+        if (texture) Add("Export pack as PNGs…", () => TexturePackExport.ExportPack(n.Parent?.IsLooseTexturePack == true ? n.Parent : n));
         if (!n.IsFolder && s is not null) Add("Import file over this…", () => ImportRaw(n));
         if (s is not null && MvpModExporter.SessionProblem(s) is null) Add("Add new file here…", () => AddFile(n));
         if (!n.IsFolder) Add("Export raw…", () => Exporter.SaveRaw(n));

@@ -40,7 +40,7 @@ public static class TextureFolderImport
         foreach (var img in file.Images)
         {
             // tags are padded to four characters ("hat ")
-            var path = pictures.GetValueOrDefault(img.Tag.Trim()) ?? (string.IsNullOrWhiteSpace(img.Name) ? null : pictures.GetValueOrDefault(img.Name.Trim()));
+            var path = pictures.GetValueOrDefault(TextureFolderExport.SlotName(img)) ?? pictures.GetValueOrDefault(img.Tag.Trim()) ?? (string.IsNullOrWhiteSpace(img.Name) ? null : pictures.GetValueOrDefault(img.Name.Trim()));
             if (path is null) { rows.Add(new FolderImportRow { Image = img, Problem = "no picture (kept)" }); continue; }
             used.Add(path);
             var h = img.Header;
@@ -156,6 +156,8 @@ public static class TextureFolderImport
             var file = SshFile.Read(data);
             var img = file.Images.First(i => i.Index == row.Image.Index);
             var resized = row.Width != img.Header.Width || row.Height != img.Header.Height;
+            // Unchanged exported PNGs must retain exact native blocks, palettes, mipmaps and lossy compression.
+            if (!resized && file.Decode(img).Bgra.AsSpan().SequenceEqual(px)) continue;
             data = SshWriter.ReplaceImage(file, img, px, row.Width, row.Height, palette, allowResize: resized).File;
         }
         return data;

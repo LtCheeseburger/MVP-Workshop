@@ -29,11 +29,12 @@ try {
     Run-Dotnet 'fixtures' @('run', '--project', 'tests/Fixtures', '-c', $Configuration, '--no-build', '--no-restore', '--', $fixtures)
     Run-Dotnet 'player-editor-synthetic' @('run', '--project', 'tests/PlayerEditor', '-c', $Configuration, '--no-build', '--no-restore', '--', (Join-Path $fixtures 'players'), (Join-Path $runDirectory 'player-output'))
     Run-Dotnet 'loose-textures-synthetic' @('run', '--project', 'tests/LooseTextures', '-c', $Configuration, '--no-build', '--no-restore', '--', 'check', (Join-Path $fixtures 'install-source'))
+    Run-Dotnet 'texture-png-roundtrip' @('run', '--project', 'tests/LooseTextures', '-c', $Configuration, '--no-build', '--no-restore', '--', 'roundtrip')
     Run-Dotnet 'install-synthetic' @('run', '--project', 'tests/Install', '-c', $Configuration, '--no-build', '--no-restore', '--', 'install', (Join-Path $fixtures 'install-source'), (Join-Path $runDirectory 'installed'))
     Run-Dotnet 'verify-install-synthetic' @('run', '--project', 'tests/Install', '-c', $Configuration, '--no-build', '--no-restore', '--', 'verify', (Join-Path $runDirectory 'installed'))
     if (!$SkipDesktop) {
         $app = Join-Path $repository "src/MVPWorkshop.App/bin/$Configuration/net9.0-windows/MVP-Workshop.dll"
-        foreach ($name in @('shell', 'explorer', 'project', 'options', 'open-mod', 'diagnostics', 'tasks', 'game-log', 'conflicts')) {
+        foreach ($name in @('shell', 'explorer', 'project', 'options', 'open-mod', 'diagnostics', 'tasks', 'game-log', 'conflicts', 'texture-folder')) {
             $report = Join-Path $runDirectory ($name + '.txt')
             $game = Join-Path $fixtures $(if ($name -eq 'tasks') { 'tasks' } else { 'explorer' })
             $arguments = @($app, '--game', $game, "--$name-selftest", $report)

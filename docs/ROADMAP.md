@@ -59,7 +59,8 @@ each lands as its own commit and is checked in the running app.
 
 ## 7. Batch and round-trip
 
-- [ ] Export a texture pack to slot-named PNGs (pairs with folder import)
+- [x] Export texture packs and school uniform sets as slot-named PNGs; duplicate/unsafe tags are
+      index-qualified, unchanged folder re-import preserves native bytes, with round-trip tests
 - [ ] Roster CSV export / import
 - [ ] Bulk replace from a folder for audio
 
