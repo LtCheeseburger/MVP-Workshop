@@ -9,7 +9,7 @@ public sealed record ModDiagnostic(DiagnosticSeverity Severity, string AssetKey,
 public static class ModDiagnostics
 {
     /// <summary>Validate a captured session; callers discard results if the active session changes.</summary>
-    public static List<ModDiagnostic> Check(EditSession session, ModInfo info, DependencyIndex? dependencies = null, CancellationToken cancellation = default)
+    public static List<ModDiagnostic> Check(EditSession session, ModInfo info, DependencyIndex? dependencies = null, CancellationToken cancellation = default, InstalledModCatalog? installed = null)
     {
         var rows = new List<ModDiagnostic>();
         void Error(string key, string asset, string message) => rows.Add(new(DiagnosticSeverity.Error, key, asset, message));
@@ -19,9 +19,10 @@ public static class ModDiagnostics
         cancellation.ThrowIfCancellationRequested();
         var edited = session.Overrides.Keys.Select(k => session.GameRoot.Resolve(k)).OfType<AssetNode>().ToList();
         var problems = new List<string>();
+        Dictionary<string, byte[]> files = new(StringComparer.OrdinalIgnoreCase);
         if (session.GameRoot.DiskPath is not null)
         {
-            try { MvpModExporter.Collect(session, problems, []); }
+            try { files = MvpModExporter.Collect(session, problems, []); }
             catch (Exception ex) { problems.Add(ex.Message); }
         }
         foreach (var rejected in problems)
@@ -29,6 +30,16 @@ public static class ModDiagnostics
             var added = session.Added.Keys.FirstOrDefault(p => rejected.StartsWith(p, StringComparison.OrdinalIgnoreCase));
             var asset = edited.FirstOrDefault(n => n.DiskPath is not null && rejected.StartsWith(ModExporter.RelativePath(session.GameRoot, n).Replace('\\', '/'), StringComparison.OrdinalIgnoreCase));
             Error(added is not null ? "added:" + added : asset?.Key ?? "", added ?? asset?.Path ?? "Export", rejected);
+        }
+        if (installed is not null)
+        {
+            foreach (var conflict in installed.Conflicts(files.Keys, info.Id))
+            {
+                var node = edited.FirstOrDefault(n => n.DiskPath is not null && conflict.Path.Equals(ModExporter.RelativePath(session.GameRoot, n).Replace('\\', '/'), StringComparison.OrdinalIgnoreCase));
+                var key = session.Added.ContainsKey(conflict.Path) ? "added:" + conflict.Path : node?.Key ?? "";
+                rows.Add(new(DiagnosticSeverity.Warning, key, conflict.Path, conflict.Message, "Installed mod"));
+            }
+            foreach (var inventoryProblem in installed.Problems) rows.Add(new(DiagnosticSeverity.Warning, "", "Installed mods", inventoryProblem, "Installed mod"));
         }
         foreach (var change in session.History.Where(c => c.Kind == ChangeKind.PreviewOnly).DistinctBy(c => c.Key))
             Warn(change.Key, change.Path, "Preview-only changes are left out of the exported mod.");

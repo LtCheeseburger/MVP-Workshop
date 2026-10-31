@@ -20,6 +20,8 @@ public static class SelfTest
     public static async void RunIfRequested(MainWindow w)
     {
         var args = Environment.GetCommandLineArgs();
+        var conflictTest = Array.IndexOf(args, "--conflicts-selftest");
+        if (conflictTest >= 0 && conflictTest + 1 < args.Length) { w.RunConflictsCheck(args[conflictTest + 1]); return; }
         var gameLogTest = Array.IndexOf(args, "--game-log-selftest");
         if (gameLogTest >= 0 && gameLogTest + 1 < args.Length) { w.RunGameLogCheck(args[gameLogTest + 1]); return; }
         var taskTest = Array.IndexOf(args, "--tasks-selftest");

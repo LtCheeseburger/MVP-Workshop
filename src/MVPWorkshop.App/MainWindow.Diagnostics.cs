@@ -25,7 +25,8 @@ public partial class MainWindow
         {
             var dependencies = await GetDependencies();
             var info = DiagnosticModInfo();
-            var rows = await Task.Run(() => ModDiagnostics.Check(snapshot, info, dependencies, token), token);
+            var directory = InstalledModsDirectory();
+            var rows = await Task.Run(() => ModDiagnostics.Check(snapshot, info, dependencies, token, InstalledModCatalog.Read(directory, snapshot.GameRoot, token)), token);
             if (generation == _diagnosticGeneration && !token.IsCancellationRequested) SetDiagnostics(rows);
         }
         catch (OperationCanceledException) { }
@@ -92,7 +93,8 @@ public partial class MainWindow
         try
         {
             var dependencies = await GetDependencies();
-            var rows = await Task.Run(() => ModDiagnostics.Check(snapshot, info, dependencies));
+            var directory = InstalledModsDirectory();
+            var rows = await Task.Run(() => ModDiagnostics.Check(snapshot, info, dependencies, installed: InstalledModCatalog.Read(directory, snapshot.GameRoot)));
             if (generation != _diagnosticGeneration) { SetStatus("Edits changed while validating. Export again to include the current project."); return false; }
             SetDiagnostics(rows);
             if (!rows.Any(r => r.Severity == DiagnosticSeverity.Error)) return true;
@@ -102,5 +104,12 @@ public partial class MainWindow
         catch (OperationCanceledException) { SetStatus("The project changed during validation. Try again."); }
         catch (Exception ex) { SetDiagnostics([new(DiagnosticSeverity.Error, "", "Diagnostics", ex.Message)]); ShowDiagnostics(); }
         return false;
+    }
+
+    private string InstalledModsDirectory()
+    {
+        var executable = string.IsNullOrWhiteSpace(_settings.GameExePath) ? _gameRoot?.DiskPath is { } game ? MvpModExporter.GameExe(game) : null : _settings.GameExePath;
+        var parent = executable is not null ? System.IO.Path.GetDirectoryName(executable) : System.IO.Path.GetDirectoryName(_gameRoot?.DiskPath ?? "");
+        return System.IO.Path.Combine(parent ?? "", "mods");
     }
 }

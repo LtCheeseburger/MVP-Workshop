@@ -216,6 +216,8 @@ public partial class MainWindow
         {
             var snapshot = s.Snapshot();
             if (!await ValidateModExport(snapshot, info)) return;
+            var conflicts = Diagnostics.Where(d => d.Origin == "Installed mod").ToList();
+            foreach (var conflict in conflicts) Log.Warn("Mod conflict: " + conflict.Message);
             var report = await Task.Run(() => MvpModExporter.Export(snapshot, info, output, asFolder: test, msg => Dispatcher.BeginInvoke(() => SetStatus(msg))));
             foreach (var p in report.Problems) Log.Error("Mod: " + p);
             if (!report.Ok)
@@ -227,6 +229,7 @@ public partial class MainWindow
             foreach (var (path, size) in report.Files) Log.Info($"Mod file {path} ({Bin.Size(size)})");
             var list = string.Join("\n", report.Files.Take(12).Select(f => "  " + f.Path)) + (report.Files.Count > 12 ? $"\n  …and {report.Files.Count - 12} more" : "");
             var skipped = report.PreviewOnlySkipped > 0 ? $"\n\n{report.PreviewOnlySkipped} preview-only change(s) aren't in it." : "";
+            if (conflicts.Count > 0) skipped += "\n\nInstalled mod conflicts / inventory warnings:\n" + string.Join("\n", conflicts.Take(12).Select(d => d.Message)) + (conflicts.Count > 12 ? "\n…see Diagnostics for the full list." : "");
             if (test)
             {
                 SetStatus($"Starting the game with {report.Files.Count} changed file(s)");

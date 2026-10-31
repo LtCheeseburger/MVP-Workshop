@@ -3,6 +3,7 @@
 ## Unreleased — 2026-10-30
 
 ### Added
+- Export checks installed ZIP and folder mods against the launcher's `mods/mods.json` list. Overlapping files, removals and whole texture-folder replacements appear as nonblocking Diagnostics warnings and in the export summary, with enabled/disabled state and load-order notes. Launcher and game files remain untouched.
 - Test in Game now watches the port's portable or Documents logs and adds new mod/texture load errors, warnings and load-order conflicts to Diagnostics with asset navigation. Runtime messages retain their own source label and do not prevent exporting a fix; project switches clear the previous run's log diagnostics.
 - Opening a loose installation shows a task-first Start page with a school picker and Uniforms, Logos, Stadium, Roster, Menus/UI, Audio and Textures cards. Tasks open the existing school editor or confirmed source list. Recent edits are attributed to school roster/player records rather than every school sharing a database.
 - Diagnostics checks edits in the background after a short debounce and shows errors/warnings with asset navigation and a badge count. Export and Test in Game wait for validation; invalid texture storage, packed archives, mod details, and corrupt PNG icons block output. Preview-only edits, missing references, confirmed shared-school impact, and save-data changes without AffectsSaves produce warnings.
