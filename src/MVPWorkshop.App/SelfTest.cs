@@ -20,6 +20,8 @@ public static class SelfTest
     public static async void RunIfRequested(MainWindow w)
     {
         var args = Environment.GetCommandLineArgs();
+        var modTest = Array.IndexOf(args, "--open-mod-selftest");
+        if (modTest >= 0 && modTest + 1 < args.Length) { w.RunOpenModCheck(args[modTest + 1]); return; }
         var optionsTest = Array.IndexOf(args, "--options-selftest");
         if (optionsTest >= 0 && optionsTest + 1 < args.Length) { w.RunOptionsCheck(args[optionsTest + 1]); return; }
         if (args.Contains("--shell-selftest")) { w.RunShellCheck(); return; }

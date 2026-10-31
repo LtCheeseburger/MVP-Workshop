@@ -3,6 +3,7 @@
 ## Unreleased — 2026-10-30
 
 ### Added
+- File > Open mod opens an existing `.mvpmod` as an editable project over the loose install. Existing files become overrides, new files become Added, DDS folders rebuild as textures, and metadata/icons survive re-export with the patch version incremented. A SHA-1 mismatch prompts before applying; unsafe or duplicate ZIP paths are rejected.
 - Tools > Options configures the game executable, autosave interval and backup count, default mod export folder, log level, and restores the default layout.
 - Dispatcher, AppDomain and unobserved-task crash handlers attempt an autosave and write versioned reports with project context, exception details and recent logs. The report dialog offers Copy report and Open folder.
 - Per-game Bookmarks pane with folders, rename/move, filter, missing-asset markers, open and Find in explorer. Ctrl+B adds and Ctrl+Shift+B removes the selected asset; asset menus also offer Bookmark.

@@ -22,7 +22,8 @@ each lands as its own commit and is checked in the running app.
 
 ## 2. The mod is the project
 
-- [ ] Open an existing `.mvpmod` for editing (its files become overrides on the loose install)
+- [x] Open an existing `.mvpmod` for editing (overrides and Added files, texture-folder reconstruction,
+      metadata/icon retention, version increment, XBE mismatch warning, synthetic round-trip coverage)
 - [ ] Other installed mods as a read-only base layer
 - [ ] Conflict check against the launcher's mod list at export
 

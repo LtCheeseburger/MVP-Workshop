@@ -99,6 +99,7 @@
               <MenuItem Header="Open ISO…" Click="OpenIso_Click" InputGestureText=""/>
               <MenuItem Header="Open loose file…" Click="OpenFile_Click" InputGestureText=""/>
               <MenuItem Header="Open project…" Click="OpenProject_Click" InputGestureText=""/>
+              <MenuItem Header="Open mod…" Click="OpenMod_Click"/>
               <MenuItem x:Name="RecentProjectsMenu" Header="Recent projects" SubmenuOpened="RecentProjects_Opened"/>
               <MenuItem Header="Save project" Command="{x:Static local:MainWindow.SaveProjectCmd}" InputGestureText="Ctrl+S"/>
               <MenuItem Header="Save project as…" Command="{x:Static local:MainWindow.SaveProjectAsCmd}" InputGestureText="Ctrl+Shift+S"/>
