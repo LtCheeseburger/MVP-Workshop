@@ -43,7 +43,8 @@ public sealed class ModInfo
         var h = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(head.AsSpan(20));
         if (w != h) return $"The icon must be square; it is {w}x{h}.";
         if (w < 64 || w > 256) return $"The icon must be 64 to 256 px; it is {w}x{h}.";
-        return null;
+        if (new FileInfo(path).Length > 8 * 1024 * 1024) return "The icon PNG is too large (maximum 8 MiB).";
+        return MVPWorkshop.Core.IO.PngValidation.IconProblem(File.ReadAllBytes(path));
     }
 
     public static string IdFrom(string name) =>

@@ -29,11 +29,12 @@ each lands as its own commit and is checked in the running app.
 
 ## 3. Diagnostics before export
 
-- [ ] Errors block export: texture format/size the runtime won't take, bad `mod.json`, packed archives,
+- [x] Errors block export and Test in Game: invalid texture storage/size, bad `mod.json`, packed archives,
       icon problems
-- [ ] Warnings: preview-only changes left out, missing loose references, shared assets changed for
+- [x] Warnings: preview-only changes left out, missing loose references, shared assets changed for
       everyone, `AffectsSaves` not set for roster/save data
-- [ ] Badge count on the Diagnostics button; game log read back after Test in Game
+- [x] Debounced background Diagnostics pane with a badge count and Go to actions
+- [ ] Game log read back after Test in Game (requires port log location)
 
 ## 4. Test in Game
 

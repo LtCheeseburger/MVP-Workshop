@@ -61,6 +61,7 @@ public partial class MainWindow : Window
         Editor.Changed += OnEditorChanged;
         Closing += OnClosing;
         InitializeProjects();
+        InitializeDiagnostics();
         PreviewKeyDown += (_, e) =>
         {
             if (e.Key == Key.B && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
@@ -576,6 +577,7 @@ public partial class MainWindow : Window
 
     private void OnEditorChanged()
     {
+        ScheduleDiagnostics();
         InvalidateDependencies();
         RefreshTeamAssignments();
         var s = Editor.Session;
@@ -600,7 +602,7 @@ public partial class MainWindow : Window
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         if (!ConfirmDiscard("Close the tool")) e.Cancel = true;
-        else { _autosaveTimer.Stop(); ClearRecovery(); }
+        else { _autosaveTimer.Stop(); _diagnosticTimer.Stop(); _diagnosticCancellation?.Cancel(); ClearRecovery(); }
     }
 
     /// <summary>Ask what to do with unsaved project changes. Returns false when the user cancels.</summary>

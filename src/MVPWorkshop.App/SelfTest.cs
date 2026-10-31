@@ -20,6 +20,8 @@ public static class SelfTest
     public static async void RunIfRequested(MainWindow w)
     {
         var args = Environment.GetCommandLineArgs();
+        var diagnosticsTest = Array.IndexOf(args, "--diagnostics-selftest");
+        if (diagnosticsTest >= 0 && diagnosticsTest + 1 < args.Length) { w.RunDiagnosticsCheck(args[diagnosticsTest + 1]); return; }
         var modTest = Array.IndexOf(args, "--open-mod-selftest");
         if (modTest >= 0 && modTest + 1 < args.Length) { w.RunOpenModCheck(args[modTest + 1]); return; }
         var optionsTest = Array.IndexOf(args, "--options-selftest");

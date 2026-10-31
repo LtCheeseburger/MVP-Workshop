@@ -15,6 +15,7 @@ namespace MVPWorkshop.App;
 // .mvpmod export and test runs for the port's loose install (docs/MVPMOD.md in the port)
 public partial class MainWindow
 {
+    internal static string TestModFolder { get; set; } = Path.Combine(Path.GetTempPath(), "MVP-Workshop", "test-mod");
     // ---- asset right-click (tree and search results) ----
 
     private void Tree_RightButtonDown(object sender, MouseButtonEventArgs e)
@@ -189,7 +190,7 @@ public partial class MainWindow
         if (test)
         {
             info = new ModInfo { Id = "workshop-test", Name = "Workshop test", Version = "0.0.0" };
-            output = Path.Combine(Path.GetTempPath(), "MVP-Workshop", "test-mod");
+            output = TestModFolder;
         }
         else
         {
@@ -213,7 +214,9 @@ public partial class MainWindow
         Mouse.OverrideCursor = Cursors.AppStarting;
         try
         {
-            var report = await Task.Run(() => MvpModExporter.Export(s, info, output, asFolder: test, msg => Dispatcher.BeginInvoke(() => SetStatus(msg))));
+            var snapshot = s.Snapshot();
+            if (!await ValidateModExport(snapshot, info)) return;
+            var report = await Task.Run(() => MvpModExporter.Export(snapshot, info, output, asFolder: test, msg => Dispatcher.BeginInvoke(() => SetStatus(msg))));
             foreach (var p in report.Problems) Log.Error("Mod: " + p);
             if (!report.Ok)
             {

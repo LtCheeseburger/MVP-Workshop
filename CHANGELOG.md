@@ -3,6 +3,8 @@
 ## Unreleased — 2026-10-30
 
 ### Added
+- Diagnostics checks edits in the background after a short debounce and shows errors/warnings with asset navigation and a badge count. Export and Test in Game wait for validation; invalid texture storage, packed archives, mod details, and corrupt PNG icons block output. Preview-only edits, missing references, confirmed shared-school impact, and save-data changes without AffectsSaves produce warnings.
+- Exports capture the current edit bytes so background validation and packing use the same changes without altering the viewer overlay.
 - File > Open mod opens an existing `.mvpmod` as an editable project over the loose install. Existing files become overrides, new files become Added, DDS folders rebuild as textures, and metadata/icons survive re-export with the patch version incremented. A SHA-1 mismatch prompts before applying; unsafe or duplicate ZIP paths are rejected.
 - Tools > Options configures the game executable, autosave interval and backup count, default mod export folder, log level, and restores the default layout.
 - Dispatcher, AppDomain and unobserved-task crash handlers attempt an autosave and write versioned reports with project context, exception details and recent logs. The report dialog offers Copy report and Open folder.
@@ -15,6 +17,7 @@
 - Expanded asset right-click menu in the tree and search results: Open, Replace image, Import file over this, Add new file here, Export raw, Extract folder, Revert, Revert everything in here, Show in Changes, Dependencies, and Copy name / path / SHA-1.
 
 ### Fixed
+- Document tabs show the Added marker only for Added assets, rather than showing it on Start and utility tabs.
 - Explorer context menus select and act on the clicked asset, including search results, regardless of the open document. Add and extract keep that asset as their target.
 - Extract folder preserves a loose texture pack as `.xsh.raw` alongside its DDS folder, avoiding a file/directory collision.
 - Raw export and folder extraction reject destinations inside the game directory.

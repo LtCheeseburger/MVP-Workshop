@@ -134,6 +134,7 @@ public sealed class TreeItem : Observable
 
 public sealed class DocumentTab : Observable
 {
+    public bool IsAdded => Node?.Location == "Added to mod";
     private string _title = "";
     private bool _edited;
     public required string Title { get => _title; init => _title = value; }

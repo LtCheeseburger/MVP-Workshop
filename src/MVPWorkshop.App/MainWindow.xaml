@@ -116,6 +116,7 @@
             </MenuItem>
             <MenuItem Header="_View">
               <MenuItem Header="Bookmarks" Click="Bookmarks_Click" InputGestureText="Ctrl+B / Ctrl+Shift+B"/>
+              <MenuItem Header="Diagnostics" Click="Diagnostics_Click"/>
               <MenuItem Header="Search assets" Command="{x:Static local:MainWindow.FocusSearchCmd}" InputGestureText="Ctrl+F"/>
               <MenuItem Click="ShowChanges_Click"><MenuItem.Header><TextBlock x:Name="ChangesLabel" Text="Changes"/></MenuItem.Header></MenuItem>
               <MenuItem Header="Log" Click="LogToggle_Click" x:Name="LogToggle" IsCheckable="True" IsChecked="True" InputGestureText=""/>
@@ -142,6 +143,7 @@
               <Button  Style="{StaticResource Tool}" Command="{x:Static local:MainWindow.SaveProjectCmd}" Content="Save" ToolTip="Save (Ctrl+S)"/>
               <Button x:Name="UndoButton" Style="{StaticResource Tool}" Command="{x:Static local:MainWindow.UndoCmd}" Content="Undo" ToolTip="Undo (Ctrl+Z)"/>
               <Button x:Name="RedoButton" Style="{StaticResource Tool}" Command="{x:Static local:MainWindow.RedoCmd}" Content="Redo" ToolTip="Redo (Ctrl+Y)"/>
+              <Button x:Name="DiagnosticsButton" Style="{StaticResource Tool}" Content="Diagnostics (0)" Click="Diagnostics_Click" ToolTip="Errors and warnings for the current project"/>
             </StackPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
               <Button Style="{StaticResource Primary}" Command="{x:Static local:MainWindow.TestGameCmd}" Content="Test in Game" ToolTip="Test edits as a temporary mod (F5)" Margin="0,0,8,0"/>

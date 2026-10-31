@@ -39,10 +39,10 @@ public sealed class EditSession
     private readonly SortedDictionary<string, byte[]> _added = new(StringComparer.OrdinalIgnoreCase);  // new files for a mod, by game path
     private bool _addedDirty;
 
-    public EditSession(AssetNode gameRoot, string outputFolder)
+    public EditSession(AssetNode gameRoot, string outputFolder, bool activateOverlay = true)
     {
         GameRoot = gameRoot; OutputFolder = outputFolder;
-        AssetNode.Overlay = n =>
+        if (activateOverlay) AssetNode.Overlay = n =>
         {
             if (_overrides.Count > 0 && _overrides.TryGetValue(n.Key, out var edited) && n.Root == GameRoot) return edited;
             return _preview.Count > 0 && _preview.TryGetValue(n, out var shown) ? shown : null;
@@ -52,6 +52,15 @@ public sealed class EditSession
     public AssetNode GameRoot { get; }
     public string OutputFolder { get; set; }
     public string? ProjectPath { get; set; }
+    /// <summary>Capture immutable edit inputs for background validation/export without changing the active viewer overlay.</summary>
+    public EditSession Snapshot()
+    {
+        var copy = new EditSession(GameRoot, OutputFolder, activateOverlay: false) { ProjectPath = ProjectPath, _cleanId = _cleanId, _addedDirty = _addedDirty, _nextId = _nextId };
+        foreach (var (key, bytes) in _overrides) copy._overrides[key] = bytes.ToArray();
+        foreach (var (key, bytes) in _added) copy._added[key] = bytes.ToArray();
+        copy._undo.AddRange(_undo);
+        return copy;
+    }
     public event Action? Changed;
 
     public IReadOnlyDictionary<string, byte[]> Overrides => _overrides;
