@@ -9,7 +9,7 @@ From PowerShell 7 on Windows, with the .NET 9 SDK:
 This is the same entry point used by `.github/workflows/verify.yml` for pushes,
 pull requests and manual runs. It builds the solution and every test project in
 Release mode, runs the self-contained console suites, generates new synthetic
-fixtures, and runs ten WPF checks. A nonzero command exit, missing desktop report,
+fixtures, and runs eleven WPF checks. A nonzero command exit, missing desktop report,
 `FAIL` report line or desktop timeout fails the run. Desktop tests run sequentially
 because they use modal dialogs and the clipboard.
 
@@ -30,6 +30,7 @@ normal user preferences and recent-project lists separate.
 | Iso | Synthetic disc parsing, edits, rebuilds, export verification and rejected layouts |
 | MenuSimulation | Navigation, modal state, authored APT script dispatch and timeline behavior |
 | MvpMod | Tiny fake loose install; export, reopen and re-export with byte-identical file maps; overrides, Added and DDS folders |
+| PortCompatibility | Release/schema distinction, BOM manifests, version mismatch, newer formats/layouts and missing metadata |
 | Tasks | School/player record attribution and undo |
 | Textures | Synthetic format/dimension/swizzle round trips, editing/export and resize behavior |
 | PlayerEditor | Synthetic player records, value spans, drafts, undo/redo, project and export round trips |
@@ -45,6 +46,7 @@ normal user preferences and recent-project lists separate.
 | WPF game-log | Live polling into Diagnostics, source labels, navigation and session clearing |
 | WPF conflicts | Nonblocking warnings, asset navigation and successful conflicting exports |
 | WPF texture-folder | Export edited packs and school sets, actual PNG decoding, unchanged re-import, output guards |
+| WPF port-compatibility | Start warnings/update links, export diagnostics and rereading changed metadata |
 
 `tests/Fixtures` is the fixture generator. `tests/DataEdits` currently has no tracked
 source project. `tests/TeamAssignments` is built, but its exact LSU/player-key and

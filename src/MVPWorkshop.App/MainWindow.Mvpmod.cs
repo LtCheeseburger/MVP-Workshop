@@ -218,6 +218,8 @@ public partial class MainWindow
             var snapshot = s.Snapshot();
             if (!await ValidateModExport(snapshot, info)) return;
             var conflicts = Diagnostics.Where(d => d.Origin == "Installed mod").ToList();
+            var compatibilityWarnings = Diagnostics.Where(d => d.Origin == "Port compatibility").ToList();
+            foreach (var warning in compatibilityWarnings) Log.Warn("Port compatibility: " + warning.Message);
             foreach (var conflict in conflicts) Log.Warn("Mod conflict: " + conflict.Message);
             var report = await Task.Run(() => MvpModExporter.Export(snapshot, info, output, asFolder: test, msg => Dispatcher.BeginInvoke(() => SetStatus(msg))));
             foreach (var p in report.Problems) Log.Error("Mod: " + p);
@@ -231,6 +233,7 @@ public partial class MainWindow
             var list = string.Join("\n", report.Files.Take(12).Select(f => "  " + f.Path)) + (report.Files.Count > 12 ? $"\n  …and {report.Files.Count - 12} more" : "");
             var skipped = report.PreviewOnlySkipped > 0 ? $"\n\n{report.PreviewOnlySkipped} preview-only change(s) aren't in it." : "";
             if (conflicts.Count > 0) skipped += "\n\nInstalled mod conflicts / inventory warnings:\n" + string.Join("\n", conflicts.Take(12).Select(d => d.Message)) + (conflicts.Count > 12 ? "\n…see Diagnostics for the full list." : "");
+            if (compatibilityWarnings.Count > 0) skipped += "\n\nPort compatibility warnings:\n" + string.Join("\n", compatibilityWarnings.Select(d => d.Message));
             if (test)
             {
                 SetStatus($"Starting the game with {report.Files.Count} changed file(s)");
@@ -240,7 +243,7 @@ public partial class MainWindow
                 return;
             }
             SetStatus($"Saved {Path.GetFileName(output)} ({report.Files.Count} file(s))");
-            if (MessageBox.Show(this, $"Saved {output} with {report.Files.Count} changed file(s):\n\n{list}{skipped}\n\nAdd it in the launcher's Mods tab (Add mod…) to play with it. Open the folder?", "Mod", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+            if (CreateExportSummary($"Saved {output} with {report.Files.Count} changed file(s):\n\n{list}{skipped}\n\nAdd it in the launcher's Mods tab (Add mod…) to play with it.", compatibilityWarnings.Count > 0).ShowDialog() == true)
                 Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{output}\""));
         }
         catch (Exception ex) { Log.Error("Mod failed: " + ex.Message); MessageBox.Show(this, ex.Message, "Mod", MessageBoxButton.OK, MessageBoxImage.Error); }

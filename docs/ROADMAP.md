@@ -70,4 +70,5 @@ each lands as its own commit and is checked in the running app.
       synthetic install/player checks, and a `.mvpmod` round-trip test (`scripts/verify.ps1`)
 - [ ] Run the dataset-specific TeamAssignments and older game-dependent editor checks against their
       supported validation installations; these are explicitly excluded from no-game CI
-- [ ] Tool / port layout version check
+- [x] Tool/port version and layout checks on Start and export, with update links; absent advertised
+      capabilities stay explicitly unknown and release-manifest schema is not treated as mod format

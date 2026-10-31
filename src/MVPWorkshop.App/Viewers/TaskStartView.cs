@@ -31,6 +31,7 @@ public sealed class TaskStartView : ScrollViewer
         Content = body;
         body.Children.Add(B.Text("What would you like to edit?", "Text", 28, FontWeights.SemiBold));
         body.Children.Add(B.Text("Choose a school, then open a task. Changes stay in your project.", "Muted", 13));
+        body.Children.Add(new PortCompatibilityView(window));
         body.Children.Add(new TextBlock { Text = "SCHOOL", Style = Ui.Style("PanelHeader"), Margin = new Thickness(0, 22, 0, 8) });
         _schools.IsTextSearchEnabled = true;
         TextSearch.SetTextPath(_schools, nameof(TeamProfile.Label));

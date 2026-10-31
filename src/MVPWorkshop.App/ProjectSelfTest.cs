@@ -47,7 +47,7 @@ public static class ProjectSelfTest
         try
         {
             await Task.Delay(700);
-            MainWindow.AutosaveRoot = Path.Combine(Path.GetDirectoryName(reportPath)!, "Autosave");
+            MainWindow.AutosaveRoot = Path.Combine(Path.GetDirectoryName(reportPath)!, "Autosave-" + Guid.NewGuid().ToString("N"));
             var s = Editor.Session!;
             var root = w.GameRoot!;
             var before = Directory.GetFiles(root.DiskPath!, "*", SearchOption.AllDirectories).ToDictionary(p => p, p => SHA256.HashData(File.ReadAllBytes(p)));

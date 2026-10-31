@@ -3,6 +3,7 @@
 ## Unreleased — 2026-10-30
 
 ### Added
+- Start and export now report installed port version, advertised mod format/layout and installed loose-layout metadata, with Workshop/port update links. Newer or mixed layouts warn before relying on exports; older manifests without capability fields remain explicitly unconfirmed rather than being assumed compatible.
 - Export pack as PNGs in the texture editor and asset menu writes one index-qualified PNG per slot for folder re-import. School and uniform workspaces export every uniform pack into a separate subfolder. Duplicate/unsafe tags remain unambiguous; existing files and the game directory are protected.
 - A Windows GitHub Actions workflow and shared PowerShell verification command build the solution and every test project, run synthetic console and desktop checks, and verify a tiny `.mvpmod` round trip. Generated fixtures require no game files; desktop tests isolate their settings. Exact game-data checks remain available through an explicit validation-install argument.
 - Export checks installed ZIP and folder mods against the launcher's `mods/mods.json` list. Overlapping files, removals and whole texture-folder replacements appear as nonblocking Diagnostics warnings and in the export summary, with enabled/disabled state and load-order notes. Launcher and game files remain untouched.

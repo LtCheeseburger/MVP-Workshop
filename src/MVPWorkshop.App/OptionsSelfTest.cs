@@ -44,7 +44,7 @@ public partial class MainWindow
             PropsToggle.IsChecked = false; LogToggle.IsChecked = false;
             ResetLayout();
             Check("reset restores panels and window size", PropsToggle.IsChecked == true && LogToggle.IsChecked == true && Width == 1560 && Height == 920);
-            MainWindow.AutosaveRoot = Path.Combine(Path.GetDirectoryName(reportPath)!, "OptionsAutosave");
+            MainWindow.AutosaveRoot = Path.Combine(Path.GetDirectoryName(reportPath)!, "OptionsAutosave-" + Guid.NewGuid().ToString("N"));
             var session = Editor.Session!;
             var node = GameRoot!.Resolve("sample.big/a.txt")!;
             session.Commit(node, [4, 3, 2, 1], "Crash recovery test");

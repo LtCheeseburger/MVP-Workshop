@@ -59,6 +59,8 @@ public partial class MainWindow
             Log.MinimumLevel = _settings.LogLevel;
             _autosaveTimer.Interval = TimeSpan.FromMinutes(minutes);
             _settings.Save(); dialog.DialogResult = true;
+            PortSettingsChanged?.Invoke();
+            ScheduleDiagnostics();
         };
         return dialog;
     }

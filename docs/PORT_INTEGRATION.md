@@ -8,6 +8,22 @@ The sibling `E:\Recomp Source\MVP06-NCAABB\MVP06-XBERecomp` is another checkout.
 The user has been asked which checkout should receive Phase 4 port changes.
 No port files have been modified by this roadmap implementation.
 
+## Release compatibility metadata
+
+`release.bat` writes `version.txt` and `port-manifest.json`. The latter currently
+contains `{format: 1, version, files}`: its `format` describes release packaging,
+not the runtime's mod format. It currently does not advertise runtime mod/layout
+capabilities. Workshop displays that absence as unconfirmed compatibility.
+
+Workshop recognizes optional positive-integer `modFormat` and `layout` fields in
+`port-manifest.json` as explicit runtime capabilities. A future port release can
+add these alongside the existing fields without changing the packaging schema.
+The version display also detects disagreement between the two release files.
+The game's `manifest.json` format is read separately as the installed loose layout
+(the format written by `LooseInstaller`). Newer capabilities or mixed layouts
+produce nonblocking Start/export warnings and trusted release-page links. No
+versions or layouts are inferred from the release version number alone.
+
 ## Installed mods
 
 `docs/MVPMOD.md`, section 3, specifies `mods/` beside `MVP06.exe`, independent of

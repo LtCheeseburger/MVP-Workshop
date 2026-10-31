@@ -22,7 +22,7 @@ try {
     Run-Dotnet 'solution-build' @('build', 'MVPWorkshop.slnx', '-c', $Configuration)
     $projects = Get-ChildItem tests -Filter '*.csproj' -Recurse | Where-Object { $_.FullName -notmatch '[\\/](obj|bin)[\\/]' } | Sort-Object FullName
     foreach ($project in $projects) { Run-Dotnet ('build-' + $project.BaseName) @('build', $project.FullName, '-c', $Configuration) }
-    foreach ($name in @('Dependencies', 'Diagnostics', 'GameLog', 'InstalledMods', 'Iso', 'MenuSimulation', 'MvpMod', 'Tasks', 'Textures')) {
+    foreach ($name in @('Dependencies', 'Diagnostics', 'GameLog', 'InstalledMods', 'Iso', 'MenuSimulation', 'MvpMod', 'PortCompatibility', 'Tasks', 'Textures')) {
         Run-Dotnet $name @('run', '--project', "tests/$name", '-c', $Configuration, '--no-build', '--no-restore')
     }
     $fixtures = Join-Path $runDirectory 'fixtures'
@@ -34,7 +34,7 @@ try {
     Run-Dotnet 'verify-install-synthetic' @('run', '--project', 'tests/Install', '-c', $Configuration, '--no-build', '--no-restore', '--', 'verify', (Join-Path $runDirectory 'installed'))
     if (!$SkipDesktop) {
         $app = Join-Path $repository "src/MVPWorkshop.App/bin/$Configuration/net9.0-windows/MVP-Workshop.dll"
-        foreach ($name in @('shell', 'explorer', 'project', 'options', 'open-mod', 'diagnostics', 'tasks', 'game-log', 'conflicts', 'texture-folder')) {
+        foreach ($name in @('shell', 'explorer', 'project', 'options', 'open-mod', 'diagnostics', 'tasks', 'game-log', 'conflicts', 'texture-folder', 'port-compatibility')) {
             $report = Join-Path $runDirectory ($name + '.txt')
             $game = Join-Path $fixtures $(if ($name -eq 'tasks') { 'tasks' } else { 'explorer' })
             $arguments = @($app, '--game', $game, "--$name-selftest", $report)

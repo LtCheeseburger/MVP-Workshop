@@ -26,7 +26,9 @@ public partial class MainWindow
             var dependencies = await GetDependencies();
             var info = DiagnosticModInfo();
             var directory = InstalledModsDirectory();
+            var compatibility = ReadPortCompatibility();
             var rows = await Task.Run(() => ModDiagnostics.Check(snapshot, info, dependencies, token, InstalledModCatalog.Read(directory, snapshot.GameRoot, token)), token);
+            rows.AddRange(CompatibilityDiagnostics(compatibility));
             if (generation == _diagnosticGeneration && !token.IsCancellationRequested) SetDiagnostics(rows);
         }
         catch (OperationCanceledException) { }
@@ -77,6 +79,7 @@ public partial class MainWindow
 
     internal void GoToDiagnostic(ModDiagnostic row)
     {
+        if (row.Origin == "Port compatibility") { Docs.SelectedItem = _docs.FirstOrDefault(d => !d.CanClose); return; }
         if (row.Asset == "Mod details" && _gameRoot?.DiskPath is { } game)
         {
             var info = DiagnosticModInfo();
@@ -94,7 +97,9 @@ public partial class MainWindow
         {
             var dependencies = await GetDependencies();
             var directory = InstalledModsDirectory();
+            var compatibility = ReadPortCompatibility();
             var rows = await Task.Run(() => ModDiagnostics.Check(snapshot, info, dependencies, installed: InstalledModCatalog.Read(directory, snapshot.GameRoot)));
+            rows.AddRange(CompatibilityDiagnostics(compatibility));
             if (generation != _diagnosticGeneration) { SetStatus("Edits changed while validating. Export again to include the current project."); return false; }
             SetDiagnostics(rows);
             if (!rows.Any(r => r.Severity == DiagnosticSeverity.Error)) return true;
@@ -112,4 +117,7 @@ public partial class MainWindow
         var parent = executable is not null ? System.IO.Path.GetDirectoryName(executable) : System.IO.Path.GetDirectoryName(_gameRoot?.DiskPath ?? "");
         return System.IO.Path.Combine(parent ?? "", "mods");
     }
+
+    private static IEnumerable<ModDiagnostic> CompatibilityDiagnostics(MVPWorkshop.Core.Install.PortCompatibilityInfo info) =>
+        info.Warnings.Select(warning => new ModDiagnostic(DiagnosticSeverity.Warning, "", "Port compatibility", warning + " Update links are on Start: " + MVPWorkshop.Core.Install.PortCompatibilityInfo.WorkshopUpdates, "Port compatibility"));
 }

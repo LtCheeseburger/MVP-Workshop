@@ -20,6 +20,8 @@ public static class SelfTest
     public static async void RunIfRequested(MainWindow w)
     {
         var args = Environment.GetCommandLineArgs();
+        var compatibilityTest = Array.IndexOf(args, "--port-compatibility-selftest");
+        if (compatibilityTest >= 0 && compatibilityTest + 1 < args.Length) { w.RunPortCompatibilityCheck(args[compatibilityTest + 1]); return; }
         var textureFolderTest = Array.IndexOf(args, "--texture-folder-selftest");
         if (textureFolderTest >= 0 && textureFolderTest + 1 < args.Length) { w.RunTextureFolderCheck(args[textureFolderTest + 1]); return; }
         var conflictTest = Array.IndexOf(args, "--conflicts-selftest");
