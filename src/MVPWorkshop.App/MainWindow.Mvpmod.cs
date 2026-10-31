@@ -180,7 +180,8 @@ public partial class MainWindow
             return;
         }
         var game = s.GameRoot.DiskPath!;
-        var exe = MvpModExporter.GameExe(game);
+        var exe = string.IsNullOrWhiteSpace(_settings.GameExePath) ? MvpModExporter.GameExe(game) : _settings.GameExePath;
+        if (test && exe is not null && !File.Exists(exe)) { MessageBox.Show(this, "The configured game executable does not exist. Check Tools > Options.", "Test in Game"); return; }
         if (test && exe is null) { MessageBox.Show(this, $"There's no MVP06.exe beside {game}, so the game can't be started from here.", "Test in Game", MessageBoxButton.OK, MessageBoxImage.Information); return; }
 
         var info = _settings.ModInfos.TryGetValue(game, out var saved) ? saved : new ModInfo();
@@ -199,7 +200,7 @@ public partial class MainWindow
                 Title = "Save the mod",
                 Filter = "MVP mod (*.mvpmod)|*.mvpmod",
                 FileName = initial is null ? info.Id + ".mvpmod" : Path.GetFileName(initial),
-                InitialDirectory = initial is null ? "" : Path.GetDirectoryName(initial),
+                InitialDirectory = initial is null ? _settings.DefaultModOutputFolder ?? "" : Path.GetDirectoryName(initial),
             };
             if (dlg.ShowDialog(this) != true) return;
             output = dlg.FileName;

@@ -3,6 +3,8 @@
 ## Unreleased — 2026-10-30
 
 ### Added
+- Tools > Options configures the game executable, autosave interval and backup count, default mod export folder, log level, and restores the default layout.
+- Dispatcher, AppDomain and unobserved-task crash handlers attempt an autosave and write versioned reports with project context, exception details and recent logs. The report dialog offers Copy report and Open folder.
 - Per-game Bookmarks pane with folders, rename/move, filter, missing-asset markers, open and Find in explorer. Ctrl+B adds and Ctrl+Shift+B removes the selected asset; asset menus also offer Bookmark.
 - File / Edit / View / Tools / Help menus expose every toolbar command and its keyboard shortcut. A compact toolbar keeps Open, Save, Undo and Redo beside prominent Test in Game (F5) and Export .mvpmod buttons.
 - Drag document tabs to reorder them; Close all tabs (Ctrl+Shift+W) preserves Start and protects unapplied player drafts.

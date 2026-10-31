@@ -123,6 +123,7 @@
               <MenuItem Header="Clear log" Click="ClearLog_Click" InputGestureText=""/>
             </MenuItem>
             <MenuItem Header="_Tools">
+              <MenuItem Header="Options…" Click="Options_Click"/>
               <MenuItem Header="Test in Game" Command="{x:Static local:MainWindow.TestGameCmd}" InputGestureText="F5"/>
               <MenuItem Header="Export raw…" Click="ExportRaw_Click" InputGestureText=""/>
               <MenuItem Header="Extract tree…" Click="ExportFolder_Click" InputGestureText=""/>

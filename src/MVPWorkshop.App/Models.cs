@@ -28,9 +28,11 @@ public sealed record LogLine(DateTime Time, string Level, string Text)
 
 public static class Log
 {
+    public static string MinimumLevel { get; set; } = "INFO";
     public static ObservableCollection<LogLine> Lines { get; } = [];
     private static void Add(string level, string text)
     {
+        if (MinimumLevel == "ERROR" && level != "ERROR" || MinimumLevel == "WARN" && level == "INFO") return;
         void Do() { Lines.Add(new LogLine(DateTime.Now, level, text)); while (Lines.Count > 2000) Lines.RemoveAt(0); }
         var d = Application.Current?.Dispatcher;
         if (d is null || d.CheckAccess()) Do(); else d.BeginInvoke(Do);
@@ -160,6 +162,10 @@ public sealed class Settings
     public Dictionary<string, string> ModPaths { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string> RecentProjects { get; set; } = [];
     public int AutosaveMinutes { get; set; } = 2;
+    public int AutosaveCount { get; set; } = 5;
+    public string? GameExePath { get; set; }
+    public string? DefaultModOutputFolder { get; set; }
+    public string LogLevel { get; set; } = "INFO";
     public List<string> Recent { get; set; } = [];
 
     private static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MVP-Workshop", "settings.json");

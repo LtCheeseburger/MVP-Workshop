@@ -17,7 +17,8 @@ each lands as its own commit and is checked in the running app.
 - [x] Menu bar (File / Edit / View / Tools / Help) with shortcuts; Test in Game as the main button;
       a slimmer toolbar; Close all tabs (Ctrl+Shift+W) and drag tabs to reorder
 - [x] Bookmarks (folders, rename/move, filter, Ctrl+B / Ctrl+Shift+B, missing assets, Find in explorer)
-- [ ] Options window (game exe, autosave interval, default folders), crash handler with "copy report"
+- [x] Options window (game exe, autosave interval/count, default mod folder, log level, reset layout),
+      dispatcher/AppDomain/task crash reports with autosave, Copy report and Open folder
 
 ## 2. The mod is the project
 

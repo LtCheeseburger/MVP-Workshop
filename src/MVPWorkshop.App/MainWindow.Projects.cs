@@ -32,7 +32,7 @@ public partial class MainWindow
             var name = Path.GetFileNameWithoutExtension(game);
             var folder = Path.Combine(AutosaveRoot, name + "-" + hash);
             Directory.CreateDirectory(folder);
-            var slots = Enumerable.Range(1, 5).Select(i => Path.Combine(folder, $"Project_{i:000}.mvpwproj")).ToList();
+            var slots = Enumerable.Range(1, Math.Clamp(_settings.AutosaveCount, 1, 20)).Select(i => Path.Combine(folder, $"Project_{i:000}.mvpwproj")).ToList();
             var path = slots.FirstOrDefault(p => !File.Exists(p)) ?? slots.OrderBy(File.GetLastWriteTimeUtc).First();
             // Write a complete candidate before replacing the oldest backup and its sidecar data.
             var staging = Path.Combine(folder, "pending.mvpwproj");
@@ -43,6 +43,12 @@ public partial class MainWindow
             var marker = Path.Combine(folder, "recovery.txt");
             File.WriteAllText(marker, path);
             _recoveryMarkers.Add(marker);
+            // Apply a reduced retention setting only after the replacement backup is complete.
+            foreach (var expired in Enumerable.Range(slots.Count + 1, 20 - slots.Count).Select(i => Path.Combine(folder, $"Project_{i:000}.mvpwproj")))
+            {
+                File.Delete(expired);
+                if (Directory.Exists(ProjectFile.DataFolder(expired))) Directory.Delete(ProjectFile.DataFolder(expired), recursive: true);
+            }
             SetStatus("Autosaved " + Path.GetFileName(path));
             return path;
         }

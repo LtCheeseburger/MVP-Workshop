@@ -41,6 +41,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Log.MinimumLevel = _settings.LogLevel;
         Instance = this;
         Tree.ItemsSource = _roots;
         Docs.ItemsSource = _docs;
