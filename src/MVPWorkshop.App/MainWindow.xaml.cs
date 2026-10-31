@@ -17,7 +17,7 @@ namespace MVPWorkshop.App;
 public partial class MainWindow : Window
 {
     public static readonly RoutedCommand OpenFolderCmd = new(), FocusSearchCmd = new(), CloseTabCmd = new(),
-        SaveProjectCmd = new(), SaveProjectAsCmd = new(), UndoCmd = new(), RedoCmd = new(), ExportModCmd = new();
+        SaveProjectCmd = new(), SaveProjectAsCmd = new(), UndoCmd = new(), RedoCmd = new(), ExportModCmd = new(), CloseAllTabsCmd = new(), TestGameCmd = new();
 
     private readonly ObservableCollection<TreeItem> _roots = [];
     private readonly ObservableCollection<DocumentTab> _docs = [];
@@ -55,6 +55,8 @@ public partial class MainWindow : Window
         CommandBindings.Add(new CommandBinding(UndoCmd, (_, _) => Editor.Session?.Undo(), (_, e) => e.CanExecute = Editor.Session?.CanUndo == true));
         CommandBindings.Add(new CommandBinding(RedoCmd, (_, _) => Editor.Session?.Redo(), (_, e) => e.CanExecute = Editor.Session?.CanRedo == true));
         CommandBindings.Add(new CommandBinding(ExportModCmd, (_, _) => ExportMod()));
+        CommandBindings.Add(new CommandBinding(CloseAllTabsCmd, (_, _) => CloseAllTabs(), (_, e) => e.CanExecute = _docs.Any(d => d.CanClose)));
+        CommandBindings.Add(new CommandBinding(TestGameCmd, (_, _) => TestMod_Click(this, new RoutedEventArgs())));
         Editor.Changed += OnEditorChanged;
         Closing += OnClosing;
         InitializeProjects();

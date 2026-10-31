@@ -14,8 +14,8 @@ each lands as its own commit and is checked in the running app.
       refresh after edits / revert / undo / redo, and show added nodes with right-click Remove
 - [x] An untitled project starts when a game opens; autosave into rotating backups; recent projects;
       dirty marker in the title; Save / Don't save / Cancel on close and source switches; crash recovery
-- [ ] Menu bar (File / Edit / View / Tools / Help) with shortcuts; Test in Game as the main button;
-      a slimmer toolbar
+- [x] Menu bar (File / Edit / View / Tools / Help) with shortcuts; Test in Game as the main button;
+      a slimmer toolbar; Close all tabs (Ctrl+Shift+W) and drag tabs to reorder
 - [ ] Bookmarks (folders, filter, Ctrl+B)
 - [ ] Options window (game exe, autosave interval, default folders), crash handler with "copy report"
 

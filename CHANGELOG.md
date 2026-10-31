@@ -3,6 +3,8 @@
 ## Unreleased — 2026-10-30
 
 ### Added
+- File / Edit / View / Tools / Help menus expose every toolbar command and its keyboard shortcut. A compact toolbar keeps Open, Save, Undo and Redo beside prominent Test in Game (F5) and Export .mvpmod buttons.
+- Drag document tabs to reorder them; Close all tabs (Ctrl+Shift+W) preserves Start and protects unapplied player drafts.
 - Opening a game starts an untitled project. Dirty projects autosave every two minutes into five rotating backups under `%APPDATA%\MVP-Workshop\Autosave\<game>`, with a restore offer after an interrupted session. Autosave includes Added files, excludes preview-only edits, and keeps the project unsaved.
 - Recent projects appear on Start and in the File menu. The title shows `*` for unsaved edits; closing or opening another game/project offers Save / Don't save / Cancel.
 - Modified and Added explorer checkboxes filter both tree views, preserving parents of matching assets. Neither checked shows all assets; both checked combines the two kinds. Added files have a green + marker and right-click Remove.

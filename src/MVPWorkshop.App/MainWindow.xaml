@@ -19,12 +19,14 @@
     <KeyBinding Key="Y" Modifiers="Control" Command="{x:Static local:MainWindow.RedoCmd}"/>
     <KeyBinding Key="Z" Modifiers="Control+Shift" Command="{x:Static local:MainWindow.RedoCmd}"/>
     <KeyBinding Key="E" Modifiers="Control" Command="{x:Static local:MainWindow.ExportModCmd}"/>
+    <KeyBinding Key="W" Modifiers="Control+Shift" Command="{x:Static local:MainWindow.CloseAllTabsCmd}"/>
+    <KeyBinding Key="F5" Command="{x:Static local:MainWindow.TestGameCmd}"/>
   </Window.InputBindings>
   <Border x:Name="RootBorder" BorderBrush="{StaticResource LineStrong}" BorderThickness="1">
     <Grid>
       <Grid.RowDefinitions>
         <RowDefinition Height="38"/>
-        <RowDefinition Height="42"/>
+        <RowDefinition Height="Auto"/>
         <RowDefinition/>
         <RowDefinition Height="26"/>
       </Grid.RowDefinitions>
@@ -53,79 +55,97 @@
         </Grid>
       </Border>
 
-      <!-- Toolbar -->
       <Border Grid.Row="1" Background="{StaticResource PanelBg}" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,1">
-        <DockPanel Margin="8,0" LastChildFill="False">
-          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-            <Menu Background="Transparent" Foreground="{StaticResource Text}" VerticalAlignment="Center">
-              <MenuItem Header="_File">
-                <MenuItem Header="Open game…" Command="{x:Static local:MainWindow.OpenFolderCmd}"/>
-                <MenuItem Header="Open project…" Click="OpenProject_Click"/>
-                <MenuItem x:Name="RecentProjectsMenu" Header="Recent projects" SubmenuOpened="RecentProjects_Opened"/>
-                <Separator/>
-                <MenuItem Header="Save project" Command="{x:Static local:MainWindow.SaveProjectCmd}"/>
-                <MenuItem Header="Save project as…" Command="{x:Static local:MainWindow.SaveProjectAsCmd}"/>
-              </MenuItem>
-            </Menu>
-            <Button Style="{StaticResource Tool}" Click="OpenFolder_Click" ToolTip="Open the installed game: select its MVP06.exe (Ctrl+O)">
-              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE838;" Style="{StaticResource Glyph}" Foreground="{StaticResource Accent}"/><TextBlock Text="Open Game" Margin="7,0,0,0"/></StackPanel>
-            </Button>
-            <Button Style="{StaticResource Tool}" Click="OpenIso_Click" ToolTip="Open an ISO9660 disc image for project editing">
-              <TextBlock Text="Open ISO"/>
-            </Button>
-            <Button Style="{StaticResource Tool}" Click="OpenFile_Click" ToolTip="Open a single loose file">
-              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8E5;" Style="{StaticResource Glyph}"/><TextBlock Text="Open File" Margin="7,0,0,0"/></StackPanel>
-            </Button>
-            <Border Width="1" Background="{StaticResource Line}" Margin="8,9"/>
-            <Button Style="{StaticResource Tool}" Click="OpenProject_Click" ToolTip="Open an editing project (.mvpwproj; legacy .mvp07proj also opens)">
-              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8DA;" Style="{StaticResource Glyph}"/><TextBlock Text="Open Project" Margin="7,0,0,0"/></StackPanel>
-            </Button>
-            <Button Style="{StaticResource Tool}" Click="SaveProject_Click" ToolTip="Save the project: edited assets and notes (Ctrl+S). Does not touch game files.">
-              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE74E;" Style="{StaticResource Glyph}" Foreground="{StaticResource Accent}"/><TextBlock Text="Save Project" Margin="7,0,0,0"/></StackPanel>
-            </Button>
-            <Button x:Name="UndoButton" Style="{StaticResource Tool}" Click="Undo_Click" ToolTip="Undo (Ctrl+Z)" IsEnabled="False">
-              <TextBlock Text="&#xE7A7;" Style="{StaticResource Glyph}"/>
-            </Button>
-            <Button x:Name="RedoButton" Style="{StaticResource Tool}" Click="Redo_Click" ToolTip="Redo (Ctrl+Y)" IsEnabled="False">
-              <TextBlock Text="&#xE7A6;" Style="{StaticResource Glyph}"/>
-            </Button>
-            <Button Style="{StaticResource Tool}" Click="ShowChanges_Click" ToolTip="Every pending change, saved or preview-only">
-              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE81C;" Style="{StaticResource Glyph}"/><TextBlock x:Name="ChangesLabel" Text="Changes" Margin="7,0,0,0"/></StackPanel>
-            </Button>
-            <Button Style="{StaticResource Tool}" Click="ExportMod_Click" ToolTip="Loose install: pack your edits as a .mvpmod for the launcher. Disc or packed folder: rebuild the edited archives into the mod output folder (Ctrl+E). Original game files are never modified.">
-              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE896;" Style="{StaticResource Glyph}" Foreground="{StaticResource Good}"/><TextBlock Text="Export Mod" Margin="7,0,0,0"/></StackPanel>
-            </Button>
-            <Button Style="{StaticResource Tool}" Click="AddFile_Click" ToolTip="Add a new file to the mod, in the selected folder or archive of the loose install (a new member, texture pack or other file). Listed under Changes.">
-              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE710;" Style="{StaticResource Glyph}"/><TextBlock Text="Add File" Margin="7,0,0,0"/></StackPanel>
-            </Button>
-            <Button Style="{StaticResource Tool}" Click="TestMod_Click" ToolTip="Start the installed game with your edits as a temporary mod (loose installs). Nothing is installed or changed.">
-              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE768;" Style="{StaticResource Glyph}"/><TextBlock Text="Test in Game" Margin="7,0,0,0"/></StackPanel>
-            </Button>
-            <Border Width="1" Background="{StaticResource Line}" Margin="8,9"/>
-            <Button Style="{StaticResource Tool}" Click="ExportIso_Click" ToolTip="Export edits to a new ISO image; extracted projects use an original ISO layout template">
-              <TextBlock Text="Export ISO"/>
-            </Button>
-            <Button Style="{StaticResource Tool}" Click="ExportRaw_Click" ToolTip="Save the selected asset's bytes (decompressed) to disk">
-              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xEDE1;" Style="{StaticResource Glyph}"/><TextBlock Text="Export Raw" Margin="7,0,0,0"/></StackPanel>
-            </Button>
-            <Button Style="{StaticResource Tool}" Click="ExportFolder_Click" ToolTip="Extract the selected folder/archive (recursively) to disk">
-              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8B7;" Style="{StaticResource Glyph}"/><TextBlock Text="Extract Tree" Margin="7,0,0,0"/></StackPanel>
-            </Button>
-            <Border Width="1" Background="{StaticResource Line}" Margin="8,9"/>
-            <Button Style="{StaticResource Tool}" Click="Dependencies_Click" Content="Dependencies" ToolTip="Depends on, Used by, missing references and replacement impact"/>
-            <Button Style="{StaticResource Tool}" Click="Survey_Click" ToolTip="Walk every file and archive, identify formats, and test the parsers">
-              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE9D9;" Style="{StaticResource Glyph}" Foreground="{StaticResource Good}"/><TextBlock Text="Format Survey" Margin="7,0,0,0"/></StackPanel>
-            </Button>
-          </StackPanel>
-          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-            <ToggleButton x:Name="LogToggle" Style="{StaticResource Segment}" IsChecked="True" Click="LogToggle_Click" ToolTip="Show/hide the log">
-              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE9D5;" Style="{StaticResource Glyph}" FontSize="12"/><TextBlock Text="Log" Margin="6,0,0,0"/></StackPanel>
-            </ToggleButton>
-            <ToggleButton x:Name="PropsToggle" Style="{StaticResource Segment}" IsChecked="True" Click="PropsToggle_Click" ToolTip="Show/hide properties" Margin="0,0,4,0">
-              <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE946;" Style="{StaticResource Glyph}" FontSize="12"/><TextBlock Text="Properties" Margin="6,0,0,0"/></StackPanel>
-            </ToggleButton>
-          </StackPanel>
-        </DockPanel>
+        <StackPanel>
+          <Menu x:Name="MainMenu" Background="{StaticResource PanelBg}" Foreground="{StaticResource Text}" Padding="8,2">
+            <Menu.Resources>
+              <Style TargetType="MenuItem">
+                <Setter Property="Foreground" Value="{StaticResource Text}"/>
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                      <Grid>
+                        <Border x:Name="Row" Background="Transparent" Padding="10,5">
+                          <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <TextBlock x:Name="Check" Text="&#x2713;" Width="20" Visibility="Collapsed"/>
+                            <ContentPresenter Grid.Column="1" ContentSource="Header" RecognizesAccessKey="True"/>
+                            <TextBlock Grid.Column="2" Text="{TemplateBinding InputGestureText}" Foreground="{StaticResource Muted}" Margin="24,0,0,0"/>
+                            <TextBlock x:Name="Arrow" Grid.Column="3" Text="›" Margin="14,0,0,0" Visibility="Collapsed"/>
+                          </Grid>
+                        </Border>
+                        <Popup x:Name="PART_Popup" IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}" Placement="Right" AllowsTransparency="True" Focusable="False">
+                          <Border Background="{StaticResource PanelBg}" BorderBrush="{StaticResource LineStrong}" BorderThickness="1" Padding="3">
+                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                          </Border>
+                        </Popup>
+                      </Grid>
+                      <ControlTemplate.Triggers>
+                        <Trigger Property="HasItems" Value="True"><Setter TargetName="Arrow" Property="Visibility" Value="Visible"/></Trigger>
+                        <Trigger Property="IsCheckable" Value="True"><Setter TargetName="Check" Property="Visibility" Value="Hidden"/></Trigger>
+                        <Trigger Property="IsChecked" Value="True"><Setter TargetName="Check" Property="Visibility" Value="Visible"/></Trigger>
+                        <Trigger Property="Role" Value="TopLevelHeader"><Setter TargetName="PART_Popup" Property="Placement" Value="Bottom"/><Setter TargetName="Arrow" Property="Visibility" Value="Collapsed"/></Trigger>
+                        <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Row" Property="Background" Value="{StaticResource Hover}"/></Trigger>
+                        <Trigger Property="IsSubmenuOpen" Value="True"><Setter TargetName="Row" Property="Background" Value="{StaticResource Selected}"/></Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value=".4"/></Trigger>
+                      </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+              </Style>
+            </Menu.Resources>
+            <MenuItem Header="_File">
+              <MenuItem Header="Open game…" Command="{x:Static local:MainWindow.OpenFolderCmd}" InputGestureText="Ctrl+O"/>
+              <MenuItem Header="Open ISO…" Click="OpenIso_Click" InputGestureText=""/>
+              <MenuItem Header="Open loose file…" Click="OpenFile_Click" InputGestureText=""/>
+              <MenuItem Header="Open project…" Click="OpenProject_Click" InputGestureText=""/>
+              <MenuItem x:Name="RecentProjectsMenu" Header="Recent projects" SubmenuOpened="RecentProjects_Opened"/>
+              <MenuItem Header="Save project" Command="{x:Static local:MainWindow.SaveProjectCmd}" InputGestureText="Ctrl+S"/>
+              <MenuItem Header="Save project as…" Command="{x:Static local:MainWindow.SaveProjectAsCmd}" InputGestureText="Ctrl+Shift+S"/>
+              <MenuItem Header="Export .mvpmod…" Command="{x:Static local:MainWindow.ExportModCmd}" InputGestureText="Ctrl+E"/>
+              <MenuItem Header="Export ISO…" Click="ExportIso_Click" InputGestureText=""/>
+              <MenuItem Header="Close tab" Command="{x:Static local:MainWindow.CloseTabCmd}" InputGestureText="Ctrl+W"/>
+              <MenuItem Header="Close all tabs" Command="{x:Static local:MainWindow.CloseAllTabsCmd}" InputGestureText="Ctrl+Shift+W"/>
+              <MenuItem Header="Exit" Click="CloseWindow" InputGestureText="Alt+F4"/>
+            </MenuItem>
+            <MenuItem Header="_Edit">
+              <MenuItem Header="Undo" Command="{x:Static local:MainWindow.UndoCmd}" InputGestureText="Ctrl+Z"/>
+              <MenuItem Header="Redo" Command="{x:Static local:MainWindow.RedoCmd}" InputGestureText="Ctrl+Y / Ctrl+Shift+Z"/>
+              <MenuItem Header="Add file…" Click="AddFile_Click" InputGestureText=""/>
+            </MenuItem>
+            <MenuItem Header="_View">
+              <MenuItem Header="Search assets" Command="{x:Static local:MainWindow.FocusSearchCmd}" InputGestureText="Ctrl+F"/>
+              <MenuItem Click="ShowChanges_Click"><MenuItem.Header><TextBlock x:Name="ChangesLabel" Text="Changes"/></MenuItem.Header></MenuItem>
+              <MenuItem Header="Log" Click="LogToggle_Click" x:Name="LogToggle" IsCheckable="True" IsChecked="True" InputGestureText=""/>
+              <MenuItem Header="Properties" Click="PropsToggle_Click" x:Name="PropsToggle" IsCheckable="True" IsChecked="True" InputGestureText=""/>
+              <MenuItem Header="Collapse all" Click="CollapseAll_Click" InputGestureText=""/>
+              <MenuItem Header="Clear log" Click="ClearLog_Click" InputGestureText=""/>
+            </MenuItem>
+            <MenuItem Header="_Tools">
+              <MenuItem Header="Test in Game" Command="{x:Static local:MainWindow.TestGameCmd}" InputGestureText="F5"/>
+              <MenuItem Header="Export raw…" Click="ExportRaw_Click" InputGestureText=""/>
+              <MenuItem Header="Extract tree…" Click="ExportFolder_Click" InputGestureText=""/>
+              <MenuItem Header="Dependencies" Click="Dependencies_Click" InputGestureText=""/>
+              <MenuItem Header="Format survey" Click="Survey_Click" InputGestureText=""/>
+            </MenuItem>
+            <MenuItem Header="_Help">
+              <MenuItem Header="Check for updates…" Click="CheckUpdates_Click" InputGestureText=""/>
+              <MenuItem Header="About MVP Workshop" Click="About_Click" InputGestureText=""/>
+            </MenuItem>
+          </Menu>
+          <DockPanel Margin="8,2,8,5" LastChildFill="False">
+            <StackPanel Orientation="Horizontal">
+              <Button  Style="{StaticResource Tool}" Command="{x:Static local:MainWindow.OpenFolderCmd}" Content="Open" ToolTip="Open (Ctrl+O)"/>
+              <Button  Style="{StaticResource Tool}" Command="{x:Static local:MainWindow.SaveProjectCmd}" Content="Save" ToolTip="Save (Ctrl+S)"/>
+              <Button x:Name="UndoButton" Style="{StaticResource Tool}" Command="{x:Static local:MainWindow.UndoCmd}" Content="Undo" ToolTip="Undo (Ctrl+Z)"/>
+              <Button x:Name="RedoButton" Style="{StaticResource Tool}" Command="{x:Static local:MainWindow.RedoCmd}" Content="Redo" ToolTip="Redo (Ctrl+Y)"/>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+              <Button Style="{StaticResource Primary}" Command="{x:Static local:MainWindow.TestGameCmd}" Content="Test in Game" ToolTip="Test edits as a temporary mod (F5)" Margin="0,0,8,0"/>
+              <Button Style="{StaticResource Outline}" Command="{x:Static local:MainWindow.ExportModCmd}" Content="Export .mvpmod" FontWeight="SemiBold" Foreground="{StaticResource Good}" ToolTip="Export mod (Ctrl+E)"/>
+            </StackPanel>
+          </DockPanel>
+        </StackPanel>
       </Border>
 
       <!-- Workspace -->
@@ -209,6 +229,15 @@
             <RowDefinition x:Name="LogRow" Height="170" MinHeight="0"/>
           </Grid.RowDefinitions>
           <TabControl x:Name="Docs" Tag="{StaticResource PanelBg}" SelectionChanged="Docs_SelectionChanged" Background="{StaticResource WindowBg}">
+            <TabControl.ItemContainerStyle>
+              <Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
+                <EventSetter Event="PreviewMouseLeftButtonDown" Handler="Tab_MouseDown"/>
+                <EventSetter Event="PreviewMouseMove" Handler="Tab_MouseMove"/>
+                <EventSetter Event="DragOver" Handler="Tab_DragOver"/>
+                <EventSetter Event="Drop" Handler="Tab_Drop"/>
+                <Setter Property="AllowDrop" Value="True"/>
+              </Style>
+            </TabControl.ItemContainerStyle>
             <TabControl.ItemTemplate>
               <DataTemplate DataType="{x:Type local:DocumentTab}">
                 <StackPanel Orientation="Horizontal" ToolTip="{Binding ToolTip}">
