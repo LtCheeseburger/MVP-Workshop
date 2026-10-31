@@ -58,7 +58,8 @@ public sealed class MvpModReport
     public List<(string Path, long Size)> Files { get; } = [];
     public List<string> Problems { get; } = [];
     public int PreviewOnlySkipped { get; set; }
-    public bool Ok => Problems.Count == 0 && Files.Count > 0;
+    internal bool Written { get; set; }
+    public bool Ok => Problems.Count == 0 && (Files.Count > 0 || Written);
 }
 
 /// <summary>
@@ -170,7 +171,7 @@ public static class MvpModExporter
     }
 
     /// <summary>Writes the mod: a .mvpmod zip, or a folder when <paramref name="asFolder"/> (replaced if it exists).</summary>
-    public static MvpModReport Export(EditSession session, ModInfo info, string output, bool asFolder, Action<string>? progress = null)
+    public static MvpModReport Export(EditSession session, ModInfo info, string output, bool asFolder, Action<string>? progress = null, bool allowEmpty = false)
     {
         var report = new MvpModReport { Output = output, PreviewOnlySkipped = session.PreviewOnlyCount };
         if (SessionProblem(session) is { } bad) { report.Problems.Add(bad); return report; }
@@ -183,7 +184,7 @@ public static class MvpModExporter
         var refpack = new List<string>();
         var files = Collect(session, report.Problems, refpack);
         if (report.Problems.Count > 0) return report;
-        if (files.Count == 0) { report.Problems.Add("Nothing differs from the installed game."); return report; }
+        if (files.Count == 0 && !allowEmpty) { report.Problems.Add("Nothing differs from the installed game."); return report; }
         var sha = Convert.ToHexStringLower(SHA1.HashData(File.ReadAllBytes(Path.Combine(root, "default.xbe"))));
         var json = ModJson(info, sha, refpack);
 
@@ -218,6 +219,7 @@ public static class MvpModExporter
             File.Move(tmp, full, true);
         }
         foreach (var (rel, data) in files.OrderBy(f => f.Key, StringComparer.OrdinalIgnoreCase)) report.Files.Add((rel, data.Length));
+        report.Written = true;
         return report;
     }
 

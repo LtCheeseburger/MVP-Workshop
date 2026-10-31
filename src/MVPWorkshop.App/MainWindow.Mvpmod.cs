@@ -176,7 +176,8 @@ public partial class MainWindow
     {
         var s = Editor.Session!;
         if (_exporting) return;
-        if (!MvpModExporter.HasChanges(s))
+        var running = test && TestGameRunning;
+        if (!MvpModExporter.HasChanges(s) && !running)
         {
             MessageBox.Show(this, s.PreviewOnlyCount > 0 ? "Nothing can be packed: the only changes are preview-only (they can't be written into game files)." : "There are no edited assets yet.", "Mod", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
@@ -185,13 +186,18 @@ public partial class MainWindow
         var exe = string.IsNullOrWhiteSpace(_settings.GameExePath) ? MvpModExporter.GameExe(game) : _settings.GameExePath;
         if (test && exe is not null && !File.Exists(exe)) { MessageBox.Show(this, "The configured game executable does not exist. Check Tools > Options.", "Test in Game"); return; }
         if (test && exe is null) { MessageBox.Show(this, $"There's no MVP06.exe beside {game}, so the game can't be started from here.", "Test in Game", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        var reloadSupported = test && TestModPublisher.Supported(exe!);
+        if (running && (!reloadSupported || _testRunSession != s || !string.Equals(_testRunExecutable, exe, StringComparison.OrdinalIgnoreCase)))
+        {
+            MessageBox.Show(this, "A game started by Workshop is still running. Close it before starting this project. Reusing the running game requires the same project and a port advertising workshopReload protocol 1.", "Test in Game"); return;
+        }
 
         var info = _settings.ModInfos.TryGetValue(game, out var saved) ? saved : new ModInfo();
         string output;
         if (test)
         {
             info = new ModInfo { Id = "workshop-test", Name = "Workshop test", Version = "0.0.0" };
-            output = TestModFolder;
+            output = running ? _testRunDirectory! : Path.Combine(TestModFolder, Guid.NewGuid().ToString("N"));
         }
         else
         {
@@ -221,7 +227,13 @@ public partial class MainWindow
             var compatibilityWarnings = Diagnostics.Where(d => d.Origin == "Port compatibility").ToList();
             foreach (var warning in compatibilityWarnings) Log.Warn("Port compatibility: " + warning.Message);
             foreach (var conflict in conflicts) Log.Warn("Mod conflict: " + conflict.Message);
-            var report = await Task.Run(() => MvpModExporter.Export(snapshot, info, output, asFolder: test, msg => Dispatcher.BeginInvoke(() => SetStatus(msg))));
+            TestModPublication? publication = null;
+            var report = await Task.Run(() =>
+            {
+                void Progress(string message) => Dispatcher.BeginInvoke(() => SetStatus(message));
+                if (!test) return MvpModExporter.Export(snapshot, info, output, asFolder: false, Progress);
+                publication = TestModPublisher.Publish(snapshot, info, output, Progress); return publication.Report;
+            });
             foreach (var p in report.Problems) Log.Error("Mod: " + p);
             if (!report.Ok)
             {
@@ -236,10 +248,7 @@ public partial class MainWindow
             if (compatibilityWarnings.Count > 0) skipped += "\n\nPort compatibility warnings:\n" + string.Join("\n", compatibilityWarnings.Select(d => d.Message));
             if (test)
             {
-                SetStatus($"Starting the game with {report.Files.Count} changed file(s)");
-                StartGameLogWatch(exe!);
-                try { _testGameProcess = Process.Start(new ProcessStartInfo(exe!, $"--mod \"{output}\"") { WorkingDirectory = Path.GetDirectoryName(exe)! }); }
-                catch { StopGameLogWatch(clear: false); throw; }
+                await LaunchOrReloadTest(exe!, s, publication!, running, reloadSupported);
                 return;
             }
             SetStatus($"Saved {Path.GetFileName(output)} ({report.Files.Count} file(s))");

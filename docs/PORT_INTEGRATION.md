@@ -35,6 +35,10 @@ the enabled list without changing launcher settings.
 
 ## Logs
 
+The proposed Workshop hot-reload transport and exact runtime implementation work
+are specified in [HOT_RELOAD_PROTOCOL.md](HOT_RELOAD_PROTOCOL.md). The current port
+does not advertise or implement that protocol; the tool gates it explicitly.
+
 Verified against `src/common/game_info.cpp`, `sdk/runtime/app/main.cpp` (`UserDir`
 and `wWinMain`) and `sdk/runtime/core/log.cpp`:
 

@@ -41,7 +41,9 @@ each lands as its own commit and is checked in the running app.
 
 ## 4. Test in Game
 
-- [ ] Hot reload of the `--mod` folder (needs port support)
+- [x] Hot-reload tool implementation and precise port contract (prompt 4.1's tool-side option):
+      immutable generations, atomic publication, process reuse and acknowledgements;
+      actual game cache reload still needs the port work in HOT_RELOAD_PROTOCOL.md
 - [ ] Launch to a target (`--team`, `--stadium`; needs port support)
 
 ## 5. Team workspaces

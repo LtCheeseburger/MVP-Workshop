@@ -61,7 +61,8 @@ public partial class MainWindow
     {
         _gameLogGeneration++;
         _gameLogTimer.Stop();
-        _testGameProcess?.Dispose(); _testGameProcess = null;
+        // Keep the launched process identity across project/log-watch changes. Never launch
+        // a second process or rewrite its mod merely because its log watcher was stopped.
         _gameLogSession = null;
         if (clear) { _gameLogRows.Clear(); PublishDiagnostics(); }
     }
