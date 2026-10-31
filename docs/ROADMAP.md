@@ -45,6 +45,8 @@ each lands as its own commit and is checked in the running app.
       immutable generations, atomic publication, process reuse and acknowledgements;
       the user has now selected the top-level port checkout, so runtime cache reload
       and real-game validation remain before completing Phase 4.
+      Native receiver/build/tests now support unopened assets; already-open assets
+      and cached directory topology changes return restart-required atomically.
 - [ ] Launch to a target (`--team`, `--stadium`; needs port support)
 
 ## 5. Team workspaces

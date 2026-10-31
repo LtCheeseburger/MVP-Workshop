@@ -61,6 +61,18 @@ they are not represented as synthetic evidence.
 
 ## Checks requiring a game installation
 
+Native port reload checks require the selected port's sources and Visual Studio
+toolchain, but no game assets:
+
+```powershell
+./scripts/verify-port.ps1 -BuildPort
+```
+
+This builds the port's Release target and tests its actual mod-loader sources with
+synthetic generations. Unopened assets can reload; already-open assets/archives and
+cached directory topology changes require restart. This separate check is excluded
+from standalone Workshop CI because the port sources are external.
+
 ```powershell
 ./scripts/verify.ps1 -GameFolder 'D:/validation-install'
 ```

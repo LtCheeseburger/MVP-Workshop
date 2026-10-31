@@ -2,8 +2,12 @@
 
 Roadmap 4.1 uses the prompt's tool-side implementation plus precise port-side design
 option. Workshop implements publication, process reuse and acknowledgement handling.
-The current port does **not** implement this protocol. Real-game reload remains
-unavailable until the runtime changes below are implemented and validated.
+The selected top-level port now implements a conservative receiver: it atomically
+remounts changes only to assets the game has never opened. Previously opened assets,
+containing archives, or additions/removals in previously enumerated directories
+return `restart-required`, leaving the entire old layer active. This avoids touching
+live guest/GPU resources. The MVP06-Base reference checkout has not been changed.
+Live-resource replacement and real gameplay validation remain outstanding.
 
 ## Discovery and launch
 
@@ -80,6 +84,14 @@ unsupported data change as applied merely because the host file map was replaced
 If any affected resource cannot be invalidated safely, leave the **entire** active
 generation unchanged and request restart. Reject invalid mods without partial swaps.
 
+The implemented unopened-asset receiver uses a recursive mount lock around complete
+file open/read transactions and VFS reconstruction, and records asset/archive opens
+and directory enumerations. It validates the candidate before swapping its mount
+maps, with rollback if reindexing throws. Since it refuses all changed assets with
+existing consumers, there are no affected guest/GPU resources to invalidate in an
+accepted transaction. A Win32 timer polls the pointer every 250 ms. Extending this
+mode to already-loaded assets requires the game-thread/cache work described above.
+
 ## Acknowledgement
 
 After the safe-point transaction, write `reload.ack.json` beside the pointer through
@@ -115,3 +127,11 @@ deleted/reverted overrides, roster restart-required behavior, an active match,
 outstanding reads, GPU frames, malformed requests, invalid mods, rapid successive
 revisions, project switching and process exit. Hash the installed game and launcher
 settings before/after; they must remain unchanged.
+
+Run `./scripts/verify-port.ps1 -BuildPort` for native, no-game verification in the
+selected checkout. It builds MVP06 Release and compiles the actual `mods.cpp` and
+`inflate.cpp` with a standalone harness. Checks cover new bytes, preserved old bytes
+on restart-required/rejection, unopened additions/reverts, containing archives,
+directory enumeration, traversal and mutual exclusion. The reviewable native patch
+is [port-phase4.patch](port-phase4.patch). These checks do not claim live-texture or
+gameplay coverage.

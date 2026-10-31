@@ -9,7 +9,14 @@ for Phase 4 changes on October 31, 2026. This folder contains runtime sources an
 existing Debug/Release CMake/Ninja build directories, but no Git metadata. Preserve
 original copies and reviewable diffs for port changes. No applicable AGENTS.md was
 found in the target/ancestor folders (dependency SDL instructions do not apply).
-No port files have been modified by this roadmap implementation.
+The port now has a native `--workshop-reload` receiver, VFS transaction locking,
+opened-asset/directory-listing tracking, atomic mount replacement for unopened assets,
+and revision acknowledgements. The exact source changes are in
+[port-phase4.patch](port-phase4.patch), checked against preserved originals under
+`test-output-port-staging/original` with `git apply --check --ignore-space-change`
+(the original checkout mixes CRLF/LF files). The port Release target builds successfully.
+`scripts/verify-port.ps1 -BuildPort` compiles the actual mod-loader sources into a
+standalone synthetic harness; all 14 assertions pass. No game assets are required.
 
 The selected checkout also has the format-1 mod loader. `main.cpp` calls
 `kernel::mods::Init` once before `kernel::Boot`; the game runs on a separate thread
@@ -20,14 +27,23 @@ there is no verified file-to-live-guest-texture ownership map yet. Do not report
 reload as applied merely after remounting host files. `src/game/startup.cpp` and
 `src/common/startup_ui.cpp` own native front-end routing; diagnostic environment
 variables already exercise menu/matchup navigation, but are not production target
-flags. Runtime implementation and real-game validation remain outstanding.
+flags. Already-open guest/GPU resources are deliberately refused with
+`restart-required`; live replacement of those resources, launch targets and actual
+gameplay validation remain outstanding. No automatic restart or guest-memory
+overwrite is performed by the reload receiver.
 
 ## Release compatibility metadata
 
-`release.bat` writes `version.txt` and `port-manifest.json`. The latter currently
+In the MVP06-Base reference checkout, `release.bat` writes `version.txt` and
+`port-manifest.json`. The latter currently
 contains `{format: 1, version, files}`: its `format` describes release packaging,
 not the runtime's mod format. It currently does not advertise runtime mod/layout
-capabilities. Workshop displays that absence as unconfirmed compatibility.
+capabilities. Workshop displays that absence as unconfirmed compatibility. The
+user-selected top-level checkout has a different release script: it previously
+wrote neither metadata file. It now copies `config/port-manifest.json` to the build
+folder through CMake and includes it in the release ZIP. It advertises mod format 1,
+layout 1, reload protocol 1 and `workshopReloadMode: "unopened-assets"`. It does not
+invent a release version; version stays unknown when no version.txt exists.
 
 Workshop recognizes optional positive-integer `modFormat` and `layout` fields in
 `port-manifest.json` as explicit runtime capabilities. A future port release can
@@ -49,9 +65,9 @@ the enabled list without changing launcher settings.
 
 ## Logs
 
-The proposed Workshop hot-reload transport and exact runtime implementation work
-are specified in [HOT_RELOAD_PROTOCOL.md](HOT_RELOAD_PROTOCOL.md). The current port
-does not advertise or implement that protocol; the tool gates it explicitly.
+The transport and the remaining live-resource work are specified in
+[HOT_RELOAD_PROTOCOL.md](HOT_RELOAD_PROTOCOL.md). Only the selected top-level port
+has been modified; the MVP06-Base reference checkout remains unchanged.
 
 Verified against `src/common/game_info.cpp`, `sdk/runtime/app/main.cpp` (`UserDir`
 and `wWinMain`) and `sdk/runtime/core/log.cpp`:
