@@ -20,6 +20,8 @@ public static class SelfTest
     public static async void RunIfRequested(MainWindow w)
     {
         var args = Environment.GetCommandLineArgs();
+        var gameLogTest = Array.IndexOf(args, "--game-log-selftest");
+        if (gameLogTest >= 0 && gameLogTest + 1 < args.Length) { w.RunGameLogCheck(args[gameLogTest + 1]); return; }
         var taskTest = Array.IndexOf(args, "--tasks-selftest");
         if (taskTest >= 0 && taskTest + 1 < args.Length) { w.RunTasksCheck(args[taskTest + 1]); return; }
         var diagnosticsTest = Array.IndexOf(args, "--diagnostics-selftest");

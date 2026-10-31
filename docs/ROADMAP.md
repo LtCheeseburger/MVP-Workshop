@@ -34,7 +34,8 @@ each lands as its own commit and is checked in the running app.
 - [x] Warnings: preview-only changes left out, missing loose references, shared assets changed for
       everyone, `AffectsSaves` not set for roster/save data
 - [x] Debounced background Diagnostics pane with a badge count and Go to actions
-- [ ] Game log read back after Test in Game (requires port log location)
+- [x] Game log read back after Test in Game: portable/Documents paths, release/debug files,
+      incremental mod/texture warnings and errors linked to assets in Diagnostics
 
 ## 4. Test in Game
 

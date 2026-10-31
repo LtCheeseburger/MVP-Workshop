@@ -32,7 +32,7 @@ public partial class MainWindow
             Check("badge displays diagnostic count", (string)DiagnosticsButton.Content == $"Diagnostics ({Diagnostics.Count})");
             ShowDiagnostics(); UpdateLayout();
             var view = (DiagnosticsView)((DocumentTab)Docs.SelectedItem).Content;
-            Check("Diagnostics pane shows severity, asset, message and action", view.Children.OfType<DataGrid>().Single().Columns.Count == 4);
+            Check("Diagnostics pane shows severity, source, asset, message and action", view.Children.OfType<DataGrid>().Single().Columns.Count == 5);
             GoToDiagnostic(Diagnostics.First(d => d.AssetKey == node.Key));
             Check("Go to opens the asset", _docs.Any(d => d.Node == node));
             var closeWarning = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };

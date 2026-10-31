@@ -15,12 +15,13 @@ public sealed class DiagnosticsView : DockPanel, IDisposable
         _window = window;
         var head = new StackPanel { Margin = new Thickness(16) };
         head.Children.Add(_summary);
-        head.Children.Add(B.Text("Errors block Export and Test in Game. Warnings describe changes that may need review.", "Muted"));
+        head.Children.Add(new TextBlock { Text = "Validation errors block Export and Test in Game. Game log entries report the last test run.", TextWrapping = TextWrapping.Wrap, Foreground = Ui.Res("Muted") });
         SetDock(head, Dock.Top); Children.Add(head);
         _rows.IsReadOnly = true;
         _rows.Columns.Add(B.Col("Severity", nameof(ModDiagnostic.Severity), 90));
+        _rows.Columns.Add(B.Col("Source", nameof(ModDiagnostic.Origin), 90));
         _rows.Columns.Add(B.Col("Asset", nameof(ModDiagnostic.Asset), 260));
-        _rows.Columns.Add(new DataGridTextColumn { Header = "Message", Binding = new Binding(nameof(ModDiagnostic.Message)), Width = new DataGridLength(1, DataGridLengthUnitType.Star), ElementStyle = new Style(typeof(TextBlock)) { Setters = { new Setter(TextBlock.TextWrappingProperty, TextWrapping.Wrap) } } });
+        _rows.Columns.Add(new DataGridTextColumn { Header = "Message", MinWidth = 260, Binding = new Binding(nameof(ModDiagnostic.Message)), Width = new DataGridLength(1, DataGridLengthUnitType.Star), ElementStyle = new Style(typeof(TextBlock)) { Setters = { new Setter(TextBlock.TextWrappingProperty, TextWrapping.Wrap) } } });
         var button = new FrameworkElementFactory(typeof(Button));
         button.SetValue(ContentControl.ContentProperty, "Go to");
         button.AddHandler(Button.ClickEvent, new RoutedEventHandler((sender, _) => { if (((Button)sender).DataContext is ModDiagnostic row) window.GoToDiagnostic(row); }));

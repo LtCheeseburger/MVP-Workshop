@@ -11,6 +11,7 @@ public partial class MainWindow
     private CancellationTokenSource? _diagnosticCancellation;
     private int _diagnosticGeneration;
     internal IReadOnlyList<ModDiagnostic> Diagnostics { get; private set; } = [];
+    private IReadOnlyList<ModDiagnostic> _validationDiagnostics = [];
     internal event Action? DiagnosticsChanged;
 
     private void InitializeDiagnostics() => _diagnosticTimer.Tick += async (_, _) =>
@@ -42,6 +43,7 @@ public partial class MainWindow
 
     private void ScheduleDiagnostics()
     {
+        if (_gameLogSession is not null && !ReferenceEquals(_gameLogSession, Editor.Session)) StopGameLogWatch(clear: true);
         _diagnosticGeneration++;
         _diagnosticCancellation?.Cancel();
         _diagnosticCancellation?.Dispose();
@@ -53,8 +55,14 @@ public partial class MainWindow
 
     private void SetDiagnostics(IReadOnlyList<ModDiagnostic> rows)
     {
-        Diagnostics = rows;
-        DiagnosticsButton.Content = $"Diagnostics ({rows.Count})";
+        _validationDiagnostics = rows;
+        PublishDiagnostics();
+    }
+
+    private void PublishDiagnostics()
+    {
+        Diagnostics = _validationDiagnostics.Concat(_gameLogRows).ToList();
+        DiagnosticsButton.Content = $"Diagnostics ({Diagnostics.Count})";
         DiagnosticsChanged?.Invoke();
     }
 

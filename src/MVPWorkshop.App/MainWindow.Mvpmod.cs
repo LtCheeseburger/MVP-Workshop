@@ -230,7 +230,9 @@ public partial class MainWindow
             if (test)
             {
                 SetStatus($"Starting the game with {report.Files.Count} changed file(s)");
-                Process.Start(new ProcessStartInfo(exe!, $"--mod \"{output}\"") { WorkingDirectory = Path.GetDirectoryName(exe)! });
+                StartGameLogWatch(exe!);
+                try { _testGameProcess = Process.Start(new ProcessStartInfo(exe!, $"--mod \"{output}\"") { WorkingDirectory = Path.GetDirectoryName(exe)! }); }
+                catch { StopGameLogWatch(clear: false); throw; }
                 return;
             }
             SetStatus($"Saved {Path.GetFileName(output)} ({report.Files.Count} file(s))");

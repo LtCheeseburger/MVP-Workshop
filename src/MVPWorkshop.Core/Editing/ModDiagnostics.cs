@@ -4,7 +4,7 @@ using MVPWorkshop.Core.Vfs;
 namespace MVPWorkshop.Core.Editing;
 
 public enum DiagnosticSeverity { Error, Warning }
-public sealed record ModDiagnostic(DiagnosticSeverity Severity, string AssetKey, string Asset, string Message);
+public sealed record ModDiagnostic(DiagnosticSeverity Severity, string AssetKey, string Asset, string Message, string Origin = "Validation");
 
 public static class ModDiagnostics
 {

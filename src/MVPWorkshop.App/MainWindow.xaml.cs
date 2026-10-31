@@ -62,6 +62,7 @@ public partial class MainWindow : Window
         Closing += OnClosing;
         InitializeProjects();
         InitializeDiagnostics();
+        InitializeGameLog();
         PreviewKeyDown += (_, e) =>
         {
             if (e.Key == Key.B && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
@@ -607,7 +608,7 @@ public partial class MainWindow : Window
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         if (!ConfirmDiscard("Close the tool")) e.Cancel = true;
-        else { _autosaveTimer.Stop(); _diagnosticTimer.Stop(); _diagnosticCancellation?.Cancel(); ClearRecovery(); }
+        else { _autosaveTimer.Stop(); _diagnosticTimer.Stop(); _diagnosticCancellation?.Cancel(); StopGameLogWatch(clear: false); ClearRecovery(); }
     }
 
     /// <summary>Ask what to do with unsaved project changes. Returns false when the user cancels.</summary>
