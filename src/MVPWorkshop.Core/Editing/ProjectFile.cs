@@ -38,8 +38,12 @@ public static class ProjectFile
 
     public static string DataFolder(string projectPath) => projectPath + ".data";
 
-    public static void Save(EditSession session, string projectPath)
+    public static void Save(EditSession session, string projectPath, bool markSaved = true)
     {
+        var game = Path.GetFullPath(session.GameRoot.DiskPath!).TrimEnd(Path.DirectorySeparatorChar);
+        var target = Path.GetFullPath(projectPath);
+        if (target.Equals(game, StringComparison.OrdinalIgnoreCase) || Directory.Exists(game) && target.StartsWith(game + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Projects must be saved outside the game folder.");
         var data = DataFolder(projectPath);
         Directory.CreateDirectory(data);
         var manifest = new Manifest { GameFolder = session.GameRoot.DiskPath ?? "", OutputFolder = session.OutputFolder, Saved = DateTime.Now };
@@ -71,8 +75,7 @@ public static class ProjectFile
         var tmp = projectPath + ".tmp";
         File.WriteAllText(tmp, JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
         File.Move(tmp, projectPath, overwrite: true);
-        session.ProjectPath = projectPath;
-        session.MarkSaved();
+        if (markSaved) { session.ProjectPath = projectPath; session.MarkSaved(); }
     }
 
     public static string? PeekGameFolder(string projectPath)

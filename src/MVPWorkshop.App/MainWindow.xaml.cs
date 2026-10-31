@@ -57,6 +57,7 @@ public partial class MainWindow : Window
         CommandBindings.Add(new CommandBinding(ExportModCmd, (_, _) => ExportMod()));
         Editor.Changed += OnEditorChanged;
         Closing += OnClosing;
+        InitializeProjects();
         StateChanged += (_, _) =>
         {
             MaxGlyph.Text = WindowState == WindowState.Maximized ? "" : "";
@@ -77,7 +78,7 @@ public partial class MainWindow : Window
             if (requestedGame is not null) LoadGame(requestedGame);
             Snapshot.RunIfRequested(this);
             SelfTest.RunIfRequested(this);
-            if (startupArgs.Length == 1) Dispatcher.BeginInvoke(PromptOpenGame, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            if (startupArgs.Length == 1) Dispatcher.BeginInvoke(() => { if (!OfferRecovery()) PromptOpenGame(); }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
             // a normal launch checks for a newer build in the background (tests and snapshots pass arguments)
             if (startupArgs.Length == 1) _ = CheckForUpdates(manual: false);
         };
@@ -139,6 +140,7 @@ public partial class MainWindow : Window
         try
         {
             var openedGame = GameFileSystem.OpenGame(folder);
+            ClearRecovery();
             foreach (var document in _docs.Where(d => d.CanClose).ToList()) _docs.Remove(document);
             _gameRoot = openedGame;
             var output = _settings.OutputFolders.TryGetValue(folder, out var chosen) ? chosen : ModExporter.DefaultOutputFolder(folder);
@@ -567,8 +569,8 @@ public partial class MainWindow : Window
         var s = Editor.Session;
         var dirty = s?.IsDirty == true;
         DirtyBadge.Visibility = dirty ? Visibility.Visible : Visibility.Collapsed;
-        ProjectLabel.Text = s?.ProjectPath is { } pp ? Path.GetFileName(pp) : "Untitled project";
-        Title = (dirty ? "● " : "") + AppInfo.Name + " " + AppInfo.Version + (s?.ProjectPath is { } p2 ? " — " + Path.GetFileNameWithoutExtension(p2) : "");
+        ProjectLabel.Text = (s?.ProjectPath is { } pp ? Path.GetFileName(pp) : "Untitled project") + (dirty ? "*" : "");
+        Title = (dirty ? "* " : "") + AppInfo.Name + " " + AppInfo.Version + (s?.ProjectPath is { } p2 ? " — " + Path.GetFileNameWithoutExtension(p2) : "");
         UndoButton.IsEnabled = s?.CanUndo == true;
         RedoButton.IsEnabled = s?.CanRedo == true;
         UndoButton.ToolTip = s?.UndoLabel is { } u ? $"Undo: {u} (Ctrl+Z)" : "Undo (Ctrl+Z)";
@@ -586,6 +588,7 @@ public partial class MainWindow : Window
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         if (!ConfirmDiscard("Close the tool")) e.Cancel = true;
+        else { _autosaveTimer.Stop(); ClearRecovery(); }
     }
 
     /// <summary>Ask what to do with unsaved project changes. Returns false when the user cancels.</summary>
@@ -593,9 +596,10 @@ public partial class MainWindow : Window
     {
         if (!CheckPlayerDrafts()) return false;
         if (Editor.Session is not { IsDirty: true } s) return true;
-        var answer = MessageBox.Show(this, $"The project has unsaved changes to {s.ModifiedAssetCount} asset(s).\n\nSave the project before you continue?\n(Yes = save, No = discard the changes, Cancel = stay)", action, MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+        var answer = SaveChangesPrompt(action);
         if (answer == MessageBoxResult.Cancel) return false;
         if (answer == MessageBoxResult.Yes) return SaveProject(false);
+        ClearRecovery();
         return true;
     }
 
@@ -614,7 +618,9 @@ public partial class MainWindow : Window
         try
         {
             ProjectFile.Save(s, path);
-            _settings.LastProject = path; _settings.Save();
+            _settings.RememberProject(path);
+            RefreshRecentProjects();
+            ClearRecovery();
             Log.Info($"Project saved: {path} ({s.ModifiedAssetCount} edited asset(s)). Game files untouched.");
             SetStatus($"Saved {Path.GetFileName(path)}");
             if (s.PreviewOnlyCount > 0) Log.Warn($"{s.PreviewOnlyCount} preview-only change(s) are not part of the project: they cannot be written into game files.");
@@ -629,6 +635,9 @@ public partial class MainWindow : Window
         if (_docs.Select(d => d.Content).OfType<TeamView>().Any(v => v.PlayerState.PendingFields > 0)) throw new InvalidOperationException("Apply or reset pending player drafts before saving.");
         if (Editor.Session is not { } s) return false;
         ProjectFile.Save(s, path);
+        _settings.RememberProject(path);
+        RefreshRecentProjects();
+        ClearRecovery();
         return true;
     }
 
@@ -638,7 +647,7 @@ public partial class MainWindow : Window
         if (dlg.ShowDialog(this) == true) LoadProject(dlg.FileName);
     }
 
-    public void LoadProject(string path)
+    public void LoadProject(string path, bool recovery = false)
     {
         if (!ConfirmDiscard("Open another project")) return;
         try
@@ -652,8 +661,11 @@ public partial class MainWindow : Window
             }
             var session = ProjectFile.Load(path, _gameRoot!, out var warnings);
             foreach (var w in warnings) Log.Warn(w);
+            if (!recovery) ClearRecovery();
+            foreach (var document in _docs.Where(d => d.CanClose).ToList()) { DisposeTree(document.Content); _docs.Remove(document); }
+            if (recovery) { session.ProjectPath = null; session.MarkRecovered(); }
             Editor.Attach(session);
-            _settings.LastProject = path; _settings.Save();
+            if (!recovery) { _settings.RememberProject(path); RefreshRecentProjects(); }
             Log.Info($"Project opened: {path} — {session.ModifiedAssetCount} edited asset(s)");
             if (warnings.Count > 0) MessageBox.Show(this, string.Join("\n\n", warnings.Take(8)) + (warnings.Count > 8 ? $"\n…and {warnings.Count - 8} more (see the log)" : ""), "Project opened with warnings", MessageBoxButton.OK, MessageBoxImage.Warning);
             ShowChanges_Click(this, new RoutedEventArgs());

@@ -57,6 +57,16 @@
       <Border Grid.Row="1" Background="{StaticResource PanelBg}" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,1">
         <DockPanel Margin="8,0" LastChildFill="False">
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <Menu Background="Transparent" Foreground="{StaticResource Text}" VerticalAlignment="Center">
+              <MenuItem Header="_File">
+                <MenuItem Header="Open game…" Command="{x:Static local:MainWindow.OpenFolderCmd}"/>
+                <MenuItem Header="Open project…" Click="OpenProject_Click"/>
+                <MenuItem x:Name="RecentProjectsMenu" Header="Recent projects" SubmenuOpened="RecentProjects_Opened"/>
+                <Separator/>
+                <MenuItem Header="Save project" Command="{x:Static local:MainWindow.SaveProjectCmd}"/>
+                <MenuItem Header="Save project as…" Command="{x:Static local:MainWindow.SaveProjectAsCmd}"/>
+              </MenuItem>
+            </Menu>
             <Button Style="{StaticResource Tool}" Click="OpenFolder_Click" ToolTip="Open the installed game: select its MVP06.exe (Ctrl+O)">
               <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE838;" Style="{StaticResource Glyph}" Foreground="{StaticResource Accent}"/><TextBlock Text="Open Game" Margin="7,0,0,0"/></StackPanel>
             </Button>

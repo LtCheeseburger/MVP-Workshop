@@ -3,6 +3,8 @@
 ## Unreleased — 2026-10-30
 
 ### Added
+- Opening a game starts an untitled project. Dirty projects autosave every two minutes into five rotating backups under `%APPDATA%\MVP-Workshop\Autosave\<game>`, with a restore offer after an interrupted session. Autosave includes Added files, excludes preview-only edits, and keeps the project unsaved.
+- Recent projects appear on Start and in the File menu. The title shows `*` for unsaved edits; closing or opening another game/project offers Save / Don't save / Cancel.
 - Modified and Added explorer checkboxes filter both tree views, preserving parents of matching assets. Neither checked shows all assets; both checked combines the two kinds. Added files have a green + marker and right-click Remove.
 - Expanded asset right-click menu in the tree and search results: Open, Replace image, Import file over this, Add new file here, Export raw, Extract folder, Revert, Revert everything in here, Show in Changes, Dependencies, and Copy name / path / SHA-1.
 

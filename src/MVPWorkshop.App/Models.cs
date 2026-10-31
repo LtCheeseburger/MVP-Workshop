@@ -157,6 +157,8 @@ public sealed class Settings
     /// <summary>Game folder to the .mvpmod details last used for it, and where it was saved.</summary>
     public Dictionary<string, MVPWorkshop.Core.Editing.ModInfo> ModInfos { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> ModPaths { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public List<string> RecentProjects { get; set; } = [];
+    public int AutosaveMinutes { get; set; } = 2;
     public List<string> Recent { get; set; } = [];
 
     private static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MVP-Workshop", "settings.json");
@@ -186,6 +188,15 @@ public sealed class Settings
             File.WriteAllText(FilePath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
         }
         catch (Exception ex) { Log.Warn("Could not save settings: " + ex.Message); }
+    }
+
+    public void RememberProject(string path)
+    {
+        LastProject = path;
+        RecentProjects.RemoveAll(r => r.Equals(path, StringComparison.OrdinalIgnoreCase));
+        RecentProjects.Insert(0, path);
+        if (RecentProjects.Count > 8) RecentProjects.RemoveRange(8, RecentProjects.Count - 8);
+        Save();
     }
 
     public void Remember(string folder)

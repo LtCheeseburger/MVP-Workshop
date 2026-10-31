@@ -188,6 +188,9 @@ public sealed class EditSession
         Notify();
     }
 
+    /// <summary>A recovered snapshot still needs an explicit project save.</summary>
+    public void MarkRecovered() { _addedDirty = true; Notify(); }
+
     /// <summary>Call after the project file was written so unsaved-change tracking restarts from here.</summary>
     public void MarkSaved() { _cleanId = TopSavedId; _addedDirty = false; Notify(); }
 

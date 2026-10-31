@@ -12,8 +12,8 @@ each lands as its own commit and is checked in the running app.
 - [ ] Additional asset actions: Open original, format-specific Import / Export, Bookmark
 - [x] Explorer filter: Modified / Added checkboxes filter Categories and Files trees, keep matching parents,
       refresh after edits / revert / undo / redo, and show added nodes with right-click Remove
-- [ ] An untitled project starts when a game opens; autosave into rotating backups; recent projects;
-      dirty marker in the title; save prompt on close
+- [x] An untitled project starts when a game opens; autosave into rotating backups; recent projects;
+      dirty marker in the title; Save / Don't save / Cancel on close and source switches; crash recovery
 - [ ] Menu bar (File / Edit / View / Tools / Help) with shortcuts; Test in Game as the main button;
       a slimmer toolbar
 - [ ] Bookmarks (folders, filter, Ctrl+B)

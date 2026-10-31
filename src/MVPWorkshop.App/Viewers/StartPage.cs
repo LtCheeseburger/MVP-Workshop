@@ -26,9 +26,21 @@ public static class StartPage
         actions.Children.Add(B.Button("Open Game (MVP06.exe)", "", (_, _) => w.PromptOpenGame(), "Primary"));
         sp.Children.Add(actions);
 
+        if (settings.RecentProjects.Count > 0)
+        {
+            sp.Children.Add(Section("RECENT PROJECTS"));
+            foreach (var path in settings.RecentProjects)
+            {
+                var button = B.Button(Path.GetFileNameWithoutExtension(path), "", (_, _) => w.LoadProject(path));
+                button.ToolTip = path;
+                button.HorizontalAlignment = HorizontalAlignment.Left;
+                sp.Children.Add(button);
+            }
+        }
+
         if (settings.Recent.Count > 0)
         {
-            sp.Children.Add(Section("RECENT"));
+            sp.Children.Add(Section("RECENT GAMES"));
             foreach (var r in settings.Recent)
             {
                 var path = r;

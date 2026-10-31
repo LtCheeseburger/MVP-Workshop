@@ -20,6 +20,8 @@ public static class SelfTest
     public static async void RunIfRequested(MainWindow w)
     {
         var args = Environment.GetCommandLineArgs();
+        var projectTest = Array.IndexOf(args, "--project-selftest");
+        if (projectTest >= 0 && projectTest + 1 < args.Length) { ProjectSelfTest.Run(w, args[projectTest + 1]); return; }
         var explorerTest = Array.IndexOf(args, "--explorer-selftest");
         if (explorerTest >= 0 && explorerTest + 1 < args.Length) { ExplorerSelfTest.Run(w, args[explorerTest + 1]); return; }
         var isoTest = Array.IndexOf(args, "--iso-upscale-selftest");
