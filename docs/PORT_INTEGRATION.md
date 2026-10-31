@@ -4,8 +4,14 @@ The local checkout with the format-1 `.mvpmod` contract is:
 
 `E:\Recomp Source\MVP06-NCAABB\MVP06-Base\MVP06-XBERecomp`
 
-The user selected the top-level `E:\Recomp Source\MVP06-NCAABB\MVP06-XBERecomp`
-for Phase 4 changes on October 31, 2026. This folder contains runtime sources and
+The current user-selected Phase 4 target is the MVP06-Base checkout above. The
+receiver is applied there, its Release build and all 14 native checks pass, and
+`scripts/verify-port.ps1` defaults to it. Existing untracked `tools/` files were
+left untouched. Its release manifest retains version/file hashes and adds the
+implemented runtime capabilities.
+
+Earlier, the user selected the top-level `E:\Recomp Source\MVP06-NCAABB\MVP06-XBERecomp`.
+That folder contains runtime sources and
 existing Debug/Release CMake/Ninja build directories, but no Git metadata. Preserve
 original copies and reviewable diffs for port changes. No applicable AGENTS.md was
 found in the target/ancestor folders (dependency SDL instructions do not apply).
@@ -66,8 +72,8 @@ the enabled list without changing launcher settings.
 ## Logs
 
 The transport and the remaining live-resource work are specified in
-[HOT_RELOAD_PROTOCOL.md](HOT_RELOAD_PROTOCOL.md). Only the selected top-level port
-has been modified; the MVP06-Base reference checkout remains unchanged.
+[HOT_RELOAD_PROTOCOL.md](HOT_RELOAD_PROTOCOL.md). Both checkouts now have the receiver;
+future Phase 4 changes target MVP06-Base.
 
 Verified against `src/common/game_info.cpp`, `sdk/runtime/app/main.cpp` (`UserDir`
 and `wWinMain`) and `sdk/runtime/core/log.cpp`:

@@ -2,11 +2,11 @@
 
 Roadmap 4.1 uses the prompt's tool-side implementation plus precise port-side design
 option. Workshop implements publication, process reuse and acknowledgement handling.
-The selected top-level port now implements a conservative receiver: it atomically
+The selected MVP06-Base port and the earlier top-level target implement a conservative receiver: each atomically
 remounts changes only to assets the game has never opened. Previously opened assets,
 containing archives, or additions/removals in previously enumerated directories
 return `restart-required`, leaving the entire old layer active. This avoids touching
-live guest/GPU resources. The MVP06-Base reference checkout has not been changed.
+live guest/GPU resources. Future runtime work targets MVP06-Base.
 Live-resource replacement and real gameplay validation remain outstanding.
 
 ## Discovery and launch

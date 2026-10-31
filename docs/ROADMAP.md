@@ -43,7 +43,7 @@ each lands as its own commit and is checked in the running app.
 
 - [ ] Hot reload: tool implementation and precise port contract are complete;
       immutable generations, atomic publication, process reuse and acknowledgements;
-      the user has now selected the top-level port checkout, so runtime cache reload
+      the user has now selected the MVP06-Base port checkout, so runtime cache reload
       and real-game validation remain before completing Phase 4.
       Native receiver/build/tests now support unopened assets; already-open assets
       and cached directory topology changes return restart-required atomically.

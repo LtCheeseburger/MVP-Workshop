@@ -1,5 +1,5 @@
 param(
-    [string]$PortRoot = 'E:\Recomp Source\MVP06-NCAABB\MVP06-XBERecomp',
+    [string]$PortRoot = 'E:\Recomp Source\MVP06-NCAABB\MVP06-Base\MVP06-XBERecomp',
     [switch]$BuildPort
 )
 $ErrorActionPreference = 'Stop'
