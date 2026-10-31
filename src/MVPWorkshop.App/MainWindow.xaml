@@ -135,6 +135,7 @@
             <DockPanel Margin="12,0,6,0">
               <TextBlock Text="DATA EXPLORER" Style="{StaticResource PanelHeader}"/>
               <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Style="{StaticResource Tool}" Padding="6,4" Click="EditedOnly_Click" ToolTip="List only the assets edited in this project"><TextBlock Text="&#xE70F;" Style="{StaticResource Glyph}" FontSize="12"/></Button>
                 <Button Style="{StaticResource Tool}" Padding="6,4" Click="CollapseAll_Click" ToolTip="Collapse all"><TextBlock Text="&#xE8C5;" Style="{StaticResource Glyph}" FontSize="12"/></Button>
               </StackPanel>
             </DockPanel>
@@ -169,7 +170,8 @@
                 <Button DockPanel.Dock="Right" Style="{StaticResource Tool}" Padding="6,3" Click="CloseSearch_Click" ToolTip="Back to tree"><TextBlock Text="&#xE8BB;" Style="{StaticResource Glyph}" FontSize="10"/></Button>
                 <TextBlock x:Name="SearchStatus" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
               </DockPanel>
-              <ListBox x:Name="SearchResults" Grid.Row="1" MouseDoubleClick="SearchResults_DoubleClick" SelectionChanged="SearchResults_SelectionChanged" KeyDown="SearchResults_KeyDown">
+              <ListBox x:Name="SearchResults" Grid.Row="1" PreviewMouseRightButtonDown="Tree_RightButtonDown" ContextMenuOpening="Tree_ContextMenuOpening" MouseDoubleClick="SearchResults_DoubleClick" SelectionChanged="SearchResults_SelectionChanged" KeyDown="SearchResults_KeyDown">
+                <ListBox.ContextMenu><ContextMenu/></ListBox.ContextMenu>
                 <ListBox.ItemTemplate>
                   <DataTemplate>
                     <Grid ToolTip="{Binding Path}">

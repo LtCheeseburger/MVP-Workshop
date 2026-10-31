@@ -20,6 +20,8 @@ public static class SelfTest
     public static async void RunIfRequested(MainWindow w)
     {
         var args = Environment.GetCommandLineArgs();
+        var explorerTest = Array.IndexOf(args, "--explorer-selftest");
+        if (explorerTest >= 0 && explorerTest + 1 < args.Length) { ExplorerSelfTest.Run(w, args[explorerTest + 1]); return; }
         var isoTest = Array.IndexOf(args, "--iso-upscale-selftest");
         if (isoTest >= 0 && isoTest + 1 < args.Length) { IsoUpscaleSelfTest.Run(w, args[isoTest + 1]); return; }
         var aptTextureTest = Array.IndexOf(args, "--apt-texture-selftest");

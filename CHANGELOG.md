@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — 2026-10-30
+
+### Added
+- Expanded asset right-click menu in the tree and search results: Open, Replace image, Import file over this, Add new file here, Export raw, Extract folder, Revert, Revert everything in here, Show in Changes, Dependencies, and Copy name / path / SHA-1.
+- **Edited only** beside Collapse all lists modified assets and reports new files under Changes.
+
+### Fixed
+- Explorer context menus select and act on the clicked asset, including search results, regardless of the open document. Add and extract keep that asset as their target.
+- Edited only refreshes after edits, revert, undo and redo, and shows added-file counts even when no existing assets are modified. Closing results cancels a pending search.
+- Extract folder preserves a loose texture pack as `.xsh.raw` alongside its DDS folder, avoiding a file/directory collision.
+- Raw export and folder extraction reject destinations inside the game directory.
+
 ## 1.0.7 — 2026-10-28
 
 ### Added

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using MVPWorkshop.Core.Editing;
 using MVPWorkshop.Core.Vfs;
 using Microsoft.Win32;
 
@@ -19,6 +20,12 @@ public static class Exporter
     {
         var path = AskSave(fileName, filter);
         if (path is null) return;
+        SaveBytesTo(data, path);
+    }
+
+    internal static void SaveBytesTo(byte[] data, string path)
+    {
+        CheckOutput(path);
         File.WriteAllBytes(path, data);
         Log.Info($"Exported {Path.GetFileName(path)} ({data.Length:N0} bytes) → {path}");
     }
@@ -37,7 +44,24 @@ public static class Exporter
         Mouse.OverrideCursor = Cursors.AppStarting;
         try
         {
-            var count = await Task.Run(() =>
+            var count = await ExtractTreeTo(n, target);
+            Log.Info($"Extracted {count:N0} files from {n.Path} → {target}");
+        }
+        catch (Exception ex) { Log.Error($"Extract failed: {ex.Message}"); }
+        finally { Mouse.OverrideCursor = null; }
+    }
+
+    internal static void CheckOutput(string path, AssetNode? root = null)
+    {
+        root ??= Editor.Session?.GameRoot;
+        if (root?.DiskPath is not null && ModExporter.OutputProblem(root, path) is { } why)
+            throw new InvalidOperationException(why);
+    }
+
+    internal static Task<int> ExtractTreeTo(AssetNode n, string target)
+    {
+        CheckOutput(target, n.Root);
+        return Task.Run(() =>
             {
                 var c = 0;
                 foreach (var x in n.EnumerateDeep())
@@ -45,8 +69,9 @@ public static class Exporter
                     if (x == n || x.IsFolder) continue;
                     var rel = x.Path[(n.Path.Length + 1)..];
                     var outPath = Path.Combine(target, string.Concat(rel.Select(ch => ch is ':' or '*' or '?' or '"' or '<' or '>' or '|' ? '_' : ch)));
-                    // A container file and its unpacked contents can't share a path; keep the file as "<name>.bin".
-                    if (x.IsContainer) outPath += ".raw";
+                    // A container file and its unpacked contents can't share a path.
+                    if (x.IsContainer || x.IsLooseTexturePack) outPath += ".raw";
+                    CheckOutput(outPath, n.Root);
                     Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
                     File.WriteAllBytes(outPath, x.ReadAll());
                     x.DropCache();
@@ -54,9 +79,5 @@ public static class Exporter
                 }
                 return c;
             });
-            Log.Info($"Extracted {count:N0} files from {n.Path} → {target}");
-        }
-        catch (Exception ex) { Log.Error($"Extract failed: {ex.Message}"); }
-        finally { Mouse.OverrideCursor = null; }
     }
 }

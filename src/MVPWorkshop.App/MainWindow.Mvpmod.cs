@@ -15,26 +15,79 @@ namespace MVPWorkshop.App;
 // .mvpmod export and test runs for the port's loose install (docs/MVPMOD.md in the port)
 public partial class MainWindow
 {
-    // ---- tree right-click: replace a texture image, add a file here, export raw ----
+    // ---- asset right-click (tree and search results) ----
 
     private void Tree_RightButtonDown(object sender, MouseButtonEventArgs e)
     {
         // right-click selects the item under the mouse, so the menu acts on it
-        if ((e.OriginalSource as DependencyObject).FindAncestor<TreeViewItem>() is { } item) item.IsSelected = true;
+        var source = e.OriginalSource as DependencyObject;
+        if (sender == SearchResults && source.FindAncestor<ListBoxItem>() is { } result)
+        { result.IsSelected = true; result.Focus(); }
+        else if (sender == Tree && source.FindAncestor<TreeViewItem>() is { } item)
+        { item.IsSelected = true; item.Focus(); }
+        else e.Handled = true;
     }
 
     private void Tree_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
-        var menu = Tree.ContextMenu!;
+        var menu = ((FrameworkElement)sender).ContextMenu!;
         menu.Items.Clear();
-        if (SelectedNode is not { } n) { e.Handled = true; return; }
+        // Context menus belong to their explorer, even when a document has keyboard focus.
+        var node = sender == SearchResults ? SearchResults.SelectedItem as AssetNode : SelectedTreeItem?.Node;
+        if (node is not { } n) { e.Handled = true; return; }
         void Add(string text, Action act) { var i = new MenuItem { Header = text }; i.Click += (_, _) => act(); menu.Items.Add(i); }
         var texture = n.IsLooseTexturePack || n.Parent?.IsLooseTexturePack == true || n.Format is FormatId.SshTexture;
-        if (texture) Add("Replace image… (PNG, TGA, DDS…)", () => ReplaceImage(n));
+        void Sep() { if (menu.Items.Count > 0 && menu.Items[^1] is not Separator) menu.Items.Add(new Separator()); }
+        var s = Editor.Session;
         if (!n.IsFolder || n.IsLooseTexturePack) Add("Open", () => OpenAsset(n));
-        if (Editor.Session is { } s && MvpModExporter.SessionProblem(s) is null) Add("Add new file here…", () => AddFile_Click(this, new RoutedEventArgs()));
+        Sep();
+        if (texture) Add("Replace image… (PNG, TGA, DDS…)", () => ReplaceImage(n));
+        if (!n.IsFolder && s is not null) Add("Import file over this…", () => ImportRaw(n));
+        if (s is not null && MvpModExporter.SessionProblem(s) is null) Add("Add new file here…", () => AddFile(n));
         if (!n.IsFolder) Add("Export raw…", () => Exporter.SaveRaw(n));
+        if (n.IsContainer) Add("Extract folder…", () => Exporter.ExtractTree(n));
+        Sep();
+        if (s is not null && s.IsModified(n)) Add("Revert", () => s.Revert(n));
+        if (s is not null && (n.IsFolder || n.IsContainer) && s.HasOverrideBelow(n)) Add("Revert everything in here", () => RevertBelow(s, n));
+        if (s is not null && (s.IsModified(n) || s.HasOverrideBelow(n))) Add("Show in Changes", () => ShowChanges_Click(this, new RoutedEventArgs()));
+        Sep();
+        Add("Dependencies", () => ShowDependencies(n));
+        Add("Copy name", () => Copy(n.Name));
+        Add("Copy path", () => Copy(n.Path));
+        if (!n.IsFolder) Add("Copy SHA-1", () => Copy(Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(s?.GetBytes(n) ?? n.ReadOriginal()))));
+        if (menu.Items.Count > 0 && menu.Items[^1] is Separator) menu.Items.RemoveAt(menu.Items.Count - 1);
         if (menu.Items.Count == 0) e.Handled = true;
+    }
+
+    private static void Copy(string text)
+    {
+        try { Clipboard.SetText(text); } catch (System.Runtime.InteropServices.ExternalException) { Log.Warn("The clipboard is busy; try again."); }
+    }
+
+    /// <summary>Replaces an asset's bytes with a file from disk, as one undoable change.</summary>
+    internal void ImportRaw(AssetNode n, string? path = null)
+    {
+        var s = Editor.Session!;
+        if (s.SaveBlocker(n) is { } why) { MessageBox.Show(this, why, "Import", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        if (path is null)
+        {
+            var dlg = new OpenFileDialog { Title = $"Import over {n.Name}", FileName = n.Name };
+            if (dlg.ShowDialog(this) != true) return;
+            path = dlg.FileName;
+        }
+        s.Commit(n, File.ReadAllBytes(path), $"Import {Path.GetFileName(path)}");
+        Log.Info($"Imported {path} over {n.Path}");
+    }
+
+    /// <summary>Reverts every edited asset inside a folder or archive.</summary>
+    private void RevertBelow(EditSession s, AssetNode folder)
+    {
+        var prefix = folder.Key.Length == 0 ? "" : folder.Key + "/";
+        var nodes = s.Overrides.Keys.Where(k => k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            .Select(k => s.GameRoot.Resolve(k)).OfType<AssetNode>().ToList();
+        if (MessageBox.Show(this, $"Revert {nodes.Count} edited asset(s) in {folder.Name}?", "Revert", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+        foreach (var node in nodes) s.Revert(node);
+        Log.Info($"Reverted {nodes.Count} asset(s) in {folder.Path}");
     }
 
     /// <summary>Opens the texture (a DDS file opens its pack with that image selected) and starts Replace image on it.</summary>
@@ -70,17 +123,24 @@ public partial class MainWindow
     /// member, a new texture pack (.xsh, laid out as DDS files) or any other file. Listed under Changes.
     /// </summary>
     private void AddFile_Click(object sender, RoutedEventArgs e)
+        => AddFile(SelectedNode);
+
+    internal void AddFile(AssetNode? node, string[]? files = null)
     {
         if (Editor.Session is not { } s) { Log.Warn("Open a game folder first."); return; }
         if (MvpModExporter.SessionProblem(s) is { } why) { MessageBox.Show(this, why, "Add File", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         // the folder on disk the new file goes into: the selected folder or archive, or the one holding the selection
-        var at = SelectedNode;
+        var at = node;
         while (at is not null && !(at.DiskPath is not null && Directory.Exists(at.DiskPath) && !at.IsLooseTexturePack)) at = at.Parent;
         if (at is null) { MessageBox.Show(this, "Select the folder or archive the new file goes into.", "Add File", MessageBoxButton.OK, MessageBoxImage.Information); return; }
-        var dlg = new OpenFileDialog { Title = $"Add files to {at.Name} in the mod", Multiselect = true };
-        if (dlg.ShowDialog(this) != true) return;
+        if (files is null)
+        {
+            var dlg = new OpenFileDialog { Title = $"Add files to {at.Name} in the mod", Multiselect = true };
+            if (dlg.ShowDialog(this) != true) return;
+            files = dlg.FileNames;
+        }
         var folder = Path.GetRelativePath(s.GameRoot.DiskPath!, at.DiskPath!).Replace('\\', '/');
-        foreach (var file in dlg.FileNames)
+        foreach (var file in files)
         {
             var path = (folder == "." ? "" : folder + "/") + Path.GetFileName(file).ToLowerInvariant();
             if (File.Exists(Path.Combine(s.GameRoot.DiskPath!, path)) || Directory.Exists(Path.Combine(s.GameRoot.DiskPath!, path)))
@@ -91,7 +151,7 @@ public partial class MainWindow
             s.AddFile(path, File.ReadAllBytes(file));
             Log.Info($"Added {path} to the mod");
         }
-        ShowChanges_Click(this, e);
+        ShowChanges_Click(this, new RoutedEventArgs());
     }
 
     /// <summary>

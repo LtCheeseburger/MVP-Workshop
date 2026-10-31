@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private AssetNode? _gameRoot;
     private CancellationTokenSource? _searchCts;
     private List<AssetNode>? _searchIndex;
+    private bool _editedOnly;
     private List<TreeItem>? _categoryRoots;
     private int _catalogGeneration;
     private readonly Dictionary<TeamProfile, DocumentTab> _teamTabs = [];
@@ -142,6 +143,7 @@ public partial class MainWindow : Window
             foreach (var document in _docs.Where(d => d.CanClose).ToList()) _docs.Remove(document);
             _gameRoot = openedGame;
             var output = _settings.OutputFolders.TryGetValue(folder, out var chosen) ? chosen : ModExporter.DefaultOutputFolder(folder);
+            _editedOnly = false;
             Editor.Attach(new EditSession(_gameRoot, output));
             _searchCts?.Cancel();
             SearchPanel.Visibility = Visibility.Collapsed;
@@ -421,6 +423,7 @@ public partial class MainWindow : Window
         if (q.Length == 0 || _gameRoot is null) return;
 
         _searchCts?.Cancel();
+        _editedOnly = false;
         var cts = _searchCts = new CancellationTokenSource();
         SearchPanel.Visibility = Visibility.Visible;
         SearchResults.ItemsSource = null;
@@ -444,7 +447,31 @@ public partial class MainWindow : Window
         catch (Exception ex) { SearchStatus.Text = "Search failed: " + ex.Message; }
     }
 
-    private void CloseSearch_Click(object sender, RoutedEventArgs e) => SearchPanel.Visibility = Visibility.Collapsed;
+    /// <summary>Lists every asset edited in this project in the results panel (Frosty's "show only modified").</summary>
+    private void EditedOnly_Click(object sender, RoutedEventArgs e)
+    {
+        if (Editor.Session is not { } s) { Log.Warn("Open a game folder first."); return; }
+        _searchCts?.Cancel();
+        _editedOnly = true;
+        SearchPanel.Visibility = Visibility.Visible;
+        RefreshEditedOnly(s);
+    }
+
+    private void RefreshEditedOnly(EditSession s)
+    {
+        var selected = SearchResults.SelectedItem as AssetNode;
+        var edited = s.Overrides.Keys.Select(k => s.GameRoot.Resolve(k)).OfType<AssetNode>().OrderBy(n => n.Path, StringComparer.OrdinalIgnoreCase).ToList();
+        SearchResults.ItemsSource = edited;
+        if (selected is not null) SearchResults.SelectedItem = edited.FirstOrDefault(n => n.Key == selected.Key);
+        SearchStatus.Text = edited.Count == 0 && s.Added.Count == 0 ? "Nothing edited yet" : $"{edited.Count:N0} edited asset(s)" + (s.Added.Count > 0 ? $", {s.Added.Count} added file(s) under Changes" : "");
+    }
+
+    private void CloseSearch_Click(object sender, RoutedEventArgs e)
+    {
+        _searchCts?.Cancel();
+        _editedOnly = false;
+        SearchPanel.Visibility = Visibility.Collapsed;
+    }
     private void SearchResults_DoubleClick(object sender, MouseButtonEventArgs e) { if (SearchResults.SelectedItem is AssetNode n) OpenAsset(n); }
     private void SearchResults_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter && SearchResults.SelectedItem is AssetNode n) OpenAsset(n); }
     private void SearchResults_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -578,6 +605,7 @@ public partial class MainWindow : Window
         foreach (var (profile, tab) in _teamTabs) if (_docs.Contains(tab)) tab.IsEdited = s is not null && profile.Assets.Any(a => s.IsAffected(a.Asset));
         foreach (var root in _roots) root.RefreshEdited(s);
         if (_categoryRoots is not null && BrowseMode.SelectedIndex != 0) foreach (var root in _categoryRoots) root.RefreshEdited(s);
+        if (_editedOnly && s is not null) RefreshEditedOnly(s);
     }
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
