@@ -12,7 +12,7 @@ public partial class MainWindow
     {
         var report = new StringBuilder();
         void Check(string label, bool ok) => report.AppendLine($"{(ok ? "PASS" : "FAIL")} {label}");
-        var settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MVP-Workshop", "settings.json");
+        var settingsPath = Settings.StoragePath;
         var previous = File.Exists(settingsPath) ? File.ReadAllBytes(settingsPath) : null;
         try
         {

@@ -9,6 +9,9 @@ changed archives into a separate output folder (default `mod_output`, next to th
 
 ## Run
 
+For build and regression checks, run `./scripts/verify.ps1` in PowerShell 7 on Windows.
+See [docs/TESTING.md](docs/TESTING.md) for synthetic coverage and game-data checks.
+
 ```bash
 dotnet run --project src/MVPWorkshop.App -c Release
 ```

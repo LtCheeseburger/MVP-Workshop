@@ -169,7 +169,9 @@ public sealed class Settings
     public string LogLevel { get; set; } = "INFO";
     public List<string> Recent { get; set; } = [];
 
-    private static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MVP-Workshop", "settings.json");
+    internal static string StoragePath => Environment.GetCommandLineArgs().Any(a => a.EndsWith("selftest", StringComparison.OrdinalIgnoreCase)) && Environment.GetEnvironmentVariable("MVPWORKSHOP_TEST_SETTINGS") is { Length: > 0 } testPath
+        ? testPath : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MVP-Workshop", "settings.json");
+    private static string FilePath => StoragePath;
     private static string LegacyFilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MVP07AssetTool", "settings.json");
 
     public static Settings Load()
@@ -177,7 +179,7 @@ public sealed class Settings
         // One-time migration of the pre-1.0 "MVP07 Asset Tool" settings (recent games, output folders).
         try
         {
-            if (!File.Exists(FilePath) && File.Exists(LegacyFilePath))
+            if (Environment.GetEnvironmentVariable("MVPWORKSHOP_TEST_SETTINGS") is null && !File.Exists(FilePath) && File.Exists(LegacyFilePath))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
                 File.Copy(LegacyFilePath, FilePath);

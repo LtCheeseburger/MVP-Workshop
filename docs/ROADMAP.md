@@ -65,5 +65,8 @@ each lands as its own commit and is checked in the running app.
 
 ## 8. Release
 
-- [ ] CI runs the self-tests and `tests/*`, plus a `.mvpmod` round-trip test
+- [x] Windows CI workflow builds every project and runs the self-contained console/WPF suites,
+      synthetic install/player checks, and a `.mvpmod` round-trip test (`scripts/verify.ps1`)
+- [ ] Run the dataset-specific TeamAssignments and older game-dependent editor checks against their
+      supported validation installations; these are explicitly excluded from no-game CI
 - [ ] Tool / port layout version check

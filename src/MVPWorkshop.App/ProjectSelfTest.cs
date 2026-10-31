@@ -42,7 +42,7 @@ public static class ProjectSelfTest
             };
             timer.Start(); action(); timer.Stop();
         }
-        var settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MVP-Workshop", "settings.json");
+        var settingsPath = Settings.StoragePath;
         var settingsBytes = File.Exists(settingsPath) ? File.ReadAllBytes(settingsPath) : null;
         try
         {
