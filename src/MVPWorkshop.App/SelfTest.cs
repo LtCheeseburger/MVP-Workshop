@@ -20,6 +20,8 @@ public static class SelfTest
     public static async void RunIfRequested(MainWindow w)
     {
         var args = Environment.GetCommandLineArgs();
+        var rosterCsvTest = Array.IndexOf(args, "--roster-csv-selftest");
+        if (rosterCsvTest >= 0 && rosterCsvTest + 1 < args.Length) { w.RunRosterCsvCheck(args[rosterCsvTest + 1]); return; }
         var compatibilityTest = Array.IndexOf(args, "--port-compatibility-selftest");
         if (compatibilityTest >= 0 && compatibilityTest + 1 < args.Length) { w.RunPortCompatibilityCheck(args[compatibilityTest + 1]); return; }
         var textureFolderTest = Array.IndexOf(args, "--texture-folder-selftest");

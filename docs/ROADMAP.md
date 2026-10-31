@@ -61,7 +61,8 @@ each lands as its own commit and is checked in the running app.
 
 - [x] Export texture packs and school uniform sets as slot-named PNGs; duplicate/unsafe tags are
       index-qualified, unchanged folder re-import preserves native bytes, with round-trip tests
-- [ ] Roster CSV export / import
+- [x] School/all-school roster CSV export/import with readable columns, source identities,
+      changed-row review, DAT value-span validation, known jersey ranges and stale-review protection
 - [ ] Bulk replace from a folder for audio
 
 ## 8. Release

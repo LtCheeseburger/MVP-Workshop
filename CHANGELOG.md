@@ -3,6 +3,7 @@
 ## Unreleased — 2026-10-30
 
 ### Added
+- School workspaces and Tools now export/import roster CSVs for one school or all schools. Readable columns retain stable identities; a review window shows before/after field changes and validation errors before applying DAT value-span edits. Unresolved players remain visible as read-only rows; unknown DAT bytes and roster identities are preserved.
 - Start and export now report installed port version, advertised mod format/layout and installed loose-layout metadata, with Workshop/port update links. Newer or mixed layouts warn before relying on exports; older manifests without capability fields remain explicitly unconfirmed rather than being assumed compatible.
 - Export pack as PNGs in the texture editor and asset menu writes one index-qualified PNG per slot for folder re-import. School and uniform workspaces export every uniform pack into a separate subfolder. Duplicate/unsafe tags remain unambiguous; existing files and the game directory are protected.
 - A Windows GitHub Actions workflow and shared PowerShell verification command build the solution and every test project, run synthetic console and desktop checks, and verify a tiny `.mvpmod` round trip. Generated fixtures require no game files; desktop tests isolate their settings. Exact game-data checks remain available through an explicit validation-install argument.
@@ -23,6 +24,7 @@
 - Expanded asset right-click menu in the tree and search results: Open, Replace image, Import file over this, Add new file here, Export raw, Extract folder, Revert, Revert everything in here, Show in Changes, Dependencies, and Copy name / path / SHA-1.
 
 ### Fixed
+- The shared player-field validator enforces jersey numbers from 0 to 99. CSV reviews reject later source/roster changes rather than overwriting newer edits.
 - Re-importing an untouched exported PNG folder preserves exact native bytes, palettes, mipmaps and lossy DXT blocks without adding an undo step. A stale import cannot overwrite a newer texture edit.
 - A mod shipping `xsh.meta` must include its complete replacement texture folder; missing images are rejected without changing the active project.
 - Document tabs show the Added marker only for Added assets, rather than showing it on Start and utility tabs.

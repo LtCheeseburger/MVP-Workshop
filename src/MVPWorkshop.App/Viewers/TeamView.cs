@@ -32,10 +32,12 @@ public sealed class TeamView : Grid
         var evidence = new TextBlock { Text = profile.StadiumEvidence, TextWrapping = TextWrapping.Wrap, Foreground = Ui.Res("Muted"), Margin = new Thickness(0, 10, 0, 0) };
         header.Children.Add(evidence);
         var stadiumModel = profile.Assets.FirstOrDefault(a => a.Category == "Stadium/Assigned models" && a.Asset.Name.Equals("mstadium.ord", StringComparison.OrdinalIgnoreCase));
-        var actions = new StackPanel { Orientation = Orientation.Horizontal };
+        var actions = new WrapPanel();
         if (stadiumModel is not null) actions.Children.Add(B.Button("Open stadium in 3D", null, (_, _) => MainWindow.Instance?.OpenAsset(stadiumModel.Asset), "Primary"));
         actions.Children.Add(B.Button("School info", null, (_, _) => MainWindow.Instance?.OpenWorkspaceDocument(new DocumentTab { Title = profile.Label + " · school info", Content = (FrameworkElement)TeamWorkspaceView.SchoolInfo(profile) }), "Outline"));
         actions.Children.Add(B.Button("Export uniform set as PNGs", null, (_, _) => TexturePackExport.ExportSchool(profile), "Outline"));
+        actions.Children.Add(B.Button("Export roster CSV", null, (_, _) => MainWindow.Instance?.ExportRosterCsv(profile), "Outline"));
+        actions.Children.Add(B.Button("Import roster CSV", null, (_, _) => MainWindow.Instance?.ImportRosterCsv(profile), "Outline"));
         var draftStatus = new TextBlock { Foreground = Ui.Res("Muted"), Margin = new Thickness(8), TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed };
         var applyDrafts = B.Button("Apply all player drafts", null, (_, _) =>
         {

@@ -40,6 +40,8 @@ public static class PlayerAttributeEditor
             var value = edit.Value;
             if (value.Length == 0 || value != value.Trim() || value.Any(c => c > 255 || char.IsControl(c) || c is ',' or ';'))
                 throw new InvalidDataException("Values must be nonempty Latin-1 text without delimiters or control characters.");
+            if (label == "playerattrib_jerseynum" && (!int.TryParse(value, out var jersey) || jersey is < 0 or > 99))
+                throw new InvalidDataException("Jersey number must be an integer from 0 to 99.");
             if (label is not ("first_name" or "last_name") && !decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out _))
                 throw new InvalidDataException($"{label} requires a raw number; enum meanings and ranges are unresolved.");
             if (label is not ("first_name" or "last_name") && int.TryParse(existing, NumberStyles.Integer, CultureInfo.InvariantCulture, out _) && !int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))

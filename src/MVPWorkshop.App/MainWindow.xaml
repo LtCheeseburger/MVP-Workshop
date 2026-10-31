@@ -126,6 +126,8 @@
             </MenuItem>
             <MenuItem Header="_Tools">
               <MenuItem Header="Options…" Click="Options_Click"/>
+              <MenuItem Header="Export all rosters CSV…" Click="ExportAllRosters_Click"/>
+              <MenuItem Header="Import roster CSV (all schools)…" Click="ImportAllRosters_Click"/>
               <MenuItem Header="Test in Game" Command="{x:Static local:MainWindow.TestGameCmd}" InputGestureText="F5"/>
               <MenuItem Header="Export raw…" Click="ExportRaw_Click" InputGestureText=""/>
               <MenuItem Header="Extract tree…" Click="ExportFolder_Click" InputGestureText=""/>
