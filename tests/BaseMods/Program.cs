@@ -63,7 +63,41 @@ try
     Check("editing a base pack exports only this project's changed slot", collected.Count == 1 && collected.ContainsKey("logo.xsh/00_one.dds"));
     session.Revert(pack);
     session.Commit(added!, Encoding.ASCII.GetBytes("own new member edit"), "edit base addition");
+    Check("editing a base addition promotes a project-owned file", session.Added.ContainsKey("sample_big/new.txt") && !session.Overrides.ContainsKey(added!.Key));
+    session.Undo(); Check("undo removes the project copy", session.Added.Count == 0);
+    session.Redo(); Check("redo restores the project copy", session.Added.ContainsKey("sample_big/new.txt"));
+    var project = Path.Combine(folder, "layered.mvpwproj"); ProjectFile.Save(session, project);
+    var restored = ProjectFile.Load(project, root, out var loadWarnings);
+    Check("project restores base references before edits", restored.BaseLayer?.References.Count == 2 && restored.Added.ContainsKey("sample_big/new.txt") && loadWarnings.Count == 0 && !restored.IsDirty);
+    Check("restored project keeps merged viewers", Encoding.ASCII.GetString(plain.ReadAll()) == "mod B" && Encoding.ASCII.GetString(added!.ReadAll()) == "own new member edit");
+    restored.SetBaseLayer(null, markDirty: true);
+    Check("selection changes are unsaved project changes", restored.IsDirty);
+    var retained = MvpModExporter.Collect(restored, [], []);
+    Check("project copies export after their base is deselected", retained.ContainsKey("sample_big/new.txt"));
+    ProjectFile.Save(restored, project); restored = ProjectFile.Load(project, root, out loadWarnings);
+    Check("deselected project copy survives save and reload", restored.BaseLayer is null && restored.Added.ContainsKey("sample_big/new.txt") && loadWarnings.Count == 0);
+    restored.SetBaseLayer(layer);
+    try { ProjectFile.Load(Path.Combine(folder, "missing.mvpwproj"), root, out _); }
+    catch (FileNotFoundException) { }
+    Check("failed project loads preserve the active overlay", Encoding.ASCII.GetString(plain.ReadAll()) == "mod B");
+    ProjectFile.Save(restored, project);
+    File.WriteAllText(Path.Combine(secondMod, "files", "sample_big", "a.txt"), "changed base");
+    var changed = ProjectFile.Load(project, root, out loadWarnings);
+    Check("changed base contents produce a project warning", loadWarnings.Any(w => w.Contains("changed since")) && changed.Added.ContainsKey("sample_big/new.txt"));
+    File.WriteAllText(Path.Combine(secondMod, "files", "sample_big", "a.txt"), "mod B");
+    File.Move(firstMod, firstMod + ".missing");
+    try { ProjectFile.Load(project, root, out _); Check("missing base is rejected", false); }
+    catch (Exception) { Check("missing base leaves current session overlay intact", Encoding.ASCII.GetString(plain.ReadAll()) == "changed base"); }
+    File.Move(firstMod + ".missing", firstMod);
+    changed.SetBaseLayer(null);
+    var removedOriginal = root.Resolve("sample.big/b.txt")!;
+    changed.Commit(removedOriginal, [5, 6, 7], "own edit before base removal"); changed.SetBaseLayer(layer);
+    Check("explicit edits remain visible over base removals", root.Resolve("sample.big/b.txt") == removedOriginal && removedOriginal.ReadAll().SequenceEqual(new byte[] { 5, 6, 7 }));
+    Check("explicit edits remain exportable over base removals", MvpModExporter.Collect(changed, [], []).ContainsKey("sample_big/b.txt"));
+    changed.Revert(removedOriginal); Check("revert exposes the base removal again", root.Resolve("sample.big/b.txt") is null);
     var snapshot = session.Snapshot(); session.Revert(added!); session.SetBaseLayer(null);
+    restored.SetBaseLayer(null);
+    changed.SetBaseLayer(null);
     collected = MvpModExporter.Collect(snapshot, problems, refpack);
     Check("snapshot retains the base and explicitly copied edits", collected["sample_big/new.txt"].SequenceEqual(Encoding.ASCII.GetBytes("own new member edit")) && refpack.Contains("sample_big/new.txt"));
     Check("unmount restores the original tree and viewer data", root.Resolve("sample.big/new.txt") is null && root.Resolve("sample.big/b.txt") is not null && Encoding.ASCII.GetString(plain.ReadAll()) == "vanilla");

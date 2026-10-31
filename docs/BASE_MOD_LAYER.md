@@ -1,7 +1,9 @@
-# Read-only base layer implementation status
+# Read-only base mods
 
-Roadmap 2.2 is not complete yet. The core layer and export isolation are implemented;
-the selector, origin presentation and project persistence still need to be connected.
+Tools > Installed mods as base reads the port's `mods/mods.json` order and discovers
+ZIP/folder packages beside it. Select compatible mods independently of launcher
+enable flags. Later selections in launcher order win. The selector never writes
+launcher settings. Tree rows and asset viewers show `from <mod>`.
 
 ## Core contract
 
@@ -24,19 +26,21 @@ intentional restoration of vanilla bytes over a changed base. Parent texture edi
 are compared with the base pack, so unrelated base DDS slots are not packed into the
 new mod. RefPack flags on edited base-added members are retained.
 
-## Remaining integration work
+## Project behavior
 
-- Select compatible installed mods using the launcher catalog/order, independently
-  of the launcher's saved enable flags; never write launcher settings.
-- Invalidate explorer/search/team/dependency caches and refresh documents on a base
-  change. Mark source files as `from <mod>` in the tree and viewers.
-- Persist exact base references with project/autosave files and restore the layer
-  before resolving project edits. Warn on missing/changed mod sources.
-- Preserve project-owned edits to base-added files if the base selection changes.
-  They must remain resolvable/exportable after their source layer is removed. Do not
-  expose selection changes that strand overrides on missing virtual nodes.
-- Add live WPF checks for selection, origin labels, viewer data and project reloads.
+- Changing the base marks the project dirty, closes stale asset/workspace documents
+  and invalidates explorer/search/team/dependency caches.
+- Project/autosave files store ordered source paths, ids, versions and fingerprints.
+  Loading restores the layer before resolving edits. Changed contents warn; missing
+  or incompatible sources stop loading with an error and preserve the active overlay.
+- Editing a base-added asset promotes it to a project-owned Added file. Undo removes
+  the copy; redo restores it. The copy survives deselection, saving and reloading.
+- Explicit edits to original files take precedence over a base-mod removal. Revert
+  exposes the removal again. Opening a mod retains the current base selection.
 
 `tests/BaseMods` currently covers ZIP/folder order, clean mounts, base additions,
 removals, partial DDS composition, new texture packs, vanilla restoration, undo,
-snapshot namespace isolation, project-only export and unchanged source hashes.
+snapshot namespace isolation, project/autosave persistence, changed/missing sources,
+project-owned copies, project-only export and unchanged source hashes. The live
+`--base-mods-selftest` exercises the actual selector, source labels, viewer bytes,
+cache/document reset, project reload and deselection.

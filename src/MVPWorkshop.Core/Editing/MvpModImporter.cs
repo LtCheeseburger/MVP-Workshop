@@ -89,12 +89,14 @@ public static class MvpModImporter
         return $"{major}.{minor}.{checked(patch + 1)}";
     }
 
-    public static EditSession Open(MvpModPackage package, AssetNode root, string outputFolder)
+    public static EditSession Open(MvpModPackage package, AssetNode root, string outputFolder, BaseModLayer? baseLayer = null)
     {
         var previousOverlay = AssetNode.Overlay;
+        var previousChildren = AssetNode.ChildrenOverlay;
         try
         {
             var session = new EditSession(root, outputFolder);
+            session.SetBaseLayer(baseLayer);
             if (MvpModExporter.SessionProblem(session) is { } problem) throw new InvalidDataException(problem);
             var nodes = root.EnumerateDeep().Where(n => n.DiskPath is not null).ToDictionary(n => Path.GetRelativePath(root.DiskPath!, n.DiskPath!).Replace('\\', '/'), StringComparer.OrdinalIgnoreCase);
             var handled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -104,7 +106,7 @@ public static class MvpModImporter
                 nodes.TryGetValue(group.Key, out var pack);
                 var replacesLayout = group.Any(f => f.Key.Equals(group.Key + "/" + XshFolder.MetaName, StringComparison.OrdinalIgnoreCase));
                 var parts = pack?.IsLooseTexturePack == true && !replacesLayout
-                    ? new Dictionary<string, byte[]>(XshFolder.Split(pack.ReadOriginal()) ?? throw new InvalidDataException($"{group.Key}: the installed texture layout is invalid."), StringComparer.OrdinalIgnoreCase)
+                    ? new Dictionary<string, byte[]>(XshFolder.Split(session.BaseBytes(pack)) ?? throw new InvalidDataException($"{group.Key}: the installed texture layout is invalid."), StringComparer.OrdinalIgnoreCase)
                     : new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
                 foreach (var (path, data) in group) { parts[path[(group.Key.Length + 1)..]] = data; handled.Add(path); }
                 if (!parts.TryGetValue(XshFolder.MetaName, out var meta)) throw new InvalidDataException($"{group.Key}: missing texture layout metadata.");
@@ -126,6 +128,6 @@ public static class MvpModImporter
             }
             return session;
         }
-        catch { AssetNode.Overlay = previousOverlay; throw; }
+        catch { AssetNode.Overlay = previousOverlay; AssetNode.ChildrenOverlay = previousChildren; throw; }
     }
 }

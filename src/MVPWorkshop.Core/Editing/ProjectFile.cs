@@ -22,6 +22,7 @@ public static class ProjectFile
         public DateTime Saved { get; set; }
         public List<Entry> Edits { get; set; } = [];
         public List<Entry> Added { get; set; } = [];  // new files for a mod: Path is the game path
+        public List<BaseModReference> BaseMods { get; set; } = [];
     }
 
     private sealed class Entry
@@ -46,12 +47,12 @@ public static class ProjectFile
             throw new InvalidOperationException("Projects must be saved outside the game folder.");
         var data = DataFolder(projectPath);
         Directory.CreateDirectory(data);
-        var manifest = new Manifest { GameFolder = session.GameRoot.DiskPath ?? "", OutputFolder = session.OutputFolder, Saved = DateTime.Now };
+        var manifest = new Manifest { GameFolder = session.GameRoot.DiskPath ?? "", OutputFolder = session.OutputFolder, Saved = DateTime.Now, BaseMods = session.BaseLayer?.References.ToList() ?? [] };
         var keep = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var n = 0;
         foreach (var (key, bytes) in session.Overrides.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
         {
-            var node = session.GameRoot.Resolve(key);
+            var node = session.Resolve(key);
             var file = $"{++n:D4}.bin";
             File.WriteAllBytes(Path.Combine(data, file), bytes);
             keep.Add(file);
@@ -86,10 +87,29 @@ public static class ProjectFile
     /// <summary>Load a project into a fresh session over <paramref name="gameRoot"/>. Problems (missing assets, changed originals, bad data) come back as warnings.</summary>
     public static EditSession Load(string projectPath, AssetNode gameRoot, out List<string> warnings)
     {
+        var bytesOverlay = AssetNode.Overlay; var childrenOverlay = AssetNode.ChildrenOverlay;
+        try { return LoadCore(projectPath, gameRoot, out warnings); }
+        catch { AssetNode.Overlay = bytesOverlay; AssetNode.ChildrenOverlay = childrenOverlay; throw; }
+    }
+
+    private static EditSession LoadCore(string projectPath, AssetNode gameRoot, out List<string> warnings)
+    {
         warnings = [];
         var m = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(projectPath)) ?? throw new InvalidDataException("Empty project file.");
         if (m.Format != 1) throw new InvalidDataException($"Unsupported project format {m.Format}.");
         var session = new EditSession(gameRoot, string.IsNullOrWhiteSpace(m.OutputFolder) ? ModExporter.DefaultOutputFolder(gameRoot.DiskPath!) : m.OutputFolder);
+        if (m.BaseMods.Count > 0)
+        {
+            var layer = BaseModLayer.Build(gameRoot, m.BaseMods.Select(reference => reference.Source));
+            session.SetBaseLayer(layer);
+            foreach (var reference in m.BaseMods)
+            {
+                var current = layer.References.FirstOrDefault(r => r.Source.Equals(reference.Source, StringComparison.OrdinalIgnoreCase));
+                if (current is null || current.Id != reference.Id || current.Version != reference.Version || current.Fingerprint != reference.Fingerprint)
+                    warnings.Add($"Base mod {reference.Id} changed since the project was saved. Project edits are retained; check the result.");
+            }
+            warnings.AddRange(layer.Warnings);
+        }
         var edits = new List<(string, byte[])>();
         foreach (var e in m.Edits)
         {
@@ -97,7 +117,7 @@ public static class ProjectFile
             if (!File.Exists(path)) { warnings.Add($"{e.Path}: data file {e.File} is missing; edit skipped."); continue; }
             var bytes = File.ReadAllBytes(path);
             if (!Hash(bytes).Equals(e.Sha256, StringComparison.OrdinalIgnoreCase)) { warnings.Add($"{e.Path}: data file {e.File} fails its checksum; edit skipped."); continue; }
-            var node = gameRoot.Resolve(e.Key);
+            var node = session.Resolve(e.Key);
             if (node is null) { warnings.Add($"{e.Path}: no longer exists in this game folder; edit skipped."); continue; }
             if (session.SaveBlocker(node) is { } why) { warnings.Add($"{e.Path}: {why}; edit skipped."); continue; }
             if (e.OriginalSha256.Length > 0 && !Hash(node.ReadOriginal()).Equals(e.OriginalSha256, StringComparison.OrdinalIgnoreCase))

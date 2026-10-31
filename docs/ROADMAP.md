@@ -24,9 +24,8 @@ each lands as its own commit and is checked in the running app.
 
 - [x] Open an existing `.mvpmod` for editing (overrides and Added files, texture-folder reconstruction,
       metadata/icon retention, version increment, XBE mismatch warning, synthetic round-trip coverage)
-- [ ] Other installed mods as a read-only base layer
-      Core merged VFS, edit reads and project-only export isolation are implemented/tested;
-      selection UI, origin markers and project persistence remain before completion.
+- [x] Other installed mods as a read-only base layer: launcher-order selector, source markers,
+      project/autosave references, changed-source warnings and project-owned copies on edit
 - [x] Nonblocking conflict checks against ZIP/folder mods and launcher enable/order settings at export;
       Diagnostics and the export summary include overlapping files and later-wins load-order notes
 

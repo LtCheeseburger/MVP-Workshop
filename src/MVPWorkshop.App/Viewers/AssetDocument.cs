@@ -131,6 +131,7 @@ public static class AssetDocument
             });
         names.Children.Add(title);
         names.Children.Add(B.Text(n.Path, "Faint", 11));
+        if (Editor.Session?.BaseLayer?.Origin(n) is { } origin) names.Children.Add(B.Text("from " + origin, "Muted", 11));
         left.Children.Add(names);
 
         var right = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };

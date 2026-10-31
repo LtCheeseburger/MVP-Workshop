@@ -3,7 +3,7 @@
 ## Unreleased — 2026-10-30
 
 ### Added
-- Core support for read-only installed-mod composition and project-only export isolation, including virtual added files, DDS-folder merging and load order. The selection UI and project persistence are still in progress under roadmap 2.2.
+- Tools > Installed mods as base selects compatible ZIP/folder mods in launcher order without changing launcher settings. Tree rows and viewers identify source mods; project/autosave files retain selections and detect changed sources. Editing a base-added asset makes an undoable project copy that survives deselection. Export includes only project edits, including explicit edits over a base removal.
 - School workspaces and Tools now export/import roster CSVs for one school or all schools. Readable columns retain stable identities; a review window shows before/after field changes and validation errors before applying DAT value-span edits. Unresolved players remain visible as read-only rows; unknown DAT bytes and roster identities are preserved.
 - Start and export now report installed port version, advertised mod format/layout and installed loose-layout metadata, with Workshop/port update links. Newer or mixed layouts warn before relying on exports; older manifests without capability fields remain explicitly unconfirmed rather than being assumed compatible.
 - Export pack as PNGs in the texture editor and asset menu writes one index-qualified PNG per slot for folder re-import. School and uniform workspaces export every uniform pack into a separate subfolder. Duplicate/unsafe tags remain unambiguous; existing files and the game directory are protected.

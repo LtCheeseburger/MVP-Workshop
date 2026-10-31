@@ -20,6 +20,8 @@ public static class SelfTest
     public static async void RunIfRequested(MainWindow w)
     {
         var args = Environment.GetCommandLineArgs();
+        var baseModsTest = Array.IndexOf(args, "--base-mods-selftest");
+        if (baseModsTest >= 0 && baseModsTest + 1 < args.Length) { w.RunBaseModsCheck(args[baseModsTest + 1]); return; }
         var rosterCsvTest = Array.IndexOf(args, "--roster-csv-selftest");
         if (rosterCsvTest >= 0 && rosterCsvTest + 1 < args.Length) { w.RunRosterCsvCheck(args[rosterCsvTest + 1]); return; }
         var compatibilityTest = Array.IndexOf(args, "--port-compatibility-selftest");

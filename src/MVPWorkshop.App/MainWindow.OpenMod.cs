@@ -35,7 +35,7 @@ public partial class MainWindow
                 package.Info.IconPath = iconPath;
             }
             if (!ConfirmDiscard("Open another mod")) return false;
-            var imported = MvpModImporter.Open(package, current.GameRoot, current.OutputFolder);
+            var imported = MvpModImporter.Open(package, current.GameRoot, current.OutputFolder, current.BaseLayer);
             package.Info.Version = nextVersion;
             foreach (var tab in _docs.Where(d => d.CanClose).ToList()) CloseDocument(tab);
             _settings.ModInfos[current.GameRoot.DiskPath!] = package.Info;

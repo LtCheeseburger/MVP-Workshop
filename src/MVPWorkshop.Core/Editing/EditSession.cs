@@ -23,6 +23,7 @@ public sealed class Change
     internal Action<bool>? Preview { get; init; }
     /// <summary>For preview-only byte edits: the node whose viewer-visible contents change.</summary>
     internal AssetNode? PreviewNode { get; init; }
+    internal string? AddedPath { get; init; }
 }
 
 /// <summary>
@@ -38,6 +39,7 @@ public sealed class EditSession
     private int _nextId = 1;
     private readonly SortedDictionary<string, byte[]> _added = new(StringComparer.OrdinalIgnoreCase);  // new files for a mod, by game path
     private bool _addedDirty;
+    private bool _baseDirty;
 
     public EditSession(AssetNode gameRoot, string outputFolder, bool activateOverlay = true)
     {
@@ -51,19 +53,32 @@ public sealed class EditSession
         {
             if (n.Root == GameRoot && _overrides.TryGetValue(n.Key, out var edited)) return edited;
             if (_preview.TryGetValue(n, out var shown)) return shown;
+            if (AddedPathOf(n) is { } added) return _added[added];
             return n.Root == GameRoot ? BaseLayer?.GetBytes(n) : null;
         };
-        AssetNode.ChildrenOverlay = (node, children) => node.Root == GameRoot ? BaseLayer?.Children(node, children) ?? children : children;
+        AssetNode.ChildrenOverlay = (node, children) =>
+        {
+            if (node.Root != GameRoot || BaseLayer is null) return children;
+            var merged = BaseLayer.Children(node, children);
+            // A project's explicit edits take precedence over removals in a newly selected base.
+            return merged.Concat(children.Where(c => !merged.Contains(c) && (IsModified(c) || HasOverrideBelow(c)))).ToList();
+        };
     }
 
     public AssetNode GameRoot { get; }
     public string OutputFolder { get; set; }
     public string? ProjectPath { get; set; }
     public BaseModLayer? BaseLayer { get; private set; }
-    public void SetBaseLayer(BaseModLayer? layer) { BaseLayer = layer; Notify(); }
+    public void SetBaseLayer(BaseModLayer? layer, bool markDirty = false) { BaseLayer = layer; _baseDirty |= markDirty; Notify(); }
+    public string? AddedPathOf(AssetNode node)
+    {
+        if (node.Root != GameRoot || node.DiskPath is null || GameRoot.DiskPath is null) return null;
+        var path = Path.GetRelativePath(GameRoot.DiskPath, node.DiskPath).Replace('\\', '/');
+        return _added.ContainsKey(path) ? path : null;
+    }
     public AssetNode? Resolve(string key)
     {
-        if (BaseLayer is not null) return BaseLayer.Resolve(key);
+        if (BaseLayer is not null && BaseLayer.Resolve(key) is { } layered) return layered;
         var node = GameRoot;
         foreach (var part in key.Split('/', StringSplitOptions.RemoveEmptyEntries))
         {
@@ -79,7 +94,7 @@ public sealed class EditSession
     /// <summary>Capture immutable edit inputs for background validation/export without changing the active viewer overlay.</summary>
     public EditSession Snapshot()
     {
-        var copy = new EditSession(GameRoot, OutputFolder, activateOverlay: false) { ProjectPath = ProjectPath, _cleanId = _cleanId, _addedDirty = _addedDirty, _nextId = _nextId };
+        var copy = new EditSession(GameRoot, OutputFolder, activateOverlay: false) { ProjectPath = ProjectPath, _cleanId = _cleanId, _addedDirty = _addedDirty, _baseDirty = _baseDirty, _nextId = _nextId };
         foreach (var (key, bytes) in _overrides) copy._overrides[key] = bytes.ToArray();
         foreach (var (key, bytes) in _added) copy._added[key] = bytes.ToArray();
         copy._undo.AddRange(_undo);
@@ -97,7 +112,7 @@ public sealed class EditSession
     public string? RedoLabel => _redo.Count > 0 ? _redo[^1].Description : null;
 
     /// <summary>True when the set of saved changes differs from the last saved project (or from the start when never saved).</summary>
-    public bool IsDirty => TopSavedId != _cleanId || _addedDirty;
+    public bool IsDirty => TopSavedId != _cleanId || _addedDirty || _baseDirty;
 
     /// <summary>
     /// Files that don't exist in the game, for a .mvpmod (a new archive member or texture): game path in the loose
@@ -119,7 +134,7 @@ public sealed class EditSession
     }
 
     /// <summary>Current logical bytes of an asset: the edited version when there is one, otherwise the original.</summary>
-    public byte[] GetBytes(AssetNode n) => _overrides.TryGetValue(n.Key, out var b) ? b : BaseBytes(n);
+    public byte[] GetBytes(AssetNode n) => _overrides.TryGetValue(n.Key, out var b) ? b : AddedPathOf(n) is { } added ? _added[added] : BaseBytes(n);
     public byte[]? GetOverride(AssetNode n) => _overrides.GetValueOrDefault(n.Key);
 
     /// <summary>Null when edits to <paramref name="n"/> can be saved into game assets; otherwise the reason they can only be previewed.</summary>
@@ -137,6 +152,15 @@ public sealed class EditSession
     public Change Commit(AssetNode node, byte[] newBytes, string description)
     {
         if (SaveBlocker(node) is { } why) throw new InvalidOperationException(why);
+        var ownAdded = AddedPathOf(node);
+        if (ownAdded is not null || BaseLayer?.Origin(node) is not null && node.DiskPath is not null && !File.Exists(node.DiskPath) && !Directory.Exists(node.DiskPath))
+        {
+            var path = ownAdded ?? Path.GetRelativePath(GameRoot.DiskPath!, node.DiskPath!).Replace('\\', '/');
+            var baseline = BaseLayer?.GetBytes(node);
+            var addedChange = new Change { Id = _nextId++, Key = node.Key, Path = node.Path, Kind = ChangeKind.Saved, Description = description,
+                AddedPath = path, Before = _added.GetValueOrDefault(path), After = baseline is not null && baseline.AsSpan().SequenceEqual(newBytes) ? null : newBytes };
+            Push(addedChange); Apply(addedChange, forward: true); Notify(); return addedChange;
+        }
         var before = _overrides.GetValueOrDefault(node.Key);
         var original = BaseBytes(node);
         byte[]? after = newBytes.AsSpan().SequenceEqual(original) ? null : newBytes;
@@ -199,6 +223,12 @@ public sealed class EditSession
     /// <summary>Drop every saved edit of an asset (as one undoable step).</summary>
     public void Revert(AssetNode node)
     {
+        if (AddedPathOf(node) is { } added)
+        {
+            var change = new Change { Id = _nextId++, Key = node.Key, Path = node.Path, Kind = ChangeKind.Saved,
+                Description = "Revert project copy", AddedPath = added, Before = _added[added], After = null };
+            Push(change); Apply(change, forward: true); Notify(); return;
+        }
         if (!_overrides.TryGetValue(node.Key, out var current)) return;
         var c = new Change { Id = _nextId++, Key = node.Key, Path = node.Path, Kind = ChangeKind.Saved, Description = "Revert to original", Before = current, After = null };
         Push(c);
@@ -226,7 +256,7 @@ public sealed class EditSession
     public void MarkRecovered() { _addedDirty = true; Notify(); }
 
     /// <summary>Call after the project file was written so unsaved-change tracking restarts from here.</summary>
-    public void MarkSaved() { _cleanId = TopSavedId; _addedDirty = false; Notify(); }
+    public void MarkSaved() { _cleanId = TopSavedId; _addedDirty = false; _baseDirty = false; Notify(); }
 
     /// <summary>Replace the saved-change set wholesale (project load). Clears history.</summary>
     internal void Load(IEnumerable<(string Key, byte[] Bytes)> edits)
@@ -256,6 +286,7 @@ public sealed class EditSession
             return;
         }
         var target = forward ? c.After : c.Before;
+        if (c.AddedPath is { } added) { if (target is null) _added.Remove(added); else _added[added] = target; return; }
         if (target is null) _overrides.Remove(c.Key); else _overrides[c.Key] = target;
     }
 

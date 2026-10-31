@@ -52,6 +52,7 @@ public sealed class TreeItem : Observable
     public TeamProfile? SchoolScope { get; init; }
     public string? AddedPath { get; init; }
     public bool IsAdded => AddedPath is not null;
+    public string BaseOrigin => Node is not null && Editor.Session?.BaseLayer?.Origin(Node) is { } origin ? "from " + origin : "";
     public Func<AssetNode, IEnumerable<TreeItem>>? ChildItems { get; init; }
 
     public TreeItem(string name, int depth, IEnumerable<TreeItem> children)
@@ -96,6 +97,7 @@ public sealed class TreeItem : Observable
     /// <summary>Recompute the edited marker for this item and every loaded descendant.</summary>
     public void RefreshEdited(MVPWorkshop.Core.Editing.EditSession? session)
     {
+        Raise(nameof(BaseOrigin));
         var now = Node is not null && session is not null && session.IsAffected(Node);
         if (now != _edited) { _edited = now; Raise(nameof(IsEdited)); }
         if (_loaded) foreach (var c in Children) c.RefreshEdited(session);
@@ -134,12 +136,12 @@ public sealed class TreeItem : Observable
 
 public sealed class DocumentTab : Observable
 {
-    public bool IsAdded => Node?.Location == "Added to mod";
+    public bool IsAdded => Node is not null && (Node.Location == "Added to mod" || Editor.Session?.AddedPathOf(Node) is not null);
     private string _title = "";
     private bool _edited;
     public required string Title { get => _title; init => _title = value; }
     /// <summary>Shown as a dot on the tab when the asset has pending changes.</summary>
-    public bool IsEdited { get => _edited; set { if (Set(ref _edited, value)) Raise(nameof(EditedTip)); } }
+    public bool IsEdited { get => _edited; set { Raise(nameof(IsAdded)); if (Set(ref _edited, value)) Raise(nameof(EditedTip)); } }
     public string EditedTip => "Edited in this project";
     public string ToolTip { get; init; } = "";
     public string Glyph { get; init; } = "";

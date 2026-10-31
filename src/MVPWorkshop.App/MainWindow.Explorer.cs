@@ -34,14 +34,18 @@ public partial class MainWindow
                 relative = relative.Length == 0 ? parts[i] : relative + "/" + parts[i];
                 var last = i == parts.Length - 1;
                 var full = Path.GetFullPath(Path.Combine(disk, relative));
-                var existing = !last ? parent.Children.FirstOrDefault(n => n.DiskPath is { } p && p.Equals(full, StringComparison.OrdinalIgnoreCase)) : null;
-                if (existing is not null) { parent = existing; continue; }
+                var existing = parent.Children.FirstOrDefault(n => n.DiskPath is { } p && p.Equals(full, StringComparison.OrdinalIgnoreCase));
+                if (existing is not null)
+                {
+                    if (last) { _addedPaths[existing] = path; for (var p = existing; p is not null; p = p.Parent) _addedAncestors.Add(p); }
+                    parent = existing; continue;
+                }
                 if (!_addedChildren.TryGetValue(parent, out var children)) _addedChildren[parent] = children = [];
                 var node = children.FirstOrDefault(n => n.Name.Equals(parts[i], StringComparison.OrdinalIgnoreCase));
                 if (node is null)
                 {
                     node = new AssetNode(parts[i], parent, !last, last ? bytes.Length : 0,
-                        last ? () => new MemoryByteSource(bytes) : null, "Added to mod");
+                        last ? () => new MemoryByteSource(bytes) : null, "Added to mod") { DiskPath = full };
 
                     children.Add(node);
                 }

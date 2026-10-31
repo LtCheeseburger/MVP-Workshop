@@ -680,6 +680,7 @@ public partial class MainWindow : Window
                 if (_gameRoot is null || !string.Equals(_gameRoot.DiskPath, Path.GetFullPath(game), StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Could not open the project's game source.");
             }
             var session = ProjectFile.Load(path, _gameRoot!, out var warnings);
+            ResetBaseViews();
             foreach (var w in warnings) Log.Warn(w);
             if (!recovery) ClearRecovery();
             foreach (var document in _docs.Where(d => d.CanClose).ToList()) { DisposeTree(document.Content); _docs.Remove(document); }

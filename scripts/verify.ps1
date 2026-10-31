@@ -34,7 +34,7 @@ try {
     Run-Dotnet 'verify-install-synthetic' @('run', '--project', 'tests/Install', '-c', $Configuration, '--no-build', '--no-restore', '--', 'verify', (Join-Path $runDirectory 'installed'))
     if (!$SkipDesktop) {
         $app = Join-Path $repository "src/MVPWorkshop.App/bin/$Configuration/net9.0-windows/MVP-Workshop.dll"
-        foreach ($name in @('shell', 'explorer', 'project', 'options', 'open-mod', 'diagnostics', 'tasks', 'game-log', 'conflicts', 'texture-folder', 'port-compatibility', 'roster-csv')) {
+        foreach ($name in @('shell', 'explorer', 'project', 'options', 'open-mod', 'diagnostics', 'tasks', 'game-log', 'conflicts', 'texture-folder', 'port-compatibility', 'roster-csv', 'base-mods')) {
             $report = Join-Path $runDirectory ($name + '.txt')
             $game = Join-Path $fixtures $(if ($name -in @('tasks', 'roster-csv')) { 'tasks' } else { 'explorer' })
             $arguments = @($app, '--game', $game, "--$name-selftest", $report)

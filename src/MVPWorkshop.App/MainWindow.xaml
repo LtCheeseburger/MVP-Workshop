@@ -126,6 +126,7 @@
             </MenuItem>
             <MenuItem Header="_Tools">
               <MenuItem Header="Options…" Click="Options_Click"/>
+              <MenuItem Header="Installed mods as base…" Click="BaseMods_Click"/>
               <MenuItem Header="Export all rosters CSV…" Click="ExportAllRosters_Click"/>
               <MenuItem Header="Import roster CSV (all schools)…" Click="ImportAllRosters_Click"/>
               <MenuItem Header="Test in Game" Command="{x:Static local:MainWindow.TestGameCmd}" InputGestureText="F5"/>
@@ -193,6 +194,7 @@
                     <TextBlock Text="{Binding Glyph}" Style="{StaticResource Glyph}" FontSize="13" Foreground="{Binding GlyphBrush}"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                       <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                      <TextBlock Text="{Binding BaseOrigin}" Foreground="{StaticResource Muted}" Margin="6,0,0,0"/>
                       <TextBlock Text="+" Foreground="{StaticResource Good}" Margin="6,0,0,0" ToolTip="Added to this mod" Visibility="{Binding IsAdded, Converter={x:Static local:Conv.BoolToVis}}"/>
                       <TextBlock Text="&#x25CF;" Foreground="{StaticResource Accent}" FontSize="9" Margin="6,1,0,0" VerticalAlignment="Center" ToolTip="Edited in this project"
                                  Visibility="{Binding IsEdited, Converter={x:Static local:Conv.BoolToVis}}"/>
