@@ -84,6 +84,7 @@ public sealed class AssetNode
     /// untouched game data through <see cref="OpenOriginal"/> instead.
     /// </summary>
     public static Func<AssetNode, byte[]?>? Overlay { get; set; }
+    public static Func<AssetNode, IReadOnlyList<AssetNode>, IReadOnlyList<AssetNode>>? ChildrenOverlay { get; set; }
 
     /// <summary>Open the logical (decompressed) bytes, including any edits applied by the active session.</summary>
     public IByteSource Open()
@@ -184,6 +185,9 @@ public sealed class AssetNode
     }
 
     public IReadOnlyList<AssetNode> Children
+        => ChildrenOverlay?.Invoke(this, OriginalChildren) ?? OriginalChildren;
+
+    internal IReadOnlyList<AssetNode> OriginalChildren
     {
         get
         {

@@ -42,16 +42,40 @@ public sealed class EditSession
     public EditSession(AssetNode gameRoot, string outputFolder, bool activateOverlay = true)
     {
         GameRoot = gameRoot; OutputFolder = outputFolder;
-        if (activateOverlay) AssetNode.Overlay = n =>
+        if (activateOverlay) ActivateOverlay();
+    }
+
+    private void ActivateOverlay()
+    {
+        AssetNode.Overlay = n =>
         {
-            if (_overrides.Count > 0 && _overrides.TryGetValue(n.Key, out var edited) && n.Root == GameRoot) return edited;
-            return _preview.Count > 0 && _preview.TryGetValue(n, out var shown) ? shown : null;
+            if (n.Root == GameRoot && _overrides.TryGetValue(n.Key, out var edited)) return edited;
+            if (_preview.TryGetValue(n, out var shown)) return shown;
+            return n.Root == GameRoot ? BaseLayer?.GetBytes(n) : null;
         };
+        AssetNode.ChildrenOverlay = (node, children) => node.Root == GameRoot ? BaseLayer?.Children(node, children) ?? children : children;
     }
 
     public AssetNode GameRoot { get; }
     public string OutputFolder { get; set; }
     public string? ProjectPath { get; set; }
+    public BaseModLayer? BaseLayer { get; private set; }
+    public void SetBaseLayer(BaseModLayer? layer) { BaseLayer = layer; Notify(); }
+    public AssetNode? Resolve(string key)
+    {
+        if (BaseLayer is not null) return BaseLayer.Resolve(key);
+        var node = GameRoot;
+        foreach (var part in key.Split('/', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var hash = part.LastIndexOf('#');
+            int? index = hash > 0 && int.TryParse(part.AsSpan(hash + 1), out var value) ? value : null;
+            var name = index is null ? part : part[..hash];
+            node = node.OriginalChildren.FirstOrDefault(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && (index is null || c.BigIndex == index));
+            if (node is null) return null;
+        }
+        return node;
+    }
+    public byte[] BaseBytes(AssetNode node) => BaseLayer?.GetBytes(node) ?? node.ReadOriginal();
     /// <summary>Capture immutable edit inputs for background validation/export without changing the active viewer overlay.</summary>
     public EditSession Snapshot()
     {
@@ -59,6 +83,7 @@ public sealed class EditSession
         foreach (var (key, bytes) in _overrides) copy._overrides[key] = bytes.ToArray();
         foreach (var (key, bytes) in _added) copy._added[key] = bytes.ToArray();
         copy._undo.AddRange(_undo);
+        copy.BaseLayer = BaseLayer;
         return copy;
     }
     public event Action? Changed;
@@ -94,7 +119,7 @@ public sealed class EditSession
     }
 
     /// <summary>Current logical bytes of an asset: the edited version when there is one, otherwise the original.</summary>
-    public byte[] GetBytes(AssetNode n) => _overrides.TryGetValue(n.Key, out var b) ? b : n.ReadOriginal();
+    public byte[] GetBytes(AssetNode n) => _overrides.TryGetValue(n.Key, out var b) ? b : BaseBytes(n);
     public byte[]? GetOverride(AssetNode n) => _overrides.GetValueOrDefault(n.Key);
 
     /// <summary>Null when edits to <paramref name="n"/> can be saved into game assets; otherwise the reason they can only be previewed.</summary>
@@ -113,7 +138,7 @@ public sealed class EditSession
     {
         if (SaveBlocker(node) is { } why) throw new InvalidOperationException(why);
         var before = _overrides.GetValueOrDefault(node.Key);
-        var original = node.ReadOriginal();
+        var original = BaseBytes(node);
         byte[]? after = newBytes.AsSpan().SequenceEqual(original) ? null : newBytes;
         var c = new Change { Id = _nextId++, Key = node.Key, Path = node.Path, Kind = ChangeKind.Saved, Description = description, Before = before, After = after };
         Push(c);

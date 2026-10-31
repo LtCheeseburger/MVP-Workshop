@@ -88,7 +88,7 @@ public static class MvpModExporter
     {
         var root = session.GameRoot;
         var files = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
-        var edited = session.Overrides.Select(kv => (Node: root.Resolve(kv.Key), kv.Key)).ToList();
+        var edited = session.Overrides.Select(kv => (Node: session.Resolve(kv.Key), kv.Key)).ToList();
         foreach (var (_, key) in edited.Where(e => e.Node is null)) problems.Add($"Edited asset '{key}' no longer exists in the game folder.");
         foreach (var group in edited.Where(e => e.Node is not null).GroupBy(e => ModExporter.DiskFileOf(e.Node!)))
         {
@@ -106,12 +106,13 @@ public static class MvpModExporter
                         continue;
                     }
                     var folder = file.DiskPath!;
-                    var sameLayout = DiskEquals(Path.Combine(folder, XshFolder.MetaName), parts[XshFolder.MetaName])
-                                     && parts.Keys.All(k => File.Exists(Path.Combine(folder, k)))
-                                     && Directory.EnumerateFiles(folder).Count() == parts.Count;
+                    var baseline = session.BaseLayer?.GetBytes(file) is { } basePack ? XshFolder.Split(basePack) : null;
+                    var sameLayout = baseline is not null
+                        ? baseline.Count == parts.Count && baseline[XshFolder.MetaName].AsSpan().SequenceEqual(parts[XshFolder.MetaName]) && parts.Keys.All(baseline.ContainsKey)
+                        : DiskEquals(Path.Combine(folder, XshFolder.MetaName), parts[XshFolder.MetaName]) && parts.Keys.All(k => File.Exists(Path.Combine(folder, k))) && Directory.EnumerateFiles(folder).Count() == parts.Count;
                     // same layout: only the images that changed; else the whole folder, which then replaces the game's
                     foreach (var (name, data) in parts)
-                        if (!sameLayout || !DiskEquals(Path.Combine(folder, name), data)) files[rel + "/" + name] = data;
+                        if (!sameLayout || (baseline is not null ? !baseline[name].AsSpan().SequenceEqual(data) : !DiskEquals(Path.Combine(folder, name), data))) files[rel + "/" + name] = data;
                     continue;
                 }
                 if (rel.EndsWith(".big", StringComparison.OrdinalIgnoreCase))
@@ -119,7 +120,8 @@ public static class MvpModExporter
                     problems.Add($"{rel} is a packed archive; the port only takes loose members in mods.");
                     continue;
                 }
-                if (!DiskEquals(file.DiskPath!, bytes)) files[rel] = bytes;
+                if (!DiskEquals(file.DiskPath!, bytes) || session.BaseLayer?.GetBytes(file) is not null) files[rel] = bytes;
+                if (session.BaseLayer?.NeedsRefpack(rel) == true) refpack.Add(rel);
             }
             catch (Exception ex) { problems.Add($"{rel}: {ex.Message}"); }
         }

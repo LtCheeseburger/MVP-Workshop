@@ -17,7 +17,7 @@ public static class ModDiagnostics
         if (info.Problem() is { } invalid) Error("", "Mod details", invalid);
         if (MvpModExporter.SessionProblem(session) is { } problem) Error("", "Installation", problem);
         cancellation.ThrowIfCancellationRequested();
-        var edited = session.Overrides.Keys.Select(k => session.GameRoot.Resolve(k)).OfType<AssetNode>().ToList();
+        var edited = session.Overrides.Keys.Select(session.Resolve).OfType<AssetNode>().ToList();
         var problems = new List<string>();
         Dictionary<string, byte[]> files = new(StringComparer.OrdinalIgnoreCase);
         if (session.GameRoot.DiskPath is not null)

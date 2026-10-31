@@ -23,6 +23,7 @@ normal user preferences and recent-project lists separate.
 
 | Project / check | Coverage |
 |---|---|
+| BaseMods | Read-only ZIP/folder composition, added paths, removals, merged textures, undo and project-only export isolation |
 | Dependencies | Explicit references, ambiguity, reverse impact, overlay refresh, cancellation |
 | Diagnostics | Texture/metadata/icon errors, previews, missing references, shared schools, snapshots |
 | GameLog | Release/debug logs, incremental reads, rotation, source filtering and asset links |
