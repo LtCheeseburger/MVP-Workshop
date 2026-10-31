@@ -47,6 +47,12 @@ try
     var again = MvpModImporter.Read(second);
     Check("export/open/export loose files identical", package.Files.Count == again.Files.Count && package.Files.All(f => again.Files[f.Key].SequenceEqual(f.Value)));
     Check("next version increments patch", MvpModImporter.NextVersion("1.2.3") == "1.2.4");
+    var incompleteLayout = new MvpModPackage { Info = info };
+    incompleteLayout.Files["logo.xsh/xsh.meta"] = File.ReadAllBytes(Path.Combine(game, "logo.xsh", XshFolder.MetaName));
+    var overlayBefore = AssetNode.Overlay;
+    bool layoutRejected = false;
+    try { MvpModImporter.Open(incompleteLayout, root, session.OutputFolder); } catch (InvalidDataException) { layoutRejected = true; }
+    Check("replacement texture metadata requires its own complete image set", layoutRejected && AssetNode.Overlay == overlayBefore);
     var invalid = Path.Combine(folder, "unsafe.mvpmod");
     using (var zip = ZipFile.Open(invalid, ZipArchiveMode.Create)) { using var writer = new StreamWriter(zip.CreateEntry("files/../../outside.txt").Open()); writer.Write("unsafe"); }
     bool rejected = false;

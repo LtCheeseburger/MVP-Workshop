@@ -68,7 +68,8 @@ public static class MvpModImporter
             foreach (var group in package.Files.Where(f => f.Key.Contains(".xsh/", StringComparison.OrdinalIgnoreCase)).GroupBy(f => f.Key[..(f.Key.IndexOf(".xsh/", StringComparison.OrdinalIgnoreCase) + 4)], StringComparer.OrdinalIgnoreCase))
             {
                 nodes.TryGetValue(group.Key, out var pack);
-                var parts = pack?.IsLooseTexturePack == true
+                var replacesLayout = group.Any(f => f.Key.Equals(group.Key + "/" + XshFolder.MetaName, StringComparison.OrdinalIgnoreCase));
+                var parts = pack?.IsLooseTexturePack == true && !replacesLayout
                     ? new Dictionary<string, byte[]>(XshFolder.Split(pack.ReadOriginal()) ?? throw new InvalidDataException($"{group.Key}: the installed texture layout is invalid."), StringComparer.OrdinalIgnoreCase)
                     : new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
                 foreach (var (path, data) in group) { parts[path[(group.Key.Length + 1)..]] = data; handled.Add(path); }
