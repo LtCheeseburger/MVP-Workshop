@@ -4,9 +4,23 @@ The local checkout with the format-1 `.mvpmod` contract is:
 
 `E:\Recomp Source\MVP06-NCAABB\MVP06-Base\MVP06-XBERecomp`
 
-The sibling `E:\Recomp Source\MVP06-NCAABB\MVP06-XBERecomp` is another checkout.
-The user has been asked which checkout should receive Phase 4 port changes.
+The user selected the top-level `E:\Recomp Source\MVP06-NCAABB\MVP06-XBERecomp`
+for Phase 4 changes on October 31, 2026. This folder contains runtime sources and
+existing Debug/Release CMake/Ninja build directories, but no Git metadata. Preserve
+original copies and reviewable diffs for port changes. No applicable AGENTS.md was
+found in the target/ancestor folders (dependency SDL instructions do not apply).
 No port files have been modified by this roadmap implementation.
+
+The selected checkout also has the format-1 mod loader. `main.cpp` calls
+`kernel::mods::Init` once before `kernel::Boot`; the game runs on a separate thread
+from the Win32 message loop. `mods.cpp` owns mutable global mod/file/hidden/RefPack
+maps. `files.cpp` holds shared `modvfs::Virtual` handles, and transfers into guest
+memory in `Transfer`. `gpu/texture.h` exposes `MarkDirty(resource)`/`DirtyEpoch`, but
+there is no verified file-to-live-guest-texture ownership map yet. Do not report a
+reload as applied merely after remounting host files. `src/game/startup.cpp` and
+`src/common/startup_ui.cpp` own native front-end routing; diagnostic environment
+variables already exercise menu/matchup navigation, but are not production target
+flags. Runtime implementation and real-game validation remain outstanding.
 
 ## Release compatibility metadata
 
