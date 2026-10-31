@@ -131,11 +131,10 @@
         <!-- Data explorer -->
         <Border Background="{StaticResource PanelBg}">
           <Grid>
-            <Grid.RowDefinitions><RowDefinition Height="34"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition/></Grid.RowDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="34"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition/></Grid.RowDefinitions>
             <DockPanel Margin="12,0,6,0">
               <TextBlock Text="DATA EXPLORER" Style="{StaticResource PanelHeader}"/>
               <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Style="{StaticResource Tool}" Padding="6,4" Click="EditedOnly_Click" ToolTip="List only the assets edited in this project"><TextBlock Text="&#xE70F;" Style="{StaticResource Glyph}" FontSize="12"/></Button>
                 <Button Style="{StaticResource Tool}" Padding="6,4" Click="CollapseAll_Click" ToolTip="Collapse all"><TextBlock Text="&#xE8C5;" Style="{StaticResource Glyph}" FontSize="12"/></Button>
               </StackPanel>
             </DockPanel>
@@ -147,7 +146,8 @@
             <ComboBox x:Name="BrowseMode" Grid.Row="2" Margin="10,0,10,8" SelectedIndex="0" SelectionChanged="BrowseMode_SelectionChanged" ToolTip="Browse assets by purpose or original archive path">
               <ComboBoxItem Content="Categories"/><ComboBoxItem Content="Files and archives"/>
             </ComboBox>
-            <TreeView x:Name="Tree" Grid.Row="3" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" SelectedItemChanged="Tree_SelectedItemChanged" MouseDoubleClick="Tree_MouseDoubleClick" KeyDown="Tree_KeyDown" PreviewMouseRightButtonDown="Tree_RightButtonDown" ContextMenuOpening="Tree_ContextMenuOpening">
+            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="12,0,10,8" ToolTip="Show all assets when neither is checked; checked kinds are combined."><CheckBox x:Name="ModifiedFilter" Content="Modified" Click="ExplorerFilter_Click" Margin="0,0,16,0"/><CheckBox x:Name="AddedFilter" Content="Added" Click="ExplorerFilter_Click"/></StackPanel>
+            <TreeView x:Name="Tree" Grid.Row="4" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" SelectedItemChanged="Tree_SelectedItemChanged" MouseDoubleClick="Tree_MouseDoubleClick" KeyDown="Tree_KeyDown" PreviewMouseRightButtonDown="Tree_RightButtonDown" ContextMenuOpening="Tree_ContextMenuOpening">
               <TreeView.ContextMenu><ContextMenu/></TreeView.ContextMenu>
               <TreeView.ItemTemplate>
                 <HierarchicalDataTemplate DataType="{x:Type local:TreeItem}" ItemsSource="{Binding Children}">
@@ -156,6 +156,7 @@
                     <TextBlock Text="{Binding Glyph}" Style="{StaticResource Glyph}" FontSize="13" Foreground="{Binding GlyphBrush}"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                       <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                      <TextBlock Text="+" Foreground="{StaticResource Good}" Margin="6,0,0,0" ToolTip="Added to this mod" Visibility="{Binding IsAdded, Converter={x:Static local:Conv.BoolToVis}}"/>
                       <TextBlock Text="&#x25CF;" Foreground="{StaticResource Accent}" FontSize="9" Margin="6,1,0,0" VerticalAlignment="Center" ToolTip="Edited in this project"
                                  Visibility="{Binding IsEdited, Converter={x:Static local:Conv.BoolToVis}}"/>
                     </StackPanel>
@@ -164,8 +165,8 @@
                 </HierarchicalDataTemplate>
               </TreeView.ItemTemplate>
             </TreeView>
-            <Grid x:Name="SearchPanel" Grid.Row="3" Visibility="Collapsed" Background="{StaticResource PanelBg}">
-              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition/></Grid.RowDefinitions>
+            <Grid x:Name="SearchPanel" Grid.Row="4" Visibility="Collapsed" Background="{StaticResource PanelBg}">
+              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition/></Grid.RowDefinitions>
               <DockPanel Margin="12,0,8,6">
                 <Button DockPanel.Dock="Right" Style="{StaticResource Tool}" Padding="6,3" Click="CloseSearch_Click" ToolTip="Back to tree"><TextBlock Text="&#xE8BB;" Style="{StaticResource Glyph}" FontSize="10"/></Button>
                 <TextBlock x:Name="SearchStatus" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
@@ -203,7 +204,8 @@
                 <StackPanel Orientation="Horizontal" ToolTip="{Binding ToolTip}">
                   <TextBlock Text="{Binding Glyph}" Style="{StaticResource Glyph}" FontSize="12" Margin="0,0,7,0"/>
                   <TextBlock Text="{Binding Title}" MaxWidth="220" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                  <TextBlock Text="&#x25CF;" Foreground="{StaticResource Accent}" FontSize="9" Margin="6,1,0,0" VerticalAlignment="Center" ToolTip="{Binding EditedTip}"
+                  <TextBlock Text="+" Foreground="{StaticResource Good}" Margin="6,0,0,0" ToolTip="Added to this mod" Visibility="{Binding IsAdded, Converter={x:Static local:Conv.BoolToVis}}"/>
+                      <TextBlock Text="&#x25CF;" Foreground="{StaticResource Accent}" FontSize="9" Margin="6,1,0,0" VerticalAlignment="Center" ToolTip="{Binding EditedTip}"
                              Visibility="{Binding IsEdited, Converter={x:Static local:Conv.BoolToVis}}"/>
                   <Button Style="{StaticResource Tool}" Padding="4,2" Margin="8,-2,-6,-2" Click="CloseTab_Click" Tag="{Binding}"
                           Visibility="{Binding CanClose, Converter={x:Static local:Conv.BoolToVis}}" ToolTip="Close (Ctrl+W)">

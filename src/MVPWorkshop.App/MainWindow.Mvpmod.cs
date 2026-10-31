@@ -36,6 +36,17 @@ public partial class MainWindow
         var node = sender == SearchResults ? SearchResults.SelectedItem as AssetNode : SelectedTreeItem?.Node;
         if (node is not { } n) { e.Handled = true; return; }
         void Add(string text, Action act) { var i = new MenuItem { Header = text }; i.Click += (_, _) => act(); menu.Items.Add(i); }
+        if (sender == Tree && SelectedTreeItem?.AddedPath is { } added)
+        {
+            Add("Open", () => OpenAsset(n));
+            Add("Export raw…", () => Exporter.SaveRaw(n));
+            Add("Remove", () =>
+            {
+                foreach (var tab in _docs.Where(d => d.Node == n).ToList()) CloseDocument(tab);
+                Editor.Session?.RemoveAdded(added);
+            });
+            return;
+        }
         var texture = n.IsLooseTexturePack || n.Parent?.IsLooseTexturePack == true || n.Format is FormatId.SshTexture;
         void Sep() { if (menu.Items.Count > 0 && menu.Items[^1] is not Separator) menu.Items.Add(new Separator()); }
         var s = Editor.Session;

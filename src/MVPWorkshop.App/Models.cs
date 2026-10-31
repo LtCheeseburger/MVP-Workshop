@@ -48,6 +48,9 @@ public sealed class TreeItem : Observable
     private readonly string? _groupName;
     public TeamProfile? Team { get; init; }
     public TeamProfile? SchoolScope { get; init; }
+    public string? AddedPath { get; init; }
+    public bool IsAdded => AddedPath is not null;
+    public Func<AssetNode, IEnumerable<TreeItem>>? ChildItems { get; init; }
 
     public TreeItem(string name, int depth, IEnumerable<TreeItem> children)
     {
@@ -118,7 +121,8 @@ public sealed class TreeItem : Observable
         try
         {
             if (!Node.IsContainer && !Node.IsLooseTexturePack) return;
-            foreach (var c in Node.Children) Children.Add(new TreeItem(c, Depth + 1));
+            foreach (var c in ChildItems?.Invoke(Node) ?? Node.Children.Select(c => new TreeItem(c, Depth + 1))) Children.Add(c);
+            RefreshEdited(Editor.Session);
             if (Node.LoadError is { } err) Log.Warn($"{Node.Name}: {err}");
         }
         catch (Exception ex) { Log.Error($"{Node.Name}: {ex.Message}"); }

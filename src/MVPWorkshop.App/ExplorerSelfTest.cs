@@ -131,17 +131,49 @@ public static class ExplorerSelfTest
                     Check(surface.Name + " texture opens clicked asset", ((DocumentTab)w.Docs.SelectedItem).Node == texture);
                 }
             }
-            var edited = Find<Button>(w).Single(bu => bu.ToolTip?.ToString() == "List only the assets edited in this project");
-            edited.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            Check("Edited only empty state", w.SearchStatus.Text == "Nothing edited yet");
-            s.AddFile("new.txt", [1]); Check("Edited only added-only count", w.SearchStatus.Text.Contains("1 added"));
-            s.Commit(a, File.ReadAllBytes(replacement), "Fixture edit");
-            Check("Edited only live edit", w.SearchResults.Items.Cast<AssetNode>().SequenceEqual(new[] { a }));
-            s.Revert(a); Check("Edited only live revert", w.SearchResults.Items.Count == 0);
-            s.Undo(); Check("Edited only live undo", w.SearchResults.Items.Count == 1);
-            s.Redo(); Check("Edited only live redo", w.SearchResults.Items.Count == 0);
-            s.RemoveAdded("new.txt");
-            try { await Exporter.ExtractTreeTo(folder, Path.Combine(root.DiskPath!, "blocked-extraction")); Check("Extraction rejects game directory", false); }
+            IEnumerable<TreeItem> Rows(IEnumerable<TreeItem> items)
+            {
+                foreach (var row in items)
+                {
+                    yield return row;
+                    row.EnsureLoaded();
+                    foreach (var child in Rows(row.Children)) yield return child;
+                }
+            }
+            void Filter(bool modified, bool added)
+            {
+                w.ModifiedFilter.IsChecked = modified; w.AddedFilter.IsChecked = added;
+                w.ModifiedFilter.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));
+            }
+            List<TreeItem> AllRows() => Rows(w.Tree.Items.Cast<TreeItem>()).ToList();
+            foreach (var mode in new[] { 1, 0 })
+            {
+                w.BrowseMode.SelectedIndex = mode; await Task.Delay(600);
+                Filter(true, false); await Settle();
+                Check("Modified empty tree " + mode, w.Tree.Items.Count == 0);
+                s.AddFile("sample_big/new/sub/new.txt", [1, 2, 3]);
+                s.Commit(a, File.ReadAllBytes(replacement), "Fixture edit");
+                await Settle();
+                Check("Modified includes asset and parents " + mode, AllRows().Any(r => r.Node == a) && AllRows().Any(r => r.Node is null || r.Node == folder));
+                Check("Modified excludes unrelated asset " + mode, !AllRows().Any(r => r.Node == b || r.IsAdded));
+                Filter(false, true); await Settle();
+                Check("Added includes marked node " + mode, AllRows().Count(r => r.IsAdded) == 1);
+                Check("Added excludes modified " + mode, !AllRows().Any(r => r.Node == a));
+                Filter(true, true); await Settle();
+                Check("Combined union " + mode, AllRows().Any(r => r.Node == a) && AllRows().Any(r => r.IsAdded));
+                s.Revert(a); await Settle(); Check("Live revert " + mode, !AllRows().Any(r => r.Node == a));
+                s.Undo(); await Settle(); Check("Live undo " + mode, AllRows().Any(r => r.Node == a));
+                s.Redo(); await Settle(); Check("Live redo " + mode, !AllRows().Any(r => r.Node == a));
+                var addedRow = AllRows().Single(r => r.IsAdded);
+                foreach (var row in AllRows()) row.IsExpanded = true;
+                addedRow.IsSelected = true; await Settle();
+                var visual = Find<TreeViewItem>(w.Tree).First(r => r.DataContext == addedRow);
+                var addedMenu = await Menu(w.Tree, visual);
+                Click(Item(addedMenu, "Remove")); await Settle();
+                Check("Remove updates session and tree " + mode, s.Added.Count == 0 && !AllRows().Any(r => r.IsAdded));
+                Filter(false, false); await Settle();
+                Check("Unchecked shows all " + mode, AllRows().Any(r => r.Node == b));
+            }            try { await Exporter.ExtractTreeTo(folder, Path.Combine(root.DiskPath!, "blocked-extraction")); Check("Extraction rejects game directory", false); }
             catch (InvalidOperationException) { Check("Extraction rejects game directory", true); }
             try { Exporter.CheckOutput(Path.Combine(root.DiskPath!, "blocked-export.txt")); Check("Raw export rejects game directory", false); }
             catch (InvalidOperationException) { Check("Raw export rejects game directory", true); }
