@@ -154,7 +154,9 @@ public static class ViewerFactory
         ? LooseImage(node, pack, setExtra)
         : node.Format switch
     {
-        FormatId.BigArchive or FormatId.SchlContainer => new ArchiveView(node),
+        FormatId.BigArchive => new ArchiveView(node),
+        FormatId.SchlContainer => new AudioView(AudioView.FromStreams(src), node, setExtra),
+        FormatId.SonyHd or FormatId.SonyBd => AudioView.ForSony(node, setExtra),
         FormatId.SshTexture => new TextureView(SshFile.Read(src.ReadAll()), node, setExtra),
         FormatId.RawRgb => TextureView.ForRaw(node, src, setExtra),
         FormatId.SchlStream => new AudioView(AudioView.FromStreams(src), node, setExtra),

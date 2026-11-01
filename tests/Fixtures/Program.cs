@@ -15,6 +15,18 @@ BinaryPrimitives.WriteInt32LittleEndian(texture.AsSpan(24), (24 << 8) | 0x60);
 BinaryPrimitives.WriteUInt16LittleEndian(texture.AsSpan(28), 4); BinaryPrimitives.WriteUInt16LittleEndian(texture.AsSpan(30), 4);
 Bytes("explorer/default.xbe", [0, 1, 2, 3]); Text("explorer/sample_big/_big.json", "{}");
 Text("explorer/sample_big/a.txt", "original a\n"); Text("explorer/sample_big/b.txt", "original b\n");
+using (var audio = new MemoryStream())
+using (var writer = new BinaryWriter(audio))
+{
+    using var patch = new MemoryStream(); using var tags = new BinaryWriter(patch);
+    tags.Write("PT"u8); tags.Write((ushort)5);
+    void Tag(byte id, uint value) { tags.Write(id); tags.Write((byte)4); tags.Write(BinaryPrimitives.ReverseEndianness(value)); }
+    Tag(0x82,1); Tag(0x84,22050); Tag(0x85,2205); Tag(0xA0,8); tags.Write((byte)0xff);
+    writer.Write("SCHl"u8); writer.Write((int)patch.Length+8); writer.Write(patch.ToArray());
+    writer.Write("SCDl"u8); writer.Write(16+4410); writer.Write(2205); writer.Write(0);
+    for(int i=0;i<2205;i++) writer.Write((short)(Math.Sin(i*0.08)*9000));
+    writer.Write("SCEl"u8); writer.Write(8); Bytes("explorer/sample_big/tone.asf",audio.ToArray());
+}
 if (!LooseInstall.WriteTexturePack(texture, Path.Combine(output, "explorer/sample_big/logo0.xsh"), out var error)) throw new InvalidDataException(error);
 var roster = new byte[4 + 495 * 2]; BinaryPrimitives.WriteInt32LittleEndian(roster, 2);
 for (int i = 0; i < 2; i++)

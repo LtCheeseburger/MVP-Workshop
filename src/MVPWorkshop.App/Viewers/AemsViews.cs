@@ -119,7 +119,7 @@ public static class AemsViews
     {
         var all = src.ReadAll();
         var abk = AbkBank.Read(all);
-        if (abk.ExtractBank(all) is { } bnk) return new AudioView(AudioView.FromBank(bnk), node, setExtra);
+        if (abk.ExtractBank(all) is { } bnk) return new AudioView(AudioView.FromBank(bnk, replacement => { if (replacement.Length != bnk.Length) throw new InvalidOperationException("Bank allocation changed."); var copy = all.ToArray(); replacement.CopyTo(copy, abk.BankOffset); return copy; }), node, setExtra);
 
         var ast = node.Parent?.Children.FirstOrDefault(c => c.Name.Equals(System.IO.Path.ChangeExtension(node.Name, ".AST"), StringComparison.OrdinalIgnoreCase));
         var sp = new StackPanel();

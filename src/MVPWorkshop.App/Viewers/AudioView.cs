@@ -6,6 +6,8 @@ using System.Windows.Media;
 using MVPWorkshop.Core.Formats;
 using MVPWorkshop.Core.IO;
 using MVPWorkshop.Core.Vfs;
+using MVPWorkshop.Core.Editing;
+using System.Diagnostics;
 
 namespace MVPWorkshop.App.Viewers;
 
@@ -19,6 +21,8 @@ public sealed class AudioView : Grid, IDisposable
         public required EaPatchHeader Header { get; init; }
         public required Func<DecodedAudio> Decode { get; init; }
         public List<Prop> Extra { get; init; } = [];
+        public Func<DecodedAudio, (byte[] Bytes, DecodedAudio Preview)>? Replace { get; init; }
+        public Action? ValidateSource { get; init; }
     }
 
     private readonly AssetNode _node;
@@ -27,9 +31,25 @@ public sealed class AudioView : Grid, IDisposable
     private readonly WaveformView _wave = new();
     private readonly TextBlock _title = B.Text("", "Text", 16, FontWeights.SemiBold);
     private readonly TextBlock _sub = B.Text("", "Muted");
+    private readonly TextBlock _usage = B.Text("Resolving confirmed usage…", "Muted");
     private readonly TextBlock _msg = B.Text("", "Muted");
     private SoundPlayer? _player;
     private DecodedAudio? _audio;
+    private readonly byte[] _sourceBaseline;
+
+    public static FrameworkElement ForSony(AssetNode node, Action<List<Prop>> setExtra)
+    {
+        var header = node.Extension == ".hd" ? node : node.Parent?.Children.FirstOrDefault(n => n.Name.Equals(Path.ChangeExtension(node.Name, ".hd"), StringComparison.OrdinalIgnoreCase));
+        var body = node.Extension == ".bd" ? node : node.Parent?.Children.FirstOrDefault(n => n.Name.Equals(Path.ChangeExtension(node.Name, ".bd"), StringComparison.OrdinalIgnoreCase));
+        if (header is null || body is null) return new TextBlock { Text = "Open the game folder containing both Sony HD and BD partners.", Margin = new Thickness(16) };
+        var bytes = body.ReadAll(); var headerBytes = header.ReadAll(); var sounds = SonySoundBank.Read(headerBytes, bytes.Length);
+        var items = sounds.Select(sound =>
+        {
+            var patch = new EaPatchHeader { Platform = 5 }; patch.Tags.AddRange([(0x82, 1u, 0), (0x84, (uint)sound.SampleRate, 0), (0x85, (uint)(sound.Length / 16 * 28), 0), (0xA0, 5u, 0)]);
+            return new Item { Title = "Sony sample " + sound.Index, Subtitle = $"PS-ADPCM · {sound.SampleRate} Hz · HD Vagi @ BD 0x{sound.Offset:X}", Header = patch, Decode = () => SonySoundBank.Decode(bytes, sound), ValidateSource = () => { if (!header.ReadAll().AsSpan().SequenceEqual(headerBytes)) throw new InvalidOperationException("Sony header changed; reopen the sound bank."); }, Replace = audio => { if (sounds.Count(s => s.Offset == sound.Offset) != 1) throw new InvalidOperationException("This Sony payload is shared; isolated replacement is unavailable."); var replacement = AudioReplacement.Sony(bytes, sound, audio); return (replacement, SonySoundBank.Decode(replacement, sound)); } };
+        }).ToList();
+        return new AudioView(items, body, setExtra);
+    }
 
     public static List<Item> FromStreams(IByteSource src) =>
         SchlStream.ScanAll(src).Select((s, i) => new Item
@@ -38,10 +58,11 @@ public sealed class AudioView : Grid, IDisposable
             Subtitle = s.Header is { } h ? $"{EaPatchHeader.CodecName(h.Codec2)} · {h.SampleRate} Hz · {h.Channels}ch" : "no header",
             Header = s.Header ?? new EaPatchHeader(),
             Decode = () => s.Decode(src),
+            Replace = audio => { var bytes = AudioReplacement.Stream(src.ReadAll(), i, audio); var memory = new MemoryByteSource(bytes); return (bytes, SchlStream.ScanAll(memory)[i].Decode(memory)); },
             Extra = [new("Stream", "Offset", $"0x{s.Offset:X}"), new("Stream", "Length", $"{s.Length:N0}"), new("Stream", "Blocks", string.Join(" ", s.Blocks.GroupBy(b => b.Id).Select(g => $"{g.Key}×{g.Count()}")))],
         }).ToList();
 
-    public static List<Item> FromBank(byte[] data)
+    public static List<Item> FromBank(byte[] data, Func<byte[], byte[]>? wrap = null)
     {
         var bank = EaBank.Read(data);
         return bank.Sounds.Select(s => new Item
@@ -50,13 +71,14 @@ public sealed class AudioView : Grid, IDisposable
             Subtitle = $"{EaPatchHeader.CodecName(s.Header.Codec2)} · {s.Header.SampleRate} Hz · {(s.Header.SampleRate > 0 ? s.Header.Samples / (double)s.Header.SampleRate : 0):0.00}s",
             Header = s.Header,
             Decode = () => EaBank.Decode(data, s),
+            Replace = audio => { var bytes = AudioReplacement.Bank(data, s.Index, audio); return (wrap?.Invoke(bytes) ?? bytes, EaBank.Decode(bytes, EaBank.Read(bytes).Sounds.Single(sound => sound.Index == s.Index))); },
             Extra = [new("Sound", "Header offset", $"0x{s.HeaderOffset:X}"), new("Sound", "Bank version", bank.Version.ToString())],
         }).ToList();
     }
 
     public AudioView(List<Item> items, AssetNode node, Action<List<Prop>> setExtra)
     {
-        _node = node; _setExtra = setExtra;
+        _node = node; _setExtra = setExtra; _sourceBaseline = node.ReadAll();
         _list.ItemsSource = items;
         _list.Background = Ui.Res("PanelBg");
         _list.ItemTemplate = Template();
@@ -65,6 +87,8 @@ public sealed class AudioView : Grid, IDisposable
         var toolbar = B.Toolbar(
             B.Button("Play", "", (_, _) => Play(), "Primary"),
             B.Button("Stop", "", (_, _) => _player?.Stop()),
+            B.Button("Replace audio…", null, async (_, _) => await ReplaceAudio(), "Outline"),
+            B.Button("Used by / moments", null, (_, _) => MainWindow.Instance?.ShowDependencies(_node), "Outline"),
             B.Separator(),
             B.Button("Export WAV", "", (_, _) => ExportWav(), "Outline"),
             B.Button("Export All", "", (_, _) => ExportAll(items), "Outline"));
@@ -72,6 +96,7 @@ public sealed class AudioView : Grid, IDisposable
         var info = new StackPanel { Margin = new Thickness(24, 20, 24, 8) };
         info.Children.Add(_title);
         info.Children.Add(_sub);
+        _usage.TextWrapping = TextWrapping.Wrap; info.Children.Add(_usage);
         var waveHost = new Border { Child = _wave, Margin = new Thickness(24, 8, 24, 8), Background = Ui.Res("PanelBg"), BorderBrush = Ui.Res("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), MinHeight = 160 };
         var msgHost = new Border { Child = _msg, Margin = new Thickness(24, 4, 24, 16) };
         var right = B.Rows((toolbar, B.Auto), (info, B.Auto), (waveHost, B.Star()), (msgHost, B.Auto));
@@ -80,6 +105,16 @@ public sealed class AudioView : Grid, IDisposable
         Children.Add(B.Cols((listHost, B.Px(250)), (B.VSplit(), B.Px(4)), (right, B.Star())));
         if (items.Count > 0) _list.SelectedIndex = 0;
         else _msg.Text = "No playable sounds found.";
+        void Changed() { _player?.Stop(); Select(); }
+        Loaded += (_, _) => { Editor.Changed -= Changed; Editor.Changed += Changed; };
+        Unloaded += (_, _) => { Editor.Changed -= Changed; _player?.Stop(); };
+        Loaded += async (_, _) =>
+        {
+            if (MainWindow.Instance is not { } main) return;
+            try { var index = await main.GetDependencies(); var consumers = index.Impact("asset:" + node.Key); _usage.Text = "Confirmed usage: " + (consumers.Count == 0 ? "school/event binding unresolved" : string.Join("; ", consumers.Take(12).Select(c => c.Label))); }
+            catch (OperationCanceledException) { }
+            catch (Exception ex) { Log.Warn("Audio usage: " + ex.Message); }
+        };
     }
 
     private static DataTemplate Template()
@@ -95,6 +130,7 @@ public sealed class AudioView : Grid, IDisposable
 
     private void Select()
     {
+        if (!_node.ReadAll().AsSpan().SequenceEqual(_sourceBaseline)) { _audio = null; _player?.Stop(); _wave.SetAudio(null); _msg.Text = "Audio changed. Reopen this asset to refresh its sound entries."; return; }
         _player?.Stop();
         if (_list.SelectedItem is not Item it) return;
         _title.Text = $"{_node.Name} — {it.Title}";
@@ -104,6 +140,7 @@ public sealed class AudioView : Grid, IDisposable
         props.AddRange(it.Extra);
         try
         {
+            it.ValidateSource?.Invoke();
             _audio = it.Decode();
             _wave.SetAudio(_audio);
             _msg.Text = $"{_audio.Duration:0.00}s · {_audio.Pcm.Length / Math.Max(1, _audio.Channels):N0} samples/ch · {_audio.Notes}";
@@ -129,6 +166,61 @@ public sealed class AudioView : Grid, IDisposable
         _player.Play();
     }
 
+    internal async Task ReplaceAudio(string? inputPath = null)
+    {
+        if (!_node.ReadAll().AsSpan().SequenceEqual(_sourceBaseline)) { _msg.Text = "Reopen this asset before another replacement."; return; }
+        if (_list.SelectedItem is not Item item || _audio is null || item.Replace is null) return;
+        if (AudioReplacement.Unsupported(item.Header) is { } why) { MessageBox.Show(Window.GetWindow(this), why, "Replacement unavailable"); return; }
+        if (inputPath is null) { var pick = new Microsoft.Win32.OpenFileDialog { Filter = "Audio|*.wav;*.mp3;*.ogg", Title = "Replace sound · native sample count is preserved" }; if (pick.ShowDialog(Window.GetWindow(this)) != true) return; inputPath = pick.FileName; }
+        var session = Editor.Session; var baseline = _node.ReadAll();
+        try
+        {
+            item.ValidateSource?.Invoke();
+            _msg.Text = "Converting and encoding replacement…";
+            double duration = _audio!.Duration;
+            var imported = await Task.Run(() => ReadInput(inputPath, item.Header.SampleRate, item.Header.Channels, duration));
+            var proposed = await Task.Run(() => item.Replace(imported));
+            var review = new Window { Owner = Window.GetWindow(this), Title = "Audio replacement preview", Width = 520, SizeToContent = SizeToContent.Height, WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = Ui.Res("PanelBg"), Foreground = Ui.Res("Text") };
+            var panel = new StackPanel { Margin = new Thickness(16) };
+            panel.Children.Add(new TextBlock { Text = $"{item.Title} · {EaPatchHeader.CodecName(item.Header.Codec2)}\n{proposed.Preview.SampleRate} Hz · {proposed.Preview.Channels} channel(s) · {proposed.Preview.Duration:0.000}s\nInput is resampled, channel-converted and trimmed/silence-padded to the original sample count. Bank offsets, stream block sizes and loop metadata stay fixed.", TextWrapping = TextWrapping.Wrap });
+            panel.Children.Add(B.Button("Play encoded preview", null, (_, _) => { _player?.Stop(); _player = new SoundPlayer(new MemoryStream(AudioCodecs.ToWav(proposed.Preview))); _player.Play(); }, "Outline"));
+            panel.Children.Add(B.Button("Continue to impact review", null, (_, _) => review.DialogResult = true, "Primary"));
+            panel.Children.Add(B.Button("Cancel", null, (_, _) => review.DialogResult = false, "Outline")); review.Content = panel;
+            bool accepted; try { accepted = review.ShowDialog() == true; } finally { _player?.Stop(); }
+            if (!accepted || MainWindow.Instance is not { } main) return;
+            var decision = await main.PrepareReplacement(_node);
+            if (decision is null) return;
+            if (!ReferenceEquals(session, Editor.Session) || !_node.ReadAll().AsSpan().SequenceEqual(baseline)) throw new InvalidOperationException("Audio changed; repeat the import.");
+            item.ValidateSource?.Invoke();
+            decision.Apply(proposed.Bytes, "Replace " + item.Title + " from " + Path.GetFileName(inputPath));
+            _audio = proposed.Preview; _wave.SetAudio(_audio); _msg.Text = "Saved audio replacement. Reopen the asset after undo or to replace another sound.";
+        }
+        catch (Exception ex) { _msg.Text = ex.Message; Log.Warn("Audio replace: " + ex.Message); }
+    }
+
+    internal static DecodedAudio ReadInput(string path, int rate, int channels, double duration = 600)
+    {
+        if (new FileInfo(path).Length > 256 * 1024 * 1024) throw new InvalidDataException("Audio input exceeds 256 MiB.");
+        if (Path.GetExtension(path).Equals(".wav", StringComparison.OrdinalIgnoreCase))
+            try { return AudioReplacement.ReadPcmWav(File.ReadAllBytes(path)); } catch (NotSupportedException) { }
+        string? executable = null;
+        foreach (var directory in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
+        { var candidate = Path.Combine(directory.Trim('"'), "ffmpeg.exe"); if (File.Exists(candidate)) { executable = candidate; break; } }
+        if (executable is null) throw new InvalidOperationException("ffmpeg.exe is required on PATH for MP3/OGG and non-PCM WAV inputs.");
+        var output = Path.Combine(Path.GetTempPath(), "mvp-audio-" + Guid.NewGuid().ToString("N") + ".wav");
+        try
+        {
+            var start = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true };
+            foreach (var argument in new[] { "-v", "error", "-nostdin", "-y", "-i", path, "-vn", "-ar", rate.ToString(), "-ac", channels.ToString(), "-t", duration.ToString(System.Globalization.CultureInfo.InvariantCulture), "-c:a", "pcm_s16le", output }) start.ArgumentList.Add(argument);
+            using var process = Process.Start(start)!; var errors = process.StandardError.ReadToEndAsync();
+            if (!process.WaitForExit(60000)) { process.Kill(true); throw new TimeoutException("Audio conversion exceeded one minute."); }
+            string error = errors.GetAwaiter().GetResult(); if (process.ExitCode != 0) throw new InvalidDataException("ffmpeg: " + error);
+            if (new FileInfo(output).Length > 256 * 1024 * 1024) throw new InvalidDataException("Converted audio exceeds sample limit.");
+            return AudioReplacement.ReadPcmWav(File.ReadAllBytes(output));
+        }
+        finally { if (File.Exists(output)) File.Delete(output); }
+    }
+
     private void ExportWav()
     {
         if (_audio is null || _list.SelectedItem is not Item it) return;
@@ -139,6 +231,7 @@ public sealed class AudioView : Grid, IDisposable
     {
         var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Export all sounds to…" };
         if (dlg.ShowDialog(Window.GetWindow(this)) != true) return;
+        try { Exporter.CheckOutput(dlg.FolderName, _node.Root); } catch (Exception ex) { MessageBox.Show(Window.GetWindow(this), ex.Message, "Export audio"); return; }
         int ok = 0, fail = 0;
         foreach (var it in items)
         {

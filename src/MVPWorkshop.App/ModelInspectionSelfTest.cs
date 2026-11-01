@@ -23,6 +23,7 @@ public sealed partial class ModelView
         {
             _animList!.SelectedItem=clip; TogglePlay(); _frameSlider.Value=Math.Min(3,_frameSlider.Maximum); UpdateDeformation();
             Check("timeline scrubs and pauses the native clip",!_playing && _frame==(float)_frameSlider.Value && _frameText.Text.Length>0);
+            Check("play/pause retains a visible button label",_playButton!.Content is System.Windows.Controls.StackPanel panel && panel.Children.OfType<System.Windows.Controls.TextBlock>().Last().Text=="Play");
             GltfInterchange.Export(Path.Combine(directory,"native-clip.gltf"),_model,TexturePngs(),Skeleton,_anim,_animRoot);
             Check("native animation and skin export to glTF",new FileInfo(Path.Combine(directory,"native-clip.gltf")).Length>1000);
         }

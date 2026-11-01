@@ -64,7 +64,7 @@ public sealed partial class ModelView
 
     private FrameworkElement BuildAnimPanel()
     {
-        Unloaded += (_, _) => { _playTimer?.Stop(); _playing = false; _deformTimer?.Stop(); if (_playButton is not null) _playButton.Content = B.Text("Play"); };
+        Unloaded += (_, _) => { _playTimer?.Stop(); _playing = false; _deformTimer?.Stop(); UpdatePlayLabel(); };
         if (Skeleton is null)
             return new TextBlock { Text = "Animations need a skinned model with a __Skeleton.", Foreground = Ui.Res("Muted"), Margin = new Thickness(12), TextWrapping = TextWrapping.Wrap };
 
@@ -201,7 +201,7 @@ public sealed partial class ModelView
     {
         if (_anim is null) return;
         _playing = !_playing;
-        if (_playButton is not null) _playButton.Content = _playing ? B.Text("Pause") : B.Text("Play");
+        UpdatePlayLabel();
         if (_playing)
         {
             _playTimer ??= new DispatcherTimer(TimeSpan.FromMilliseconds(33), DispatcherPriority.Render, (_, _) => Tick(), Dispatcher);
@@ -232,11 +232,17 @@ public sealed partial class ModelView
 
     private void UpdateFrameText() => _frameText.Text = _anim is null ? "—" : $"{_frame,5:0.0} / {_anim.Frames - 1}";
 
+    private void UpdatePlayLabel()
+    {
+        if (_playButton?.Content is StackPanel panel && panel.Children.OfType<TextBlock>().LastOrDefault() is { } label)
+            label.Text = _playing ? "Pause" : "Play";
+    }
+
     private void StopAnim()
     {
         _playTimer?.Stop();
         _playing = false;
-        if (_playButton is not null) _playButton.Content = B.Text("Play");
+        UpdatePlayLabel();
         _anim = _animRoot = null;
         if (_animList is not null) _animList.SelectedItem = null;
         UpdateFrameText();

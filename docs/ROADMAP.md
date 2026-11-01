@@ -66,7 +66,10 @@ each lands as its own commit and is checked in the running app.
       frame counter and sampled glTF clip export. Native animation-bank editing remains deferred.
 - [x] Universal Hex and Structure tables, known byte-region overlays, decoded headers/fields and raw
       header words; survey ranks missing specialized viewers. Undecoded layouts remain labelled raw.
-- [ ] Audio: play, replace with automatic encoding
+- [x] Audio: SCHl/BNKl/ABKC and Sony HD/BD playback; WAV/MP3/OGG import, native VAG/EA-XA/PCM
+      encoding, encoded preview, impact review, undo and confirmed/unresolved usage labels.
+- [ ] MicroTalk replacement encoder and undecoded school/event assignment authoring; playback/export
+      remain available. Fixed-duration/native-allocation limits are documented in AUDIO_REPLACEMENT.md.
 
 ## 7. Batch and round-trip
 

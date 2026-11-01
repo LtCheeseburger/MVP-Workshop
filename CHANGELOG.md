@@ -3,6 +3,8 @@
 ## Unreleased — 2026-10-30
 
 ### Added
+- Audio now plays stream packs and paired Sony HD/BD samples, imports WAV/MP3/OGG (ffmpeg for compressed inputs), preserves native rate/channels/duration and encodes VAG, EA-XA or PCM in place. Encoded preview, impact review, shared-payload/stale-source guards and undo protect replacements. Confirmed consumers are shown; unresolved bindings stay labelled. MicroTalk playback/export remain supported, but replacement needs a verified encoder.
+- Phase 6 verification adds model interchange, audio encoding and structure suites plus a desktop preview/cancel/commit/undo check. All 17 synthetic desktop checks pass; real Xbox mesh/clip and PS2 audio checks pass separately.
 - Every asset has Structure tables and Hex region navigation. Known archive, image, executable, ELF and audio layouts highlight bounded byte regions; unknown formats expose raw words without guessed semantics. Format survey and Markdown reports show viewer coverage and rank missing specialized viewers by frequency.
 - Animation playback exports selected body/root clips to glTF with sampled local bone tracks and the current model skin. Lowercase loose-install bank names now select the default gameplay bank correctly, controls scroll on short windows, and playback timers stop when the viewer closes. Native bank editing is deferred.
 - Model inspection adds sibling LOD selection, textured material lists, wireframe, normals and UV layouts. Self-contained glTF includes materials, textures and available skin/bones. Xbox FLOAT3 position replacement preserves native topology and metadata, validates shared vertices/bounds and uses impact review and undo; PS2/quantized layouts remain export-only.
@@ -45,9 +47,6 @@
 ## 1.0.7 — 2026-10-28
 
 ### Added
-- Every asset has Structure tables and Hex region navigation. Known archive, image, executable, ELF and audio layouts highlight bounded byte regions; unknown formats expose raw words without guessed semantics. Format survey and Markdown reports show viewer coverage and rank missing specialized viewers by frequency.
-- Animation playback exports selected body/root clips to glTF with sampled local bone tracks and the current model skin. Lowercase loose-install bank names now select the default gameplay bank correctly, controls scroll on short windows, and playback timers stop when the viewer closes. Native bank editing is deferred.
-- Model inspection adds sibling LOD selection, textured material lists, wireframe, normals and UV layouts. Self-contained glTF includes materials, textures and available skin/bones. Xbox FLOAT3 position replacement preserves native topology and metadata, validates shared vertices/bounds and uses impact review and undo; PS2/quantized layouts remain export-only.
 - **Import folder…** in the texture viewer: replaces every image of a pack at once from a folder of pictures named after the slots (`hat.png`, `merf.tga`, `lega.png`…). A review list shows what each slot gets; the import is one undo step.
 - In a uniform, **`torf` and `llod` are made for you** when the folder has none: `torf` is `tors` with its top quadrants mirrored, and `llod` (the low-detail atlas) gets the new torso, legs and hat scaled into place.
 - **4K textures:** Xbox textures can be imported at up to 4096×4096, converted to the slot's format with the original mip count.
@@ -62,9 +61,6 @@ First release with the built-in updater, and the first public build since 1.0.3:
 ## 1.0.5 — 2026-10-28
 
 ### Added
-- Every asset has Structure tables and Hex region navigation. Known archive, image, executable, ELF and audio layouts highlight bounded byte regions; unknown formats expose raw words without guessed semantics. Format survey and Markdown reports show viewer coverage and rank missing specialized viewers by frequency.
-- Animation playback exports selected body/root clips to glTF with sampled local bone tracks and the current model skin. Lowercase loose-install bank names now select the default gameplay bank correctly, controls scroll on short windows, and playback timers stop when the viewer closes. Native bank editing is deferred.
-- Model inspection adds sibling LOD selection, textured material lists, wireframe, normals and UV layouts. Self-contained glTF includes materials, textures and available skin/bones. Xbox FLOAT3 position replacement preserves native topology and metadata, validates shared vertices/bounds and uses impact review and undo; PS2/quantized layouts remain export-only.
 - **Updates:** on launch the Workshop checks GitHub for a newer release and offers to install it. Yes downloads and checks the zip (sha256), closes the Workshop, replaces its files and starts the new version. Click the version number in the title bar to check by hand.
 - **Export .mvpmod** from a loose install: only the files that differ from the install go in, at their loose paths (just the changed DDS images of a texture pack). **Test in Game** starts MVP06.exe with the changes as a temporary mod.
 - **Mod details** (name, id, version, author, description, affects saves) with an optional **icon** (a square PNG, 64-256 px, saved as `icon.png`).
@@ -78,9 +74,6 @@ First release with the built-in updater, and the first public build since 1.0.3:
 - **Starts empty and asks for the game:** on launch the tool asks for `MVP06.exe` and opens the `assets\` folder beside it (`game\` also works). The last game is no longer reopened automatically (`--game` still works). The toolbar and Start page say **Open Game**.
 
 ### Added
-- Every asset has Structure tables and Hex region navigation. Known archive, image, executable, ELF and audio layouts highlight bounded byte regions; unknown formats expose raw words without guessed semantics. Format survey and Markdown reports show viewer coverage and rank missing specialized viewers by frequency.
-- Animation playback exports selected body/root clips to glTF with sampled local bone tracks and the current model skin. Lowercase loose-install bank names now select the default gameplay bank correctly, controls scroll on short windows, and playback timers stop when the viewer closes. Native bank editing is deferred.
-- Model inspection adds sibling LOD selection, textured material lists, wireframe, normals and UV layouts. Self-contained glTF includes materials, textures and available skin/bones. Xbox FLOAT3 position replacement preserves native topology and metadata, validates shared vertices/bounds and uses impact review and undo; PS2/quantized layouts remain export-only.
 - **Loose install support** for the MVP 06 port (`docs/LOOSE_ASSETS.md` in the port): `name_big/` folders with a `_big.json` open as `name.big` archives (nested too), and `.xsh/` folders of DDS files open as texture packs, rebuilt byte-identical from `xsh.meta` and the DDS files. Categories, search and every viewer work as before.
 - **DDS files are browsed directly:** each `.xsh` folder expands to its DDS images, and Categories list them by archive and texture folder. Opening a DDS shows that image in the texture viewer, where it can be replaced as before.
 - **Export Mod** writes an edited loose texture pack as a DDS folder in the install layout, after checking it rebuilds exactly.
@@ -93,9 +86,6 @@ First release with the built-in updater, and the first public build since 1.0.3:
 ## 1.0.3 — 2026-10-27
 
 ### Added
-- Every asset has Structure tables and Hex region navigation. Known archive, image, executable, ELF and audio layouts highlight bounded byte regions; unknown formats expose raw words without guessed semantics. Format survey and Markdown reports show viewer coverage and rank missing specialized viewers by frequency.
-- Animation playback exports selected body/root clips to glTF with sampled local bone tracks and the current model skin. Lowercase loose-install bank names now select the default gameplay bank correctly, controls scroll on short windows, and playback timers stop when the viewer closes. Native bank editing is deferred.
-- Model inspection adds sibling LOD selection, textured material lists, wireframe, normals and UV layouts. Self-contained glTF includes materials, textures and available skin/bones. Xbox FLOAT3 position replacement preserves native topology and metadata, validates shared vertices/bounds and uses impact review and undo; PS2/quantized layouts remain export-only.
 - **Animate tab:** banks have plain names and groups (Gameplay, Signature batting stances, Signature pitching motions, Face & hands, Cutscenes, Crowd), and the main gameplay bank opens by default.
 - Each clip shows once, with its body and root halves playing together. It gets a readable title decoded from its name (`r_stepagr135ltostand90l` → "Step aggressive 135° L to stand 90° L"), plus the raw name, frame count and length.
 - Clips are grouped by role (Batting, Pitching, Catcher, Fielding, Running, Umpire, Hands, Facial, Dugout, Cutscene, Crowd…), with a category filter and search on the title or raw name.
@@ -106,9 +96,6 @@ First release with the built-in updater, and the first public build since 1.0.3:
 ## 1.0.2 — 2026-10-27
 
 ### Added
-- Every asset has Structure tables and Hex region navigation. Known archive, image, executable, ELF and audio layouts highlight bounded byte regions; unknown formats expose raw words without guessed semantics. Format survey and Markdown reports show viewer coverage and rank missing specialized viewers by frequency.
-- Animation playback exports selected body/root clips to glTF with sampled local bone tracks and the current model skin. Lowercase loose-install bank names now select the default gameplay bank correctly, controls scroll on short windows, and playback timers stop when the viewer closes. Native bank editing is deferred.
-- Model inspection adds sibling LOD selection, textured material lists, wireframe, normals and UV layouts. Self-contained glTF includes materials, textures and available skin/bones. Xbox FLOAT3 position replacement preserves native topology and metadata, validates shared vertices/bounds and uses impact review and undo; PS2/quantized layouts remain export-only.
 - **Models** section in the Categories browser: player bodies, heads and eyes, equipment (bats, ball), crowd, scenery and props, and shadows, with each model in one place.
 - **Animations** section listing all 270 animation banks separately from their bank lists.
 - Mixed archives (stadiums) are split into **Models / Textures / Data** folders.
@@ -128,9 +115,6 @@ First release with the built-in updater, and the first public build since 1.0.3:
 First release under the **MVP-Workshop** name (formerly "MVP07 Asset Tool", last version 0.9.0-beta.1).
 
 ### Added
-- Every asset has Structure tables and Hex region navigation. Known archive, image, executable, ELF and audio layouts highlight bounded byte regions; unknown formats expose raw words without guessed semantics. Format survey and Markdown reports show viewer coverage and rank missing specialized viewers by frequency.
-- Animation playback exports selected body/root clips to glTF with sampled local bone tracks and the current model skin. Lowercase loose-install bank names now select the default gameplay bank correctly, controls scroll on short windows, and playback timers stop when the viewer closes. Native bank editing is deferred.
-- Model inspection adds sibling LOD selection, textured material lists, wireframe, normals and UV layouts. Self-contained glTF includes materials, textures and available skin/bones. Xbox FLOAT3 position replacement preserves native topology and metadata, validates shared vertices/bounds and uses impact review and undo; PS2/quantized layouts remain export-only.
 - **MVP 06 NCAA Baseball (Xbox) support** alongside MVP 07 NCAA Baseball (PS2). Open an extracted Xbox game folder (`default.xbe`).
   - `.xsh` SHPX texture packs: DXT1/3/5, PAL8, BGRA8888 and 16-bit formats, Xbox Morton (un-)swizzling.
   - **Texture replacement** on Xbox textures with automatic **mip-map regeneration** and DXT re-encode (PAL8 and BGRA8888 are written without DXT loss).

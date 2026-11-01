@@ -20,6 +20,10 @@ public static class SelfTest
     public static async void RunIfRequested(MainWindow w)
     {
         var args = Environment.GetCommandLineArgs();
+        var modelCheck = Array.IndexOf(args, "--model-viewers-selftest");
+        if (modelCheck >= 0 && modelCheck + 1 < args.Length) { w.RunModelViewersCheck(args[modelCheck + 1]); return; }
+        var phase6 = Array.IndexOf(args, "--viewers-selftest");
+        if (phase6 >= 0 && phase6 + 1 < args.Length) { w.RunViewersCheck(args[phase6 + 1]); return; }
         var launchTest = Array.IndexOf(args, "--launch-targets-selftest");
         if (launchTest >= 0 && launchTest + 1 < args.Length) { w.RunLaunchTargetCheck(args[launchTest + 1]); return; }
         var hotReloadTest = Array.IndexOf(args, "--hot-reload-selftest");
