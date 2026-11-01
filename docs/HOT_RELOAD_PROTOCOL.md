@@ -6,6 +6,7 @@ revision acknowledgements and resident texture replacement. Supported loose XSH 
 loaded databases/rosters, unsupported texture layouts, changed slot topology and ambiguous
 shared texture identities return `restart-required`, preserving the entire previous layer.
 The earlier top-level port retains its older unopened-assets implementation.
+
 ## Discovery and launch
 
 The port release's `port-manifest.json` advertises `"workshopReload": 1` only after
@@ -74,6 +75,7 @@ caches through the existing frame-fenced garbage queue. Original guest texture m
 stays intact. The Workshop map works independently of user texture-pack settings.
 Acknowledgement waits for this renderer boundary. An empty map clears prior overrides.
 Loaded nontexture data never reports applied merely because the VFS map changed.
+
 ## Acknowledgement
 
 After the safe-point transaction, write `reload.ack.json` beside the pointer through

@@ -20,6 +20,8 @@ public static class SelfTest
     public static async void RunIfRequested(MainWindow w)
     {
         var args = Environment.GetCommandLineArgs();
+        var launchTest = Array.IndexOf(args, "--launch-targets-selftest");
+        if (launchTest >= 0 && launchTest + 1 < args.Length) { w.RunLaunchTargetCheck(args[launchTest + 1]); return; }
         var hotReloadTest = Array.IndexOf(args, "--hot-reload-selftest");
         if (hotReloadTest >= 0 && hotReloadTest + 1 < args.Length) { w.RunHotReloadCheck(args[hotReloadTest + 1]); return; }
         var baseModsTest = Array.IndexOf(args, "--base-mods-selftest");

@@ -11,6 +11,10 @@ try
     File.WriteAllText(Path.Combine(folder, "game", "sample_big", "_big.json"), "{}");
     File.WriteAllText(Path.Combine(folder, "game", "sample_big", "a.txt"), "fixture");
     var root = GameFileSystem.OpenGame(Path.Combine(folder, "game"));
+    var assets = new Dictionary<string, AssetNode>();
+    Check("launch failures are visible even at release log level", GameLogReader.Parse("[1.0] workshop launch: failed: Requested school was not found", root, assets)?.Severity == DiagnosticSeverity.Error);
+    Check("launch cancellation is a nonblocking runtime warning", GameLogReader.Parse("[1.0] workshop launch: cancelled: User input", root, assets)?.Severity == DiagnosticSeverity.Warning);
+    Check("reload refusal is visible from the initial launch log", GameLogReader.Parse("[1.0] mods: Workshop reload restart-required: Loaded database", root, assets)?.Severity == DiagnosticSeverity.Warning);
     var old = Path.Combine(folder, "logs", "mvp06_001.log");
     File.WriteAllText(old, "[error] mods: stale error\n"); File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddMinutes(-5));
     var started = DateTime.UtcNow.AddSeconds(-1);

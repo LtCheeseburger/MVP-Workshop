@@ -45,7 +45,8 @@ each lands as its own commit and is checked in the running app.
       MVP06-Base replaces supported resident textures at renderer frame boundaries and remounts
       unopened data. Loaded databases, ambiguous/shared texture identities and unsupported texture
       layouts request restart atomically; see HOT_RELOAD_PROTOCOL.md for limits and verification.
-- [ ] Launch to a target (needs native flags)
+- [x] Launch targets: main menu, school, stadium and two-team exhibition; automatic default follows
+      the last school/stadium edit. MVP06-Base flags drive native menus and verify the selected venue.
 
 ## 5. Team workspaces
 

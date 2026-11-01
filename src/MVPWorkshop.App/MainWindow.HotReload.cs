@@ -8,21 +8,31 @@ public partial class MainWindow
 {
     private EditSession? _testRunSession;
     private string? _testRunExecutable, _testRunDirectory;
+    private GameLaunchTarget? _testRunTarget;
     private bool TestGameRunning => _testGameProcess is { HasExited: false };
 
-    private async Task LaunchOrReloadTest(string executable, EditSession session, TestModPublication publication, bool running, bool supported)
+    private async Task LaunchOrReloadTest(string executable, EditSession session, TestModPublication publication, bool running, bool supported, GameLaunchTarget target)
     {
         if (!running)
         {
-            StartGameLogWatch(executable);
+            var targetSupport = LaunchTargetsSupported(executable);
+            var testUserDirectory = Path.Combine(Path.GetDirectoryName(publication.RequestPath)!, "user");
+            StartGameLogWatch(executable, targetSupport ? Path.Combine(testUserDirectory, "logs") : null);
             var start = new ProcessStartInfo(executable) { WorkingDirectory = Path.GetDirectoryName(executable)! };
             start.ArgumentList.Add("--mod"); start.ArgumentList.Add(publication.Folder);
             if (supported) { start.ArgumentList.Add("--workshop-reload"); start.ArgumentList.Add(publication.RequestPath); }
+            if (targetSupport)
+            {
+                foreach (var argument in target.Arguments()) start.ArgumentList.Add(argument);
+                start.ArgumentList.Add("--workshop-game-dir"); start.ArgumentList.Add(session.GameRoot.DiskPath!);
+                start.ArgumentList.Add("--workshop-user-dir"); start.ArgumentList.Add(testUserDirectory);
+            }
             try
             {
                 _testGameProcess?.Dispose(); _testGameProcess = Process.Start(start);
                 _testRunSession = session; _testRunExecutable = executable;
                 _testRunDirectory = Path.GetDirectoryName(publication.RequestPath);
+                _testRunTarget = target;
             }
             catch { StopGameLogWatch(clear: false); throw; }
             SetStatus($"Started game with {publication.Report.Files.Count} changed file(s)");

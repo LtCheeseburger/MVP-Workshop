@@ -187,6 +187,11 @@ public partial class MainWindow
         if (test && exe is not null && !File.Exists(exe)) { MessageBox.Show(this, "The configured game executable does not exist. Check Tools > Options.", "Test in Game"); return; }
         if (test && exe is null) { MessageBox.Show(this, $"There's no MVP06.exe beside {game}, so the game can't be started from here.", "Test in Game", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         var reloadSupported = test && TestModPublisher.Supported(exe!);
+        var launchTarget = DefaultLaunchTarget();
+        if (running && _explicitLaunchTarget is not null && _testRunTarget != launchTarget)
+        { MessageBox.Show(this, "Close the running game before launching at a different target. To hot-reload this run, select Last edited asset or its original target.", "Test in Game"); return; }
+        if (test && launchTarget.Kind != GameLaunchKind.MainMenu && !LaunchTargetsSupported(exe!))
+        { MessageBox.Show(this, "This port does not advertise launch-target support. Update the port or select Main menu.", "Test in Game"); return; }
         if (running && (!reloadSupported || _testRunSession != s || !string.Equals(_testRunExecutable, exe, StringComparison.OrdinalIgnoreCase)))
         {
             MessageBox.Show(this, "A game started by Workshop is still running. Close it before starting this project. Reusing the running game requires the same project and a port advertising workshopReload protocol 1.", "Test in Game"); return;
@@ -248,7 +253,7 @@ public partial class MainWindow
             if (compatibilityWarnings.Count > 0) skipped += "\n\nPort compatibility warnings:\n" + string.Join("\n", compatibilityWarnings.Select(d => d.Message));
             if (test)
             {
-                await LaunchOrReloadTest(exe!, s, publication!, running, reloadSupported);
+                await LaunchOrReloadTest(exe!, s, publication!, running, reloadSupported, launchTarget);
                 return;
             }
             SetStatus($"Saved {Path.GetFileName(output)} ({report.Files.Count} file(s))");

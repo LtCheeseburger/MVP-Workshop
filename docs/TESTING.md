@@ -9,7 +9,7 @@ From PowerShell 7 on Windows, with the .NET 9 SDK:
 This is the same entry point used by `.github/workflows/verify.yml` for pushes,
 pull requests and manual runs. It builds the solution and every test project in
 Release mode, runs the self-contained console suites, generates new synthetic
-fixtures, and runs fourteen WPF checks. A nonzero command exit, missing desktop report,
+fixtures, and runs fifteen WPF checks. A nonzero command exit, missing desktop report,
 `FAIL` report line or desktop timeout fails the run. Desktop tests run sequentially
 because they use modal dialogs and the clipboard.
 
@@ -91,3 +91,10 @@ synthetic run as proof of those real-game checks.
 
 Use `-SkipDesktop` for console-only verification, `-Configuration Debug` for a Debug
 build, or `-OutputDirectory <folder>` to choose where new run directories are created.
+
+Phase 4 adds console suites `LiveTextures` (9 checks) and `GameLaunch` (11 checks),
+plus the fifteenth desktop mode, `--launch-targets-selftest`. It checks actual target
+dialogs, automatic defaults, capability gating and process arguments through a disposable
+peer. `verify-port.ps1 -BuildPort` builds the selected MVP06-Base runtime and matching DLL,
+runs 19 native loader checks and 7 real renderer CPU checks without proprietary assets.
+See PORT_INTEGRATION.md for separate real-game target and visible GPU validation.

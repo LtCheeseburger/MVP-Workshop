@@ -8,6 +8,7 @@ if (args.Contains("--mod"))
     var at = Array.IndexOf(args, "--workshop-reload");
     if (at < 0 || at + 1 >= args.Length) return 2;
     var request = args[at + 1]; var directory = Path.GetDirectoryName(request)!;
+    File.WriteAllText(Path.Combine(directory, "launch-args.json"), JsonSerializer.Serialize(args));
     var until = DateTime.UtcNow.AddSeconds(120); string? last = null;
     while (DateTime.UtcNow < until && !File.Exists(Path.Combine(directory, "stop")))
     {

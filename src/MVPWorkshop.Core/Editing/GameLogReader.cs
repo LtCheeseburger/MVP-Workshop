@@ -62,9 +62,9 @@ public sealed class GameLogReader
     public static ModDiagnostic? Parse(string line, AssetNode root, IReadOnlyDictionary<string, AssetNode> assets)
     {
         var lower = line.Replace('\\', '/').ToLowerInvariant();
-        if (!new[] { "mods:", "textures:", "loosebig:", "modvfs:" }.Any(lower.Contains)) return null;
-        bool error = lower.Contains("[error]") || lower.Contains("error:");
-        bool warning = lower.Contains("[warn]") || lower.Contains("warning:") || lower.Contains("shown blank") || lower.Contains("skipped") || lower.Contains("left off") || lower.Contains("cannot read") || lower.Contains("no readable") || lower.Contains(" (over ");
+        if (!new[] { "mods:", "textures:", "loosebig:", "modvfs:", "workshop launch:" }.Any(lower.Contains)) return null;
+        bool error = lower.Contains("[error]") || lower.Contains("error:") || lower.Contains("workshop launch: failed:") || lower.Contains("workshop reload rejected:");
+        bool warning = lower.Contains("[warn]") || lower.Contains("warning:") || lower.Contains("shown blank") || lower.Contains("skipped") || lower.Contains("left off") || lower.Contains("cannot read") || lower.Contains("no readable") || lower.Contains(" (over ") || lower.Contains("workshop reload restart-required:") || lower.Contains("workshop launch: cancelled:");
         if (!error && !warning) return null;
         var match = assets.Where(p => p.Key != "." && lower.Contains(p.Key, StringComparison.OrdinalIgnoreCase)).OrderByDescending(p => p.Key.Length).FirstOrDefault();
         return new(error ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning, match.Value?.Key ?? "", match.Value?.Path ?? "Game log", line, "Game log");

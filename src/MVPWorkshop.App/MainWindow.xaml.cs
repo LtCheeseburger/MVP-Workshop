@@ -157,6 +157,7 @@ public partial class MainWindow : Window
             foreach (var document in _docs.Where(d => d.CanClose).ToList()) _docs.Remove(document);
             BookmarkPane.Visibility = Visibility.Collapsed;
             _gameRoot = openedGame;
+            _explicitLaunchTarget = null; _syncLaunchTarget = true; LaunchTargetPicker.SelectedIndex = 0; _syncLaunchTarget = false;
             var output = _settings.OutputFolders.TryGetValue(folder, out var chosen) ? chosen : ModExporter.DefaultOutputFolder(folder);
             Editor.Attach(new EditSession(_gameRoot, output));
             _searchCts?.Cancel();

@@ -8,7 +8,7 @@ The current Phase 4 implementation is in the MVP06-Base checkout above. Release 
 and game DLL build successfully; the native loader has 19 checks and the renderer has
 7 checks. `scripts/verify-port.ps1` defaults to this checkout. Existing untracked
 `tools/` files remain untouched. Capability metadata advertises `workshopReload: 1`,
-`workshopLiveTextures: 1`, `workshopReloadMode: "live-textures"`.
+`workshopLiveTextures: 1`, `workshopReloadMode: "live-textures"`, and `workshopLaunch: 1`.
 Release packaging preserves version and hashed-file metadata.
 Earlier, the user selected the top-level `E:\Recomp Source\MVP06-NCAABB\MVP06-XBERecomp`.
 That folder contains runtime sources and
@@ -95,6 +95,49 @@ Workshop's log-reader tests use these exact formats with disposable synthetic lo
 Its live WPF check verifies polling, badge updates, asset navigation, retention across
 validation refreshes, and clearing on project switches without launching a game.
 
+## Phase 4.2 launch targets (MVP06-Base)
+
+Workshop's Test toolbar offers Automatic, Main menu, Team, Stadium and Exhibition.
+Automatic uses the last edited school's team or linked stadium; otherwise main menu.
+Team/exhibition dialogs use decoded schools; venues use decoded stadium definitions
+and localized names. Explicit target changes require closing the current run. Repeated
+Test with the same target reloads that process and does not navigate away from gameplay.
+
+The manifest must explicitly advertise `workshopLaunch: 1` before Workshop passes:
+
+```
+--workshop-target mainmenu|team|stadium|exhibition
+--team "Arizona State"
+--home "Arizona State" --away "Florida"
+--stadium "Alex Box Stadium" --stadium-id 3
+--workshop-game-dir "<selected loose installation>"
+--workshop-user-dir "<test run>/user"
+```
+
+Team uses `--team`; exhibition uses home/away; venue targets include the decoded numeric
+stadium ID. Xbox supports IDs 0..29. `--workshop-game-dir` makes the tested installation
+explicit. The user-dir override isolates settings, saves and logs from the normal game.
+The result file is `workshop-launch-result.txt` beneath that directory; Workshop displays
+reached/failed/cancelled results and imports runtime errors into Diagnostics.
+
+`src/game/workshop_launch.cpp` observes native FE scene roots and readable menu text,
+pulses native pad input and checks the requested school names. It cycles conferences
+when necessary, skips intro movies only for an opted-in target and prevents accidental
+non-Play Now main-menu activation. Real controller/keyboard input cancels automation;
+a three-minute deadline stops unsuccessful navigation. No guessed live roster offsets
+are used. Stadium selection patches the decoded roster file in memory before loading,
+using the existing archive patch mechanism and the requested home school's stadium bits.
+It never writes source game files or saves. The actual matchup intro venue must match.
+Stadium targets stop at that intro; exhibitions continue to the gameplay HUD.
+
+Real-game Release validation on the supplied Xbox source reached all four targets:
+main menu; Arizona State team selector; Packard Stadium intro; and Florida versus
+Arizona State gameplay at an overridden Alex Box Stadium. Captured intro frames and
+runtime logs are under `test-output-port-live/sessions/`. The exhibition check waits
+for the matchup intro before accepting the gameplay HUD, avoiding early HUD allocation.
+`--workshop-launch-audit` requests a screenshot when a target completes, for validation.
+Synthetic WPF coverage separately verifies dialogs, defaults, capability gating and
+exact launch arguments without requiring proprietary game assets.
 The visible D3D12 audit also passed in one process (PID 47120): synthetic DDS sidecars
 changed already-resident field textures to magenta during the attract-mode match;
 the next empty replacement map restored the field. Revisions 2 and 3 both received
