@@ -64,13 +64,14 @@ public sealed partial class ModelView
 
     private FrameworkElement BuildAnimPanel()
     {
+        Unloaded += (_, _) => { _playTimer?.Stop(); _playing = false; _deformTimer?.Stop(); if (_playButton is not null) _playButton.Content = B.Text("Play"); };
         if (Skeleton is null)
             return new TextBlock { Text = "Animations need a skinned model with a __Skeleton.", Foreground = Ui.Res("Muted"), Margin = new Thickness(12), TextWrapping = TextWrapping.Wrap };
 
         var banksNode = MainWindow.Instance?.FindNode("DATA/ANIMS/ANIMS.BIG");
         var groupOrder = new[] { "Gameplay", "Signature batting stances", "Signature pitching motions", "Face & hands", "Cutscenes", "Crowd", "Other" };
         var banks = (banksNode?.Children.Where(c => c.Extension == ".ord") ?? [])
-            .Select(c => (Node: c, Name: System.IO.Path.GetFileNameWithoutExtension(c.Name)))
+            .Select(c => (Node: c, Name: System.IO.Path.GetFileNameWithoutExtension(c.Name).ToUpperInvariant()))
             .Select(x => new BankChoice(x.Node, x.Name, EaglAnimNames.BankGroup(x.Name), EaglAnimNames.BankTitle(x.Name)))
             .OrderBy(b => Array.IndexOf(groupOrder, b.Group)).ThenBy(b => b.Bank == "DEF_BANK" ? "" : b.Bank).ToList();
         var bankPick = new ComboBox { ItemsSource = banks, Margin = new Thickness(0, 4, 0, 0) };
@@ -128,6 +129,7 @@ public sealed partial class ModelView
         var transport = new WrapPanel { Margin = new Thickness(0, 8, 0, 4) };
         transport.Children.Add(_playButton);
         transport.Children.Add(stop);
+        transport.Children.Add(B.Button("Export clip glTF", null, (_, _) => ExportGltf(clip: true), "Outline"));
         var opts = new WrapPanel { Margin = new Thickness(0, 4, 0, 4) };
         opts.Children.Add(B.Segments("", ["¼×", "½×", "1×", "2×"], 2, i => _speed = new[] { 0.25f, 0.5f, 1f, 2f }[i]));
         opts.Children.Add(B.Toggle("Loop", _loop, v => _loop = v));
@@ -145,7 +147,7 @@ public sealed partial class ModelView
         top.Children.Add(filter);
         if (banksNode is null) top.Children.Add(B.Text("Open the game folder to browse animation banks.", "Bad", 11));
         else bankPick.SelectedItem = banks.FirstOrDefault(b => b.Bank == "DEF_BANK");
-        return B.Rows((top, B.Auto), (_animList, B.Star()));
+        return B.Rows((new ScrollViewer { Content = top, MaxHeight = 180, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }, B.Auto), (_animList, B.Star()));
     }
 
     private static EaglAnimBank LoadBank(AssetNode node)

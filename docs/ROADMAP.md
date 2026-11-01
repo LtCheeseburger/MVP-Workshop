@@ -62,7 +62,8 @@ each lands as its own commit and is checked in the running app.
 
 - [x] Models: sibling LODs, textured materials, wireframe/normals/UV/bones, glTF/OBJ export;
       constrained Xbox FLOAT3 position import. See MODEL_INTERCHANGE.md for native storage limits.
-- [ ] Animations: timeline, play/scrub, bone view, export
+- [x] Animations: model/bank/clip selection, timeline, play/pause/scrub/speed/loop, bone overlay,
+      frame counter and sampled glTF clip export. Native animation-bank editing remains deferred.
 - [ ] Hex view with format overlays for every file; a structured viewer for each format the survey identifies
 - [ ] Audio: play, replace with automatic encoding
 
