@@ -79,7 +79,7 @@ public partial class MainWindow
     }
 
     /// <summary>Replaces an asset's bytes with a file from disk, as one undoable change.</summary>
-    internal void ImportRaw(AssetNode n, string? path = null)
+    internal async void ImportRaw(AssetNode n, string? path = null)
     {
         var s = Editor.Session!;
         if (s.SaveBlocker(n) is { } why) { MessageBox.Show(this, why, "Import", MessageBoxButton.OK, MessageBoxImage.Information); return; }
@@ -89,8 +89,19 @@ public partial class MainWindow
             if (dlg.ShowDialog(this) != true) return;
             path = dlg.FileName;
         }
-        s.Commit(n, File.ReadAllBytes(path), $"Import {Path.GetFileName(path)}");
+        try
+        {
+        var bytes = File.ReadAllBytes(path);
+        if (n.FormatInfo.Category is FormatCategory.Audio or FormatCategory.Texture or FormatCategory.Model || n.IsTexturePack || n.Extension is ".ord" or ".orl" or ".o" or ".asf" or ".bnk" or ".wav" or ".csi" or ".off")
+        {
+            var decision = await PrepareReplacement(n, SelectedTreeItem?.SchoolScope);
+            if (decision is null) return;
+            decision.Apply(bytes, $"Import {Path.GetFileName(path)}");
+        }
+        else s.Commit(n, bytes, $"Import {Path.GetFileName(path)}");
         Log.Info($"Imported {path} over {n.Path}");
+        }
+        catch (Exception ex) { Log.Warn("Import: " + ex.Message); MessageBox.Show(this, ex.Message, "Import unavailable"); }
     }
 
     /// <summary>Reverts every edited asset inside a folder or archive.</summary>

@@ -100,7 +100,7 @@ try
     changed.SetBaseLayer(null);
     collected = MvpModExporter.Collect(snapshot, problems, refpack);
     Check("snapshot retains the base and explicitly copied edits", collected["sample_big/new.txt"].SequenceEqual(Encoding.ASCII.GetBytes("own new member edit")) && refpack.Contains("sample_big/new.txt"));
-    Check("unmount restores the original tree and viewer data", root.Resolve("sample.big/new.txt") is null && root.Resolve("sample.big/b.txt") is not null && Encoding.ASCII.GetString(plain.ReadAll()) == "vanilla");
+    Check("unmount retains project additions and restores original source data", root.Resolve("sample.big/new.txt") is { } retainedNode && retainedNode.ReadAll().SequenceEqual(changed.Added["sample_big/new.txt"]) && root.Resolve("sample.big/b.txt") is not null && Encoding.ASCII.GetString(plain.ReadAll()) == "vanilla");
     Check("base selection never writes game or installed mods", originals.All(p => SHA256.HashData(File.ReadAllBytes(p.Key)).SequenceEqual(p.Value)) && modHashes.All(p => SHA256.HashData(File.ReadAllBytes(p.Key)).SequenceEqual(p.Value)));
     Check("base references retain ids, versions and fingerprints", layer.References.Count == 2 && layer.References.All(r => r.Fingerprint.Length == 64));
 }

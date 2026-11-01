@@ -24,6 +24,7 @@ public sealed class Change
     /// <summary>For preview-only byte edits: the node whose viewer-visible contents change.</summary>
     internal AssetNode? PreviewNode { get; init; }
     internal string? AddedPath { get; init; }
+    internal IReadOnlyList<Change>? Parts { get; init; }
 }
 
 /// <summary>
@@ -40,6 +41,7 @@ public sealed class EditSession
     private readonly SortedDictionary<string, byte[]> _added = new(StringComparer.OrdinalIgnoreCase);  // new files for a mod, by game path
     private bool _addedDirty;
     private bool _baseDirty;
+    private readonly Dictionary<AssetNode, List<AssetNode>> _additionNodes = [];
 
     public EditSession(AssetNode gameRoot, string outputFolder, bool activateOverlay = true)
     {
@@ -47,7 +49,7 @@ public sealed class EditSession
         if (activateOverlay) ActivateOverlay();
     }
 
-    private void ActivateOverlay()
+    public void ActivateOverlay()
     {
         AssetNode.Overlay = n =>
         {
@@ -58,10 +60,15 @@ public sealed class EditSession
         };
         AssetNode.ChildrenOverlay = (node, children) =>
         {
-            if (node.Root != GameRoot || BaseLayer is null) return children;
-            var merged = BaseLayer.Children(node, children);
+            if (node.Root != GameRoot) return children;
+            if (BaseLayer is null)
+                return _additionNodes.TryGetValue(node, out var additions)
+                    ? children.Concat(additions.Where(a => !children.Any(c => c.Name.Equals(a.Name, StringComparison.OrdinalIgnoreCase)))).ToList()
+                    : children;
+            var merged = BaseLayer?.Children(node, children) ?? children;
             // A project's explicit edits take precedence over removals in a newly selected base.
-            return merged.Concat(children.Where(c => !merged.Contains(c) && (IsModified(c) || HasOverrideBelow(c)))).ToList();
+            return merged.Concat(children.Where(c => !merged.Contains(c) && (IsModified(c) || HasOverrideBelow(c))))
+                .Concat((_additionNodes.GetValueOrDefault(node) ?? []).Where(a => !merged.Any(c => c.Name.Equals(a.Name, StringComparison.OrdinalIgnoreCase)))).ToList();
         };
     }
 
@@ -85,7 +92,7 @@ public sealed class EditSession
             var hash = part.LastIndexOf('#');
             int? index = hash > 0 && int.TryParse(part.AsSpan(hash + 1), out var value) ? value : null;
             var name = index is null ? part : part[..hash];
-            node = node.OriginalChildren.FirstOrDefault(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && (index is null || c.BigIndex == index));
+            node = node.OriginalChildren.Concat(_additionNodes.GetValueOrDefault(node) ?? []).FirstOrDefault(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && (index is null || c.BigIndex == index));
             if (node is null) return null;
         }
         return node;
@@ -99,6 +106,7 @@ public sealed class EditSession
         foreach (var (key, bytes) in _added) copy._added[key] = bytes.ToArray();
         copy._undo.AddRange(_undo);
         copy.BaseLayer = BaseLayer;
+        copy.RefreshAdditionNodes();
         return copy;
     }
     public event Action? Changed;
@@ -121,7 +129,7 @@ public sealed class EditSession
     public IReadOnlyDictionary<string, byte[]> Added => _added;
     public void AddFile(string gamePath, byte[] data) { _added[gamePath.Replace('\\', '/')] = data; _addedDirty = true; Notify(); }
     public bool RemoveAdded(string gamePath) { if (!_added.Remove(gamePath)) return false; _addedDirty = true; Notify(); return true; }
-    internal void LoadAdded(IEnumerable<(string Path, byte[] Data)> files) { foreach (var (p, d) in files) _added[p] = d; }
+    internal void LoadAdded(IEnumerable<(string Path, byte[] Data)> files) { foreach (var (p, d) in files) _added[p] = d; RefreshAdditionNodes(); }
     private int TopSavedId => _undo.LastOrDefault(c => c.Kind == ChangeKind.Saved)?.Id ?? 0;
     public int ModifiedAssetCount => _overrides.Count;
     public int PreviewOnlyCount => _undo.Count(c => c.Kind == ChangeKind.PreviewOnly);
@@ -275,6 +283,7 @@ public sealed class EditSession
 
     private void Apply(Change c, bool forward)
     {
+        if (c.Parts is { } parts) { foreach (var part in forward ? parts : parts.Reverse()) Apply(part, forward); return; }
         if (c.Kind == ChangeKind.PreviewOnly)
         {
             if (c.PreviewNode is { } pn)
@@ -290,5 +299,33 @@ public sealed class EditSession
         if (target is null) _overrides.Remove(c.Key); else _overrides[c.Key] = target;
     }
 
-    private void Notify() { RebuildAffected(); Changed?.Invoke(); }
+    /// <summary>Publish a validated family fork and assignment as one undoable saved change.</summary>
+    public void CommitFork(AssetNode roster, byte[] baseline, byte[] replacement, IReadOnlyDictionary<string, byte[]> files, string description)
+    {
+        if (SaveBlocker(roster) is { } why) throw new InvalidOperationException(why);
+        if (!GetBytes(roster).AsSpan().SequenceEqual(baseline)) throw new InvalidOperationException("Assignments changed; review the replacement again.");
+        foreach (var path in files.Keys)
+            if (path.Contains("..") || Path.IsPathRooted(path) || _added.ContainsKey(path) || File.Exists(Path.Combine(GameRoot.DiskPath!, path)) || Directory.Exists(Path.Combine(GameRoot.DiskPath!, path)))
+                throw new InvalidOperationException("The destination already exists or is unsafe: " + path);
+        var parts = files.Select(pair => new Change { Id = 0, Key = pair.Key, Path = pair.Key, Kind = ChangeKind.Saved, Description = description, AddedPath = pair.Key, After = pair.Value.ToArray() }).ToList();
+        parts.Add(new Change { Id = 0, Key = roster.Key, Path = roster.Path, Kind = ChangeKind.Saved, Description = description, Before = GetOverride(roster), After = replacement.ToArray() });
+        var change = new Change { Id = _nextId++, Key = roster.Key, Path = roster.Path, Kind = ChangeKind.Saved, Description = description, Parts = parts };
+        Push(change); Apply(change, true); Notify();
+    }
+
+    private void RefreshAdditionNodes()
+    {
+        _additionNodes.Clear();
+        if (_added.Count == 0 || GameRoot.DiskPath is null) return;
+        var folders = GameRoot.EnumerateDeep().Where(n => n.IsFolder && n.DiskPath is not null).ToDictionary(n => Path.GetFullPath(n.DiskPath!), StringComparer.OrdinalIgnoreCase);
+        foreach (var (path, bytes) in _added)
+        {
+            var full = Path.GetFullPath(Path.Combine(GameRoot.DiskPath, path));
+            if (!folders.TryGetValue(Path.GetDirectoryName(full)!, out var parent)) continue;
+            if (!_additionNodes.TryGetValue(parent, out var nodes)) _additionNodes[parent] = nodes = [];
+            if (parent.OriginalChildren.Any(c => c.Name.Equals(Path.GetFileName(path), StringComparison.OrdinalIgnoreCase))) continue;
+            nodes.Add(new AssetNode(Path.GetFileName(path), parent, false, bytes.Length, () => new MVPWorkshop.Core.IO.MemoryByteSource(bytes), "Added to mod") { DiskPath = full });
+        }
+    }
+    private void Notify() { RefreshAdditionNodes(); RebuildAffected(); Changed?.Invoke(); }
 }

@@ -32,3 +32,7 @@ foreach (var (game, database) in new[] { ("tasks", "database_big"), ("players", 
 Text("tasks/database_big/_big.json", "{}");
 Bytes("install-source/default.xbe", [0, 1, 2, 3]); Bytes("install-source/logo.xsh", texture); Text("install-source/readme.txt", "Synthetic installation fixture.");
 Console.WriteLine("Synthetic fixtures: " + output);
+
+Text("tasks/models_big/_big.json", "{}");
+foreach (var name in new[] { "u000a.xsh", "u000b.xsh", "f000a.xsh" })
+    if (!LooseInstall.WriteTexturePack(texture, Path.Combine(output, "tasks/models_big/" + name), out var failure)) throw new InvalidDataException(failure);

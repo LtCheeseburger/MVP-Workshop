@@ -27,6 +27,7 @@ public static class Editor
     public static void Attach(EditSession session)
     {
         if (Session is not null) Session.Changed -= Raise;
+        session.ActivateOverlay();
         Session = session;
         session.Changed += Raise;
         Raise();

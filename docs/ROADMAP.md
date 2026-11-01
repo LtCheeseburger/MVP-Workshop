@@ -52,7 +52,9 @@ each lands as its own commit and is checked in the running app.
 
 - [x] Task-first start page: school picker and Uniforms, Logos, Stadium, Roster, Menus/UI, Audio, Textures
       tasks open scoped workspaces; recent edits match the school's roster/player records
-- [ ] "This team only" vs "everyone" on every replace (fork a loose copy and repoint the assignment)
+- [x] Replacement impact/scope review on texture, audio and model import; atomic school-only
+      uniform/logo family forks, complete variants/fonts/menu copies, undo and project/export.
+      School-only audio/shared-model/stadium bindings remain undecoded and explicitly unavailable.
 - [ ] Uniform editor on the player model with team colours
 
 ## 6. Viewers and editors for every file type

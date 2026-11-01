@@ -131,12 +131,16 @@ public sealed class UniformWorkspaceView : Grid
                 var frame=new FormatConvertedBitmap(decoder.Frames[0],PixelFormats.Bgra32,null,0);
                 if(frame.PixelWidth!=img.Header.Width||frame.PixelHeight!=img.Header.Height)throw new ArgumentException($"Replacement must be {img.Header.Width}×{img.Header.Height} pixels.");
                 var pixels=new byte[frame.PixelWidth*frame.PixelHeight*4]; frame.CopyPixels(pixels,frame.PixelWidth*4,0);
-                if(MainWindow.Instance is { } main && !await main.PreviewReplacementImpact(pack))return;
+                var decision = MainWindow.Instance is { } main ? await main.PrepareReplacement(pack, profile, SshWriter.Unsupported(SshFile.Read(pack.ReadAll()), img) is null && session.SaveBlocker(pack) is null) : null;
+                if (MainWindow.Instance is not null && decision is null) return;
                 var ssh=SshFile.Read(pack.ReadAll());
                 var reason=SshWriter.Unsupported(ssh,ssh.Images[img.Index])??session.SaveBlocker(pack);
                 var description=$"Uniform texture {pack.Name}/{img.Tag} ← {Path.GetFileName(dialog.FileName)}";
                 if(reason is null)
-                    session.Commit(pack,SshWriter.ReplaceImage(ssh,ssh.Images[img.Index],pixels,frame.PixelWidth,frame.PixelHeight).File,description);
+                    {
+                    var bytes = SshWriter.ReplaceImage(ssh,ssh.Images[img.Index],pixels,frame.PixelWidth,frame.PixelHeight).File;
+                    if (decision is null) session.Commit(pack, bytes, description); else decision.Apply(bytes, description);
+                }
                 else
                 {
                     string key=pack.Key+"/"+img.Index; var before=previews.GetValueOrDefault(key);

@@ -168,7 +168,7 @@ public partial class MainWindow : Window
             _roots.Add(root);
             root.IsExpanded = true;
             _searchIndex = null;
-            _assetIndexTask = null;
+            // Editor.Attach already started the new root index; reuse that task.
             _categoryRoots = null; _teamRefreshSession = null; _refreshTeamGrid = null;
             _catalogGeneration++;
             UpdateBrowser();
@@ -551,7 +551,7 @@ public partial class MainWindow : Window
         bool sameSession = _teamRefreshSession is null || ReferenceEquals(session, _teamRefreshSession);
         _teamRefreshSession = session; _teamRefreshChange = change;
         var bytes = profiles[0].Team!.Roster.ReadAll();
-        var updated = TeamAssetCatalog.Build(_searchIndex, bytes).ToDictionary(p => p.Team.RosterIndex);
+        var updated = TeamAssetCatalog.Build(_gameRoot!.EnumerateDeep().ToList(), bytes).ToDictionary(p => p.Team.RosterIndex);
         foreach (var item in profiles)
         {
             var profile = item.Team!;
@@ -584,6 +584,7 @@ public partial class MainWindow : Window
 
     private void OnEditorChanged()
     {
+        _assetIndexTask = null;
         ScheduleDiagnostics();
         InvalidateDependencies();
         RefreshTeamAssignments();

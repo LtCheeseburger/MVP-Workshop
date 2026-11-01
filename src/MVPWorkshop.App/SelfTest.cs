@@ -36,6 +36,8 @@ public static class SelfTest
         if (conflictTest >= 0 && conflictTest + 1 < args.Length) { w.RunConflictsCheck(args[conflictTest + 1]); return; }
         var gameLogTest = Array.IndexOf(args, "--game-log-selftest");
         if (gameLogTest >= 0 && gameLogTest + 1 < args.Length) { w.RunGameLogCheck(args[gameLogTest + 1]); return; }
+        var replacementTest = Array.IndexOf(args, "--replacement-selftest");
+        if (replacementTest >= 0 && replacementTest + 1 < args.Length) { w.RunReplacementCheck(args[replacementTest + 1]); return; }
         var taskTest = Array.IndexOf(args, "--tasks-selftest");
         if (taskTest >= 0 && taskTest + 1 < args.Length) { w.RunTasksCheck(args[taskTest + 1]); return; }
         var diagnosticsTest = Array.IndexOf(args, "--diagnostics-selftest");

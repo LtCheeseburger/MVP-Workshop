@@ -356,9 +356,10 @@ public sealed class TextureView : Grid
         }
         catch (Exception ex) { MessageBox.Show(owner, ex.Message, "Import unavailable"); return; }
 
-        if (MainWindow.Instance is { } main && !await main.PreviewReplacementImpact(_node)) return;
+        var decision = MainWindow.Instance is { } main ? await main.PrepareReplacement(_node, allowFork: SshWriter.Unsupported(_ssh, img) is null && session.SaveBlocker(_node) is null) : null;
+        if (MainWindow.Instance is not null && decision is null) return;
         bool upscaled = tw != h.Width || th != h.Height;
-        ReplaceWith(img.Index, bgra, Path.GetFileName(path), upscaled ? tw : h.Width, upscaled ? th : h.Height);
+        ReplaceWith(img.Index, bgra, Path.GetFileName(path), upscaled ? tw : h.Width, upscaled ? th : h.Height, decision);
     }
 
     /// <summary>Replace every slot that has a picture of the same name in a folder, as one change.</summary>
@@ -370,6 +371,11 @@ public sealed class TextureView : Grid
         return true;
     }
 
+    private static bool ApplyReviewedFolder(MainWindow.ReplacementDecision decision, byte[] baseline, byte[] data, string description)
+    {
+        if (data.AsSpan().SequenceEqual(baseline)) return false;
+        decision.Apply(data, description); return true;
+    }
     internal async void ImportFolder()
     {
         if (_ssh is null) return;
@@ -389,13 +395,14 @@ public sealed class TextureView : Grid
             Mouse.OverrideCursor = null;
             if (rows.All(r => r.File is null)) { MessageBox.Show(owner, $"No picture in {folder} is named after a slot of {_node.Name} ({string.Join(", ", ssh.Images.Select(i => i.Tag))}).", "Import folder", MessageBoxButton.OK, MessageBoxImage.Information); return; }
             if (new FolderImportReview(_node.Name, folder, rows, unused) { Owner = owner }.ShowDialog() != true) return;
-            if (MainWindow.Instance is { } main && !await main.PreviewReplacementImpact(_node)) return;
+            var decision = MainWindow.Instance is { } main ? await main.PrepareReplacement(_node) : null;
+            if (MainWindow.Instance is not null && decision is null) return;
             Mouse.OverrideCursor = Cursors.Wait;
             var status = new Progress<string>(t => MainWindow.Instance?.SetStatus(t));
             var data = await Task.Run(() => TextureFolderImport.Apply(ssh.Data, rows, LoadPicture, palette, t => ((IProgress<string>)status).Report(t)));
             var count = rows.Count(r => r.Replaces);
             var what = $"Import {count} image(s) from {Path.GetFileName(folder)}";
-            if (!ApplyFolderResult(_node, ssh.Data, data, what))
+            if (decision is not null ? !ApplyReviewedFolder(decision, ssh.Data, data, what) : !ApplyFolderResult(_node, ssh.Data, data, what))
             {
                 Log.Info($"{_node.Name}: imported PNGs are unchanged; native texture bytes and project history were kept.");
                 MainWindow.Instance?.SetStatus($"{_node.Name}: no texture changes");
@@ -415,7 +422,7 @@ public sealed class TextureView : Grid
     }
 
     /// <summary>Apply a BGRA picture (optional native upscale dimensions) to image <paramref name="imageIndex"/>: saved when the format and container allow it, preview-only otherwise.</summary>
-    internal void ReplaceWith(int imageIndex, byte[] bgra, string source, int? width = null, int? height = null)
+    internal void ReplaceWith(int imageIndex, byte[] bgra, string source, int? width = null, int? height = null, MainWindow.ReplacementDecision? decision = null)
     {
         if (_ssh is null || Editor.Session is not { } session) return;
         var img = _ssh.Images[imageIndex];
@@ -429,7 +436,7 @@ public sealed class TextureView : Grid
             try
             {
                 var result = SshWriter.ReplaceImage(_ssh, img, bgra, width ?? h.Width, height ?? h.Height, _paletteMode, allowResize: width.HasValue || height.HasValue);
-                Editor.Apply(_node, result.File, what);
+                if (decision is null) Editor.Apply(_node, result.File, what); else decision.Apply(result.File, what);
                 Log.Info($"{_node.Name}: {what} — {result.Notes}");
             }
             catch (Exception ex) { Log.Error($"{what}: {ex.Message}"); MessageBox.Show(owner, ex.Message, "Replace image", MessageBoxButton.OK, MessageBoxImage.Warning); }

@@ -3,6 +3,7 @@
 ## Unreleased — 2026-10-30
 
 ### Added
+- School-only/shared replacement review uses confirmed dependency relationships. Uniform/logo isolation copies complete families, reserves an unused slot and repoints one school in a single undoable transaction. Added copies resolve in the school workspace, projects and exports; undecoded audio/model bindings explain why isolation is unavailable.
 - Phase 4 in MVP06-Base: Test in Game reloads supported resident textures through frame-boundary renderer replacement, retains original identities for revert, and safely requests restart for loaded databases or ambiguous/unsupported texture changes. Added native loader/renderer regression coverage.
 - Test in Game launch picker: main menu, school, stadium and two-team exhibition, with defaults from recent school edits. Native flags drive and verify the actual screens; test runs use isolated user settings, logs and temporary venue assignments.
 - The earlier top-level port implements atomic reload of unopened assets with revision acknowledgements and VFS transaction locking. Already-open assets/archives and cached-directory topology changes return restart-required while preserving the old layer. The native Release build and 14 no-game regression checks pass; MVP06-Base adds live replacement and gameplay validation in the Phase 4 entries above. A reviewable port patch and `scripts/verify-port.ps1` accompany the changes.
