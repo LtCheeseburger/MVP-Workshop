@@ -29,6 +29,16 @@ public static class TestModPublisher
         var report = MvpModExporter.Export(session, info, folder, asFolder: true, progress, allowEmpty: true);
         if (report.Ok)
         {
+            string? previousGeneration = null;
+            if (File.Exists(request))
+            {
+                using var previous = JsonDocument.Parse(File.ReadAllText(request));
+                var relative = previous.RootElement.GetProperty("mod").GetString() ?? "";
+                if (!relative.StartsWith("generations/") || relative.Length != 44 || relative[12..].Any(c => !char.IsAsciiHexDigit(c))) throw new InvalidDataException("Unsafe previous test generation.");
+                previousGeneration = Path.Combine(Path.GetFullPath(directory), relative);
+            }
+            progress?.Invoke("Preparing live texture identities and ownership checks");
+            LiveTexturePlan.Write(session, folder, previousGeneration);
             // A single rename publishes the complete generation. Old generations remain readable by the game.
             var temporary = request + "." + revision + ".tmp";
             File.WriteAllText(temporary, JsonSerializer.Serialize(new { format = Protocol, revision, mod = "generations/" + revision }));

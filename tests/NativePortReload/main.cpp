@@ -38,6 +38,25 @@ int main(int argc, char** argv) {
     kernel::mods::List(game);
     auto next3 = generation('9', "updated"); Write(next3 / "files/after-listing.txt", "new child");
     check("cached directory listings block topology changes", pointer('9').find("\"restart-required\"") != std::string::npos);
+    bool rendererReady = false, staged = false, committed = false;
+    kernel::mods::ConfigureLiveTextures(
+        [&](const std::vector<kernel::mods::LiveTexture>& entries, const std::string&, std::string&) { staged = entries.size() == 1 && entries[0].key == 1; return staged; },
+        [&](const std::string&) { committed = true; },
+        [&](const std::string&) { return rendererReady; });
+    auto live = generation('a', "updated"); Write(live / "files/logo.xsh/00_one.dds", "synthetic DDS transport payload");
+    Write(live / "live-textures/0.dds", "synthetic DDS transport payload");
+    Write(live / "live-textures.json", "{\"format\":1,\"problems\":[],\"mappings\":[{\"packPath\":\"logo.xsh\",\"file\":\"live-textures/0.dds\",\"keys\":[\"0000000000000001\"]}]}");
+    kernel::mods::RecordOpen(game / "logo.xsh");
+    auto oldAck = Read(publish / "reload.ack.json"); pointer('a');
+    check("loaded texture is staged and committed through renderer callbacks", staged && committed);
+    check("applied acknowledgement waits for renderer frame boundary", Read(publish / "reload.ack.json") == oldAck);
+    rendererReady = true; kernel::mods::PollReload();
+    check("renderer completion acknowledges the requested revision", Read(publish / "reload.ack.json").find("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") != std::string::npos && Read(publish / "reload.ack.json").find("\"applied\"") != std::string::npos);
+    auto ambiguous = generation('b', "updated"); Write(ambiguous / "files/logo.xsh/00_one.dds", "unsafe ambiguity");
+    Write(ambiguous / "live-textures.json", "{\"format\":1,\"problems\":[\"Shared texture content requires restart\"],\"mappings\":[]}");
+    check("ambiguous live ownership refuses the whole transaction", pointer('b').find("\"restart-required\"") != std::string::npos);
+    bytes.clear(); kernel::mods::Load(game / "logo.xsh/00_one.dds", bytes);
+    check("refused live transaction preserves prior VFS bytes", std::string(bytes.begin(), bytes.end()) == "synthetic DDS transport payload");
     check("game source was never written", Read(game / "default.xbe") == "fake game bytes");
     return failed ? 1 : 0;
 }

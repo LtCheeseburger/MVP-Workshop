@@ -22,7 +22,7 @@ try {
     Run-Dotnet 'solution-build' @('build', 'MVPWorkshop.slnx', '-c', $Configuration)
     $projects = Get-ChildItem tests -Filter '*.csproj' -Recurse | Where-Object { $_.FullName -notmatch '[\\/](obj|bin)[\\/]' } | Sort-Object FullName
     foreach ($project in $projects) { Run-Dotnet ('build-' + $project.BaseName) @('build', $project.FullName, '-c', $Configuration) }
-    foreach ($name in @('BaseMods', 'Dependencies', 'Diagnostics', 'GameLog', 'HotReload', 'InstalledMods', 'Iso', 'MenuSimulation', 'MvpMod', 'PortCompatibility', 'RosterCsv', 'Tasks', 'Textures')) {
+    foreach ($name in @('BaseMods', 'Dependencies', 'Diagnostics', 'GameLog', 'HotReload', 'InstalledMods', 'Iso', 'LiveTextures', 'MenuSimulation', 'MvpMod', 'PortCompatibility', 'RosterCsv', 'Tasks', 'Textures')) {
         Run-Dotnet $name @('run', '--project', "tests/$name", '-c', $Configuration, '--no-build', '--no-restore')
     }
     $fixtures = Join-Path $runDirectory 'fixtures'

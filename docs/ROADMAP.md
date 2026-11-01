@@ -41,13 +41,11 @@ each lands as its own commit and is checked in the running app.
 
 ## 4. Test in Game
 
-- [ ] Hot reload: tool implementation and precise port contract are complete;
-      immutable generations, atomic publication, process reuse and acknowledgements;
-      the user has now selected the MVP06-Base port checkout, so runtime cache reload
-      and real-game validation remain before completing Phase 4.
-      Native receiver/build/tests now support unopened assets; already-open assets
-      and cached directory topology changes return restart-required atomically.
-- [ ] Launch to a target (`--team`, `--stadium`; needs port support)
+- [x] Hot reload: immutable generations, atomic publication, process reuse and acknowledgements;
+      MVP06-Base replaces supported resident textures at renderer frame boundaries and remounts
+      unopened data. Loaded databases, ambiguous/shared texture identities and unsupported texture
+      layouts request restart atomically; see HOT_RELOAD_PROTOCOL.md for limits and verification.
+- [ ] Launch to a target (needs native flags)
 
 ## 5. Team workspaces
 

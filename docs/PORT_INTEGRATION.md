@@ -4,12 +4,12 @@ The local checkout with the format-1 `.mvpmod` contract is:
 
 `E:\Recomp Source\MVP06-NCAABB\MVP06-Base\MVP06-XBERecomp`
 
-The current user-selected Phase 4 target is the MVP06-Base checkout above. The
-receiver is applied there, its Release build and all 14 native checks pass, and
-`scripts/verify-port.ps1` defaults to it. Existing untracked `tools/` files were
-left untouched. Its release manifest retains version/file hashes and adds the
-implemented runtime capabilities.
-
+The current Phase 4 implementation is in the MVP06-Base checkout above. Release runtime
+and game DLL build successfully; the native loader has 19 checks and the renderer has
+7 checks. `scripts/verify-port.ps1` defaults to this checkout. Existing untracked
+`tools/` files remain untouched. Capability metadata advertises `workshopReload: 1`,
+`workshopLiveTextures: 1`, `workshopReloadMode: "live-textures"`.
+Release packaging preserves version and hashed-file metadata.
 Earlier, the user selected the top-level `E:\Recomp Source\MVP06-NCAABB\MVP06-XBERecomp`.
 That folder contains runtime sources and
 existing Debug/Release CMake/Ninja build directories, but no Git metadata. Preserve
@@ -71,7 +71,7 @@ the enabled list without changing launcher settings.
 
 ## Logs
 
-The transport and the remaining live-resource work are specified in
+The implemented transport and live-texture contract are specified in
 [HOT_RELOAD_PROTOCOL.md](HOT_RELOAD_PROTOCOL.md). Both checkouts now have the receiver;
 future Phase 4 changes target MVP06-Base.
 
@@ -94,3 +94,11 @@ and `wWinMain`) and `sdk/runtime/core/log.cpp`:
 Workshop's log-reader tests use these exact formats with disposable synthetic logs.
 Its live WPF check verifies polling, badge updates, asset navigation, retention across
 validation refreshes, and clearing on project switches without launching a game.
+
+The visible D3D12 audit also passed in one process (PID 47120): synthetic DDS sidecars
+changed already-resident field textures to magenta during the attract-mode match;
+the next empty replacement map restored the field. Revisions 2 and 3 both received
+`applied` after renderer boundaries. Inspected captures are `MVP06_20261031_201700.png`
+and `MVP06_20261031_201715.png` under session `reload-34005377880346c7b0d86879c51d2d3d`.
+This validates the native GPU transport; the separate LiveTextures suite validates
+Workshop's source-key ownership, history and exact DDS generation.

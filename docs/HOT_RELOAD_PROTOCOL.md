@@ -1,14 +1,11 @@
 # Workshop reload protocol 1
 
-Roadmap 4.1 uses the prompt's tool-side implementation plus precise port-side design
-option. Workshop implements publication, process reuse and acknowledgement handling.
-The selected MVP06-Base port and the earlier top-level target implement a conservative receiver: each atomically
-remounts changes only to assets the game has never opened. Previously opened assets,
-containing archives, or additions/removals in previously enumerated directories
-return `restart-required`, leaving the entire old layer active. This avoids touching
-live guest/GPU resources. Future runtime work targets MVP06-Base.
-Live-resource replacement and real gameplay validation remain outstanding.
-
+Workshop and the selected MVP06-Base port implement atomic publication, process reuse,
+revision acknowledgements and resident texture replacement. Supported loose XSH slots
+(DXT1, DXT3 and Morton BGRA) reload at renderer frame boundaries. Unopened data remounts;
+loaded databases/rosters, unsupported texture layouts, changed slot topology and ambiguous
+shared texture identities return `restart-required`, preserving the entire previous layer.
+The earlier top-level port retains its older unopened-assets implementation.
 ## Discovery and launch
 
 The port release's `port-manifest.json` advertises `"workshopReload": 1` only after
@@ -46,52 +43,37 @@ removed from the previous generation. Ordinary user exports still reject no-op m
 Generation retention currently has no automatic pruning; stop the game before
 manually clearing old Workshop test directories under the system temporary folder.
 
-## Runtime implementation points
+## Runtime implementation
 
-Verified source locations in the discovered MVP06-Base checkout:
+`kernel/workshop_reload.inc` polls every 250 ms. It validates format/revision, requires
+exactly `generations/<revision>` beneath the request, validates the complete mod, and
+uses the mount transaction lock for VFS reconstruction. Existing reads finish before
+publication. Failed validation or unsupported loaded resources preserve the old mount.
+Changed directories already enumerated by the game also require restart unless covered
+by a supported texture mapping. Reindex exceptions roll back the old mount.
 
-- `sdk/runtime/app/main.cpp`: the command-line loop around `--mod` and the call to
-  `kernel::mods::Init`. Parse the new flag and register the watcher after initial
-  loading. Never pass an unrecognized Workshop flag through as a game argument.
-- `sdk/runtime/kernel/mods.cpp`: the current `Init` fills global mod/file maps.
-  Refactor those maps into an immutable mount-state object. Build the next state
-  from enabled launcher mods plus the requested generation using existing format,
-  layout, XBE, dependencies, removals, RefPack and DDS validations. Do not call `Init`
-  in place on a background thread while `Stat`, `Load`, `Exists` or packing reads
-  access its globals. Readers hold a shared generation reference for the entire
-  operation, including generated BIG/XSH buffers.
-- Texture reconstruction in `sdk/runtime/kernel/xsh.cpp` and the renderer's GPU
-  resource cache need generation-aware invalidation. The affected set is the union
-  of old/new paths and removals, plus containing BIG/XSH assets and their derived
-  resources. Paths that disappear must invalidate too. Defer GPU disposal until
-  in-flight frames complete; do not replace texture bytes beneath active readers.
+Every generation includes `live-textures.json` and auxiliary DDS images:
 
-Poll the pointer every 100–250 ms, or watch its parent directory and reread on rename.
-Read at most 1 MiB; require format 1, a valid revision and exactly
-`generations/<revision>` as the relative path. Resolve against the request's parent,
-reject traversal/absolute paths and reparse-point escapes. The launch flag itself
-is local-user supplied. Do not treat the JSON as commands. Validate the entire new
-layer before modifying active state. A revision is processed at most once unless
-the previous attempt explicitly failed transiently before any state change.
+```json
+{"format":1,"problems":[],"mappings":[{"assetKey":"example","slot":0,"packPath":"art/example.xsh","file":"live-textures/000000.dds","keys":["6175d92eed39ad7d"]}]}
+```
 
-Perform state swaps at a game-thread safe point. Initially allow reload only at a
-known front-end/menu state with no active match and no outstanding guest file
-handles tied to changed assets. Drain work or retain the old generation for handles
-that cannot be drained. Clear/rebuild dependent native and guest caches as one
-transaction. Database/roster reload requires reconstructing guest database state;
-until that exists, return `restart-required` for those changes. Never report an
-unsupported data change as applied merely because the host file map was replaced.
-If any affected resource cannot be invalidated safely, leave the **entire** active
-generation unchanged and request restart. Reject invalid mods without partial swaps.
+The tool computes the port's exact texture content key from format, dimensions and
+native level-zero bytes. Keys include source, selected base, current edit and prior
+generations. Revert publishes the original image for keys still resident in guest memory.
+It scans source/base packs for shared identities and refuses ambiguous mappings rather
+than changing another asset. New Added packs and unsupported raw slots fall back to the
+unopened-data path; editing those after load requires restart. Sidecars are test-only and
+never enter exported `.mvpmod` payloads.
 
-The implemented unopened-asset receiver uses a recursive mount lock around complete
-file open/read transactions and VFS reconstruction, and records asset/archive opens
-and directory enumerations. It validates the candidate before swapping its mount
-maps, with rollback if reindexing throws. Since it refuses all changed assets with
-existing consumers, there are no affected guest/GPU resources to invalidate in an
-accepted transaction. A Win32 timer polls the pointer every 250 ms. Extending this
-mode to already-loaded assets requires the game-thread/cache work described above.
-
+`workshop_live.inc` validates paths, nonempty keys, uniqueness, problem reports and size
+limits. `gpu/workshop_gpu.inc` decodes all DDS files before mount publication; no decode
+occurs on the renderer thread. Commit queues an immutable replacement map. On the next
+renderer update it swaps maps, increments the texture generation and releases texture
+caches through the existing frame-fenced garbage queue. Original guest texture memory
+stays intact. The Workshop map works independently of user texture-pack settings.
+Acknowledgement waits for this renderer boundary. An empty map clears prior overrides.
+Loaded nontexture data never reports applied merely because the VFS map changed.
 ## Acknowledgement
 
 After the safe-point transaction, write `reload.ack.json` beside the pointer through
@@ -114,24 +96,17 @@ in Diagnostics. It never claims success from publication alone and never kills o
 restarts the game automatically. A slow runtime may still finish after the timeout;
 its ordinary log remains visible. The next Test publishes another full generation.
 
-## Validation before advertising support
+## Verification
 
-The self-contained console suite checks pointer preservation on export failure,
-immutable old generations, exact revision acknowledgements, all statuses, capability
-gating and revert-all. The live WPF test launches a disposable protocol peer and
-checks repeated Test reuses that process, acknowledgement reporting and empty-layer
-publication. These are transport checks, not evidence of real runtime cache reload.
+`./scripts/verify.ps1` covers immutable publication, process reuse, revision/status
+handling, revert-all, native content-key parity, history and shared identity refusal.
+`./scripts/verify-port.ps1 -BuildPort` builds both Release runtime and game DLL, runs
+19 checks against the actual mod loader, 9 tool texture-plan checks, and 7 native renderer
+checks for DDS staging, frame-boundary acknowledgement, replacement and clearing.
+These renderer checks exercise actual CPU renderer code without creating a GPU device.
+Real-game launch validation and its limits are recorded in PORT_INTEGRATION.md.
 
-Port acceptance must additionally test an edited texture and its containing archive,
-deleted/reverted overrides, roster restart-required behavior, an active match,
-outstanding reads, GPU frames, malformed requests, invalid mods, rapid successive
-revisions, project switching and process exit. Hash the installed game and launcher
-settings before/after; they must remain unchanged.
-
-Run `./scripts/verify-port.ps1 -BuildPort` for native, no-game verification in the
-selected checkout. It builds MVP06 Release and compiles the actual `mods.cpp` and
-`inflate.cpp` with a standalone harness. Checks cover new bytes, preserved old bytes
-on restart-required/rejection, unopened additions/reverts, containing archives,
-directory enumeration, traversal and mutual exclusion. The reviewable native patch
-is [port-phase4.patch](port-phase4.patch). These checks do not claim live-texture or
-gameplay coverage.
+For optional real GPU audits only, `--workshop-texture-audit` enables configured texture
+dumping and requests a screenshot after each acknowledged generation. It is never passed
+by normal Test in Game launches. Dumps remain beside the validation executable; captures
+are beneath the isolated user directory. Stop the validation process before clearing them.
