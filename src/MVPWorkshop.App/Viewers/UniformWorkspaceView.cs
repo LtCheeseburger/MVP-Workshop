@@ -19,6 +19,8 @@ public sealed class UniformWorkspaceState
     public ModelView.UniformCamera? OriginalCamera { get; set; }
     public ModelView.UniformCamera? EditedCamera { get; set; }
     public HashSet<string> DirtRegions { get; } = [];
+    public Dictionary<string, char> Roles { get; } = [];
+    public string? Role { get; set; }
 }
 
 public sealed class UniformWorkspaceView : Grid
@@ -27,7 +29,7 @@ public sealed class UniformWorkspaceView : Grid
     {
         var previews = state.Previews;
         var initialName = state.Name; var initialNumber = state.Number;
-        var initialPlayer = state.Player; var initialVariant = state.Variant;
+        var initialPlayer = state.Player; var initialVariant = state.Variant; var initialRole = state.Role;
         var body = nodes.First(n => n.Name == "mebody.ord");
         var head = nodes.First(n => n.Name == "hihead.ord");
         var original = ModelView.CreateUniform(body, head);
@@ -39,6 +41,11 @@ public sealed class UniformWorkspaceView : Grid
         var variants = UniformPreview.Variants(profile);
         if (variants.Count == 0) throw new InvalidOperationException("No uniform variants.");
         var pick = new ComboBox { Tag="UniformVariant", ItemsSource = variants, MinWidth = 200, Margin = new Thickness(4) };
+        var defaults = UniformPreview.PreviewRoles(variants);
+        foreach (var (roleName, defaultSuffix) in defaults) state.Roles.TryAdd(roleName, defaultSuffix);
+        var role = new ComboBox { Tag = "UniformRole", ItemsSource = new[] { "Home", "Away", "Alternate" }, MinWidth = 100, Margin = new Thickness(4), ToolTip = "Preview roles map to disc suffixes. Use Map variant to role to change the mapping; this does not edit game assignments." };
+        bool selectingRole = false;
+        var colourSwatches = new WrapPanel { Tag = "UniformColours", Margin = new Thickness(4) };
         var player = new ComboBox { Tag="UniformPlayer", ItemsSource = profile.Players, DisplayMemberPath = "Name", MinWidth = 180, Margin = new Thickness(4) };
         var name = new TextBox { Tag="UniformName", Width = 150, Margin = new Thickness(4), ToolTip = "Preview surname; native renderer uses the first ten characters" };
         var number = new TextBox { Tag="UniformNumber", Width = 45, Margin = new Thickness(4), Text = "0", ToolTip = "Preview jersey number 0–99" };
@@ -59,6 +66,12 @@ public sealed class UniformWorkspaceView : Grid
                 original.DressUniform(variant, nodes, bindings, new StackPanel(), baselineNumber, baselineName, true);
                 edited.DressUniform(variant, nodes, bindings, sources, normalized, name.Text, false, previews,state.DirtRegions);
                 state.Name = name.Text; state.Number = number.Text; state.Variant = variant.Suffix;
+                colourSwatches.Children.Clear();
+                foreach (uint colour in UniformPreview.FabricColours(variant))
+                {
+                    var color = Color.FromRgb((byte)(colour >> 16), (byte)(colour >> 8), (byte)colour);
+                    colourSwatches.Children.Add(new Border { Width = 26, Height = 20, Margin = new Thickness(2), Background = new SolidColorBrush(color), ToolTip = $"Selected fabric #{colour & 0xffffff:X6}" });
+                }
                 glyphs.Children.Clear();
                 if (variant.Font is { } fontNode)
                 {
@@ -92,13 +105,35 @@ public sealed class UniformWorkspaceView : Grid
         pick.SelectionChanged += (_,_) =>
         {
             if (pick.SelectedItem is not UniformVariant v) return;
+            if (!selectingRole) { state.Role = null; role.SelectedIndex = -1; }
             textures = new[] { v.Texture, v.Font }.OfType<AssetNode>().SelectMany(pack => SshFile.Read(pack.ReadAll()).Images.Select(i => (pack,i))).ToList();
             tags.ItemsSource = textures.Select(t => $"{t.Pack.Name} / {t.Image.Tag}").ToList(); tags.SelectedIndex = 0;
             Refresh();
         };
         name.TextChanged += (_,_) => Refresh(); number.TextChanged += (_,_) => Refresh();
         var controls = new WrapPanel();
-        controls.Children.Add(pick); controls.Children.Add(player);
+        role.SelectionChanged += (_, _) =>
+        {
+            if (role.SelectedItem is not string selected) return;
+            state.Role = selected;
+            if (!state.Roles.TryGetValue(selected, out var suffix) || !variants.Any(v => v.Suffix == suffix))
+            {
+                status.Text = selected + " has no mapped disc variant. Select a native variant and map it to this role."; return;
+            }
+            selectingRole = true;
+            try { pick.SelectedIndex = variants.FindIndex(v => v.Suffix == suffix); }
+            finally { selectingRole = false; }
+        };
+        controls.Children.Add(role); controls.Children.Add(pick);
+        controls.Children.Add(B.Button("Map variant to role…", null, (_, _) =>
+        {
+            if (pick.SelectedItem is not UniformVariant variant) return;
+            var dialog = new Window { Owner = Window.GetWindow(this), Title = "Uniform preview role", Width = 360, SizeToContent = SizeToContent.Height, WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = Ui.Res("PanelBg"), Foreground = Ui.Res("Text") };
+            var roles = new ComboBox { ItemsSource = new[] { "Home", "Away", "Alternate" }, SelectedIndex = 0, Margin = new Thickness(10) };
+            dialog.Content = B.Rows((B.Text("Map disc variant " + variant.Suffix + " to preview role", "Muted"), B.Auto), (roles, B.Auto), (B.Button("Use mapping", null, (_, _) => { state.Roles[(string)roles.SelectedItem] = variant.Suffix; role.SelectedItem = roles.SelectedItem; dialog.DialogResult = true; }, "Primary"), B.Auto));
+            dialog.ShowDialog();
+        }, "Outline"));
+        controls.Children.Add(player);
         controls.Children.Add(B.Text("Preview surname", "Muted")); controls.Children.Add(name);
         controls.Children.Add(B.Text("Number", "Muted")); controls.Children.Add(number);
         var applyRoster=B.Button("Apply name / number to roster", null, (_,_) =>
@@ -154,6 +189,8 @@ public sealed class UniformWorkspaceView : Grid
         replace.Children.Add(B.Button("Open texture editor",null,(_,_)=> { if(tags.SelectedIndex>=0)MainWindow.Instance?.OpenAsset(textures[tags.SelectedIndex].Pack); },"Outline"));
         replace.Children.Add(B.Button("Export uniform set as PNGs",null,(_,_)=>TexturePackExport.ExportSchool(profile),"Outline"));
         var sidebar = new StackPanel(); sidebar.Children.Add(status); sidebar.Children.Add(glyphs);
+        sidebar.Children.Add(B.Text("Selected uniform colours", "Muted")); sidebar.Children.Add(colourSwatches);
+        sidebar.Children.Add(new TextBlock { Text = "Home/Away/Alternate are editable preview mappings. Defaults use native suffix order; runtime role meaning is unverified. The model uses the selected school's texture colours without recolouring.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(6), Foreground = Ui.Res("Muted") });
         var dirt=new WrapPanel();
         foreach(var region in new[]{"dcht","dbtl","dbtr","dlll","dllr","dlul","dlur"})
         {
@@ -190,5 +227,6 @@ public sealed class UniformWorkspaceView : Grid
         int ni=Array.IndexOf(args,"--uniform-number"), ti=Array.IndexOf(args,"--uniform-name");
         if(initialNumber is null&&ni>=0&&ni+1<args.Length)number.Text=args[ni+1];
         if(initialName is null&&ti>=0&&ti+1<args.Length)name.Text=args[ti+1];
+        role.SelectedItem = initialRole ?? (initialVariant is null ? "Home" : null);
     }
 }

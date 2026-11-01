@@ -55,7 +55,8 @@ each lands as its own commit and is checked in the running app.
 - [x] Replacement impact/scope review on texture, audio and model import; atomic school-only
       uniform/logo family forks, complete variants/fonts/menu copies, undo and project/export.
       School-only audio/shared-model/stadium bindings remain undecoded and explicitly unavailable.
-- [ ] Uniform editor on the player model with team colours
+- [x] Dressed uniform model: editable Home/Away/Alternate preview mappings, native school colours,
+      surname/number, live texture updates and undo. Native suffix role meaning remains unverified.
 
 ## 6. Viewers and editors for every file type
 

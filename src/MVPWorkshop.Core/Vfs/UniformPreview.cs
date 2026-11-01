@@ -11,6 +11,31 @@ public sealed record UniformVariant(char Suffix, AssetNode Texture, AssetNode? F
 /// <summary>Disc-backed uniform sources. Suffixes deliberately carry no home/away interpretation.</summary>
 public static class UniformPreview
 {
+    /// <summary>Preview role defaults follow available suffix order; users can map roles explicitly.</summary>
+    public static Dictionary<string, char> PreviewRoles(IReadOnlyList<UniformVariant> variants)
+    {
+        var roles = new Dictionary<string, char>();
+        var names = new[] { "Home", "Away", "Alternate" };
+        for (int i = 0; i < Math.Min(names.Length, variants.Count); i++) roles[names[i]] = variants[i].Suffix;
+        return roles;
+    }
+
+    /// <summary>Dominant opaque fabric colours; no invented official school palette.</summary>
+    public static IReadOnlyList<uint> FabricColours(UniformVariant variant)
+    {
+        var ssh = SshFile.Read(variant.Texture.ReadAll());
+        var image = ssh.Images.FirstOrDefault(i => i.Tag.TrimEnd() == "tors") ?? ssh.Images.First();
+        var decoded = ssh.Decode(image);
+        var bins = new Dictionary<int, (long R, long G, long B, int Count)>();
+        for (int i = 0; i < decoded.Bgra.Length; i += 4)
+        {
+            if (decoded.Bgra[i + 3] < 128) continue;
+            int b = decoded.Bgra[i], g = decoded.Bgra[i + 1], r = decoded.Bgra[i + 2];
+            int key = (r >> 4) << 8 | (g >> 4) << 4 | b >> 4;
+            var bin = bins.GetValueOrDefault(key); bins[key] = (bin.R + r, bin.G + g, bin.B + b, bin.Count + 1);
+        }
+        return bins.Values.OrderByDescending(b => b.Count).Take(5).Select(b => 0xff000000u | (uint)(b.R / b.Count) << 16 | (uint)(b.G / b.Count) << 8 | (uint)(b.B / b.Count)).ToList();
+    }
     public static Dictionary<string,string> ReadDirtBindings(byte[] executable)
     {
         if (XbeTables.IsXbe(executable)) return XbeTables.DirtBindings(executable);

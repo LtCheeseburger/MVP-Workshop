@@ -6,6 +6,17 @@ drag to pan, or scroll to zoom. Fit, Front, Back, Side and Three-quarter presets
 and Lit/Unlit shading reuse the EAGL model viewer. Resizing fits the player again.
 Switching uniforms preserves the camera.
 
+The **Home / Away / Alternate** picker switches editable preview-role mappings.
+Defaults map available native suffixes in order (a, b, then a third variant if present).
+Use **Map variant to role…** to assign the selected suffix explicitly. These labels
+are preview settings: the suffix's actual runtime home/away meaning remains unverified.
+An unavailable alternate keeps the current model and explains that no variant is mapped;
+the tool never fabricates a third uniform. Mappings survive school-view rebuilds and undo.
+
+**Selected uniform colours** shows dominant opaque colours decoded from the selected
+torso sheet (or the first sheet if no torso exists). The dressed model uses the actual
+school textures; the palette does not recolour assets or claim official brand colours.
+
 The workspace shows original disc and edited project players side by side. Select a
 roster player, or enter a surname and number (0–99). The same selected disc variant
 is used on both sides so texture edits can be compared. The original side uses
@@ -57,6 +68,11 @@ expander distinguishes decoded rules from remaining 3D rendering differences.
   0, the head and equipment are sample choices, not decoded roster appearance.
 - No home/away interpretation is assigned to suffixes. Frontend artwork remains
   separately accessible and is not used as a player texture.
+
+The Home/Away/Alternate controls provide explicit preview mappings without changing
+that evidence boundary. Saved texture edits, texture-editor replacements and undo/redo
+refresh both the source inspector and dressed surfaces. Shared-resource replacements
+use the scope review described in [REPLACEMENT_SCOPE.md](REPLACEMENT_SCOPE.md).
 
 ## Native text builders and remaining rendering differences
 
@@ -148,6 +164,22 @@ dirt bindings and clean/decorated fabric outputs across both variants of all thr
 schools. The UI test exercises real roster Apply, undo, retained preview settings and both
 comparison models across the same three schools, and writes front/back screenshots with the native dirt states enabled.
 
+Phase 5.3 validation also checks Home/Away switching, texture-derived colour swatches,
+and dressed-surface signatures before texture replacement, after replacement and after
+undo. LSU, Alabama and Stanford passed these checks with front/back captures in
+`test-output-uniform-86df9ab53d14469ca232580df2659ced`; the preview uses one representative
+dirt state during this test. Core synthetic tests cover missing/third variants and the
+fabric palette. These real-model checks remain separate from synthetic CI.
+
+Xbox verification uses the same three schools in the loose MVP06 installation. Its
+geometry table at model +0xCC contains counted render-method wrapper groups, matched
+to the name table at +0xA0. The reader validates complete, unique method ownership
+before replacing its fallback part layout. This prevents PS2 loadout indexes from
+selecting isolated Xbox draw calls and leaving most of the player invisible. Shared
+skin/head/shoe sources resolve their `.xsh` equivalents. Direct number/name surfaces
+receive decoded font canvases. Runtime shader-specific decoration differences remain
+distinct from the validated PS2 secondary-UV compositor.
+
 For manual captures select Uniforms (outer tab 6):
 
 ```powershell
@@ -155,3 +187,9 @@ dotnet src/MVPWorkshop.App/bin/Release/net9.0-windows/MVP-Workshop.dll --snapsho
 ```
 
 `uniform-sources` and `uniform-uv` in Probe retain source-tag and mesh UV diagnostics.
+
+The corrected Xbox three-school UI run passed with `Failures: 0` in
+`test-output-uniform-xbox-52bba2be7a694aa29589934c42add423`. Assertions include visible
+body-material coverage in addition to model count, swatches, role switching, live
+surface changes and undo. Its LSU front capture was visually inspected after the
+shape-group fix. The earlier PS2 run also produced front/back captures for all three schools.

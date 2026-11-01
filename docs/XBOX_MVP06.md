@@ -52,7 +52,7 @@ Same relocated-object container and symbol names (`__Model`, `__Skeleton`, `__Bo
 * Skin: 16-byte weight records `{w0, w1, w2, packed bones}`; bone indices are skeleton indices (no palette). See "Xbox (MVP 06) skinning" in [FORMATS.md](FORMATS.md).
 
 ## Limitations
-* **Teams workspace**: stadium and uniform tables are not yet resolved for Xbox; the Teams/uniform/stadium workspaces are PS2-only.
+* **Teams workspace**: decoded Xbox uniform/stadium tables resolve school assets. Dressed uniforms group native render methods by the model's named shape table and use shared XSH textures. Equipment is a sample configuration; preview role labels remain user mappings rather than verified runtime home/away rules.
 * **DXT replacement is lossy** (block fit); logos with fine detail may show artefacts. Dimensions must be multiples of 4.
 * XPR0 images are view-only; unusual XPR0 pixel formats are not decoded.
 * Movies need ffmpeg; VP6 files are read-only.

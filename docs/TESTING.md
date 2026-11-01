@@ -9,7 +9,7 @@ From PowerShell 7 on Windows, with the .NET 9 SDK:
 This is the same entry point used by `.github/workflows/verify.yml` for pushes,
 pull requests and manual runs. It builds the solution and every test project in
 Release mode, runs the self-contained console suites, generates new synthetic
-fixtures, and runs fifteen WPF checks. A nonzero command exit, missing desktop report,
+fixtures, and runs sixteen WPF checks. A nonzero command exit, missing desktop report,
 `FAIL` report line or desktop timeout fails the run. Desktop tests run sequentially
 because they use modal dialogs and the clipboard.
 
@@ -98,3 +98,10 @@ dialogs, automatic defaults, capability gating and process arguments through a d
 peer. `verify-port.ps1 -BuildPort` builds the selected MVP06-Base runtime and matching DLL,
 runs 19 native loader checks and 7 real renderer CPU checks without proprietary assets.
 See PORT_INTEGRATION.md for separate real-game target and visible GPU validation.
+
+`SchoolFork` covers complete family isolation, free-slot allocation, other-school
+preservation, Added VFS resolution, grouped undo/redo, stale review protection, preview
+role mapping and decoded fabric colours. `--replacement-selftest` is the sixteenth WPF
+mode and exercises both scope choices, project reload and export. The real-data
+`--uniform-selftest` additionally checks role switching, swatches and actual dressed
+surface changes/restoration; it requires the PS2 validation assets and is not part of CI.

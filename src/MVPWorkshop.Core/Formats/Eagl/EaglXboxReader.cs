@@ -81,6 +81,42 @@ public static class EaglXboxReader
         };
         model.Variations.AddRange(modelSymbols.Where(s => s.Name != baseSymbol.Name).Select(s => s.Name[10..]));
         model.VariantCount = 1 + model.Variations.Count;
+        // Player geometry uses the same named shape groups as PS2, but each group is
+        // {RM count, wrapper pointers...}; a wrapper's first pointer identifies its RM.
+        // Treating each RM as a body part makes loadout indexes select incomplete limbs.
+        if (o.Ptr(baseSymbol.Value + 0xA0) is { } namesAt && o.Ptr(baseSymbol.Value + 0xCC) is { } geometry)
+        {
+            var names = new List<string>();
+            for (int i = 0; i < 256 && o.Ptr(namesAt + i * 4) is { } name; i++)
+            {
+                var text = Bin.CString(o.Data, name, 128);
+                if (!text.StartsWith("G_", StringComparison.Ordinal)) break;
+                names.Add(text);
+            }
+            var groups = new List<EaglPart>(); var seen = new HashSet<int>();
+            var byMethod = renderMethods.Select((method, index) => (method.Value, index)).ToDictionary(p => p.Value, p => p.index);
+            int cursor = geometry + 4; bool valid = names.Count > 0;
+            for (int i = 0; valid && i < names.Count; i++)
+            {
+                if (cursor < 0 || cursor > o.Data.Length - 4) { valid = false; break; }
+                uint rawCount = o.U32(cursor); cursor += 4;
+                if (rawCount > 256) { valid = false; break; }
+                int count = (int)rawCount;
+                if (cursor > o.Data.Length - count * 4) { valid = false; break; }
+                var group = new EaglPart { Index = i };
+                for (int k = 0; k < count; k++, cursor += 4)
+                {
+                    if (o.Ptr(cursor) is not { } wrapper || o.Ptr(wrapper) is not { } rm || !byMethod.TryGetValue(rm, out int index) || !seen.Add(index)) { valid = false; break; }
+                    foreach (var part in parts.Where(p => p.Index == index)) group.Draws.AddRange(part.Draws);
+                }
+                groups.Add(group);
+            }
+            if (valid && parts.All(p => seen.Contains(p.Index)))
+            {
+                foreach (var group in groups) foreach (var draw in group.Draws) draw.Part = group.Index;
+                parts = groups; model.Names.AddRange(names);
+            }
+        }
         model.Parts.AddRange(parts);
         file.Models.Add(model);
         return file;

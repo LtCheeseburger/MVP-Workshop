@@ -11,6 +11,21 @@ namespace MVPWorkshop.App.Viewers;
 
 public sealed partial class ModelView
 {
+    internal IReadOnlySet<string> UniformVisibleMaterials() => _model.Mesh.Draws
+        .Where(d => d.Texture is not null && _textures.ContainsKey(d.Texture) && _parts.Any(p => p.Visible && p.Part.Index == d.Part))
+        .Select(d => d.Texture!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    internal string UniformSurfaceSignature()
+    {
+        using var hash = System.Security.Cryptography.IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
+        foreach (var (key, image) in _textures.OrderBy(p => p.Key))
+        {
+            if (image is not BitmapSource source) continue;
+            var bitmap = new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
+            var pixels = new byte[bitmap.PixelWidth * bitmap.PixelHeight * 4]; bitmap.CopyPixels(pixels, bitmap.PixelWidth * 4, 0);
+            hash.AppendData(System.Text.Encoding.UTF8.GetBytes(key)); hash.AppendData(pixels);
+        }
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
     public sealed record UniformCamera(double Yaw, double Pitch, double Distance, System.Windows.Media.Media3D.Point3D Target);
     public event Action<UniformCamera>? UniformCameraChanged;
     public UniformCamera CaptureUniformCamera() => new(_yaw, _pitch, _distance, _target);
@@ -88,7 +103,8 @@ public sealed partial class ModelView
             inspection.Children.Add(B.Button(pack.Name, null, (_, _) => MainWindow.Instance?.OpenAsset(pack), "Outline", pack.Path));
             inspection.Children.Add(new TextBlock { Text = string.Join(", ", rows.Count > 0 ? rows : tags), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8, 0, 8, 8), Foreground = Ui.Res("Muted"), FontSize = 11 });
         }
-        AssetNode? Find(string name) => nodes.FirstOrDefault(n => n.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        AssetNode? Find(string name) => nodes.FirstOrDefault(n => n.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+            ?? nodes.FirstOrDefault(n => n.Name.Equals(Path.ChangeExtension(name, ".xsh"), StringComparison.OrdinalIgnoreCase));
         Load(variant.Texture, bindings);
         foreach (var sourceName in new[] { "basebody.ssh", "basehead.ssh", "flesh.ssh", "bshoe0.ssh", "gaaaaa.ssh" })
             if (Find(sourceName) is { } pack) Load(pack, sourceName == "flesh.ssh" ? new() { ["arms"] = "0arm", ["hndb"] = "0hdb", ["hndt"] = "0hdb" } : null);
@@ -107,6 +123,8 @@ public sealed partial class ModelView
             var fontFile = SshFile.Read(original ? paired.ReadOriginal() : paired.ReadAll());
             native["nb33"] = UniformLettering.Number(fontFile,number,true);
             native["name"] = UniformLettering.Name(fontFile,name,true);
+            _textures["nb33"] = UniformBitmap(UniformLettering.Number(fontFile, number));
+            _textures["name"] = UniformBitmap(UniformLettering.Name(fontFile, name));
         }
         var visible=_parts.Where(p=>p.Visible).Select(p=>p.Part.Index).ToHashSet();
         foreach(var group in _model.Mesh.Draws.Where(d=>visible.Contains(d.Part)&&d.BaseTexture is not null&&d.SecondaryUvs.Count>0).GroupBy(d=>d.Texture))

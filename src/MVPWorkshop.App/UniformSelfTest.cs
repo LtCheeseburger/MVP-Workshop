@@ -15,7 +15,7 @@ public static class UniformSelfTest
     public static async void Run(MainWindow window,string path)
     {
         var report=new StringBuilder(); int failed=0;
-        void Check(string label,bool value) { report.AppendLine($"{(value?"PASS":"FAIL")} {label}"); if(!value)failed++; }
+        void Check(string label,bool value) { report.AppendLine($"{(value?"PASS":"FAIL")} {label}"); if(!value)failed++; File.WriteAllText(path, report.ToString()); }
         IEnumerable<T> Find<T>(DependencyObject parent) where T:DependencyObject
         {
             if(parent is T item)yield return item;
@@ -26,23 +26,30 @@ public static class UniformSelfTest
         {
             window.Width=2100; window.Height=1200;
             window.LogRow.Height=new GridLength(0); window.LogSplitRow.Height=new GridLength(0);
-            TreeItem? teams=null;
-            for(int i=0;i<120&&teams is null;i++) { await Task.Delay(250); teams=window.Tree.Items.OfType<TreeItem>().FirstOrDefault(t=>t.Name=="Teams"&&t.Children.Any(c=>c.Team is not null)); }
-            if(teams is null)throw new InvalidOperationException("No school catalog");
+            var profiles = TeamAssetCatalog.Build(await window.GetAssetIndex());
+            Check("Decoded school catalog is available", profiles.Count > 0);
             foreach(var abbreviation in new[]{"LSU","BAMA","STAN"})
             {
-                var profile=teams.Children.Single(t=>t.Team?.Team.Abbreviation==abbreviation).Team!;
+                var profile=profiles.Single(p => p.Team.Abbreviation == abbreviation);
                 window.OpenTeam(profile); var tab=(DocumentTab)window.Docs.SelectedItem;
                 ((TeamView)tab.Content).SelectedSection=6; await Settle();
                 ComboBox Combo(string tag)=>Find<ComboBox>(tab.Content).Single(c=>Equals(c.Tag,tag));
                 TextBox Text(string tag)=>Find<TextBox>(tab.Content).Single(c=>Equals(c.Tag,tag));
                 var variant=Combo("UniformVariant");
                 Check(abbreviation+" available variants",variant.Items.Count==UniformPreview.Variants(profile).Count);
+                var role = Combo("UniformRole");
+                role.SelectedItem = "Home";
+                Check(abbreviation+" Home preview selects its mapped variant", ((UniformVariant)variant.SelectedItem).Suffix == ((TeamView)tab.Content).UniformState.Roles["Home"]);
+                role.SelectedItem = "Away";
+                Check(abbreviation+" Away preview switches native variant", ((UniformVariant)variant.SelectedItem).Suffix == ((TeamView)tab.Content).UniformState.Roles["Away"]);
+                Check(abbreviation+" selected texture supplies colour swatches", Find<WrapPanel>(tab.Content).Single(p => Equals(p.Tag, "UniformColours")).Children.Count > 0);
                 variant.SelectedIndex=variant.Items.Count-1; Combo("UniformPlayer").SelectedIndex=2;
                 Text("UniformName").Text="ABCDEFGHIJKL"; Text("UniformNumber").Text="99";
-                foreach(var check in Find<CheckBox>(tab.Content).Where(c=>c.Tag?.ToString()?.StartsWith("UniformDirt:")==true).ToList())check.IsChecked=true;
+                Find<CheckBox>(tab.Content).Single(c => Equals(c.Tag, "UniformDirt:dcht")).IsChecked = true;
                 Check(abbreviation+" native dirt state is preview only",((TeamView)tab.Content).UniformState.DirtRegions.Contains("dcht")&&Editor.Session!.Overrides.Count==0);
                 Check(abbreviation+" original and edited models",Find<ModelView>(tab.Content).Count()==2);
+                var materials = Find<ModelView>(tab.Content).Last().UniformVisibleMaterials();
+                Check(abbreviation+" dressed model contains torso arms hands legs and shoes", new[] { "arms", "hndb", "lega", "shoe" }.All(materials.Contains) && (materials.Contains("jers") || materials.Contains("jerk")));
                 Check(abbreviation+" preview does not dirty project",Editor.Session!.Overrides.Count==0);
                 var player=(TeamPlayer)Combo("UniformPlayer").SelectedItem;
                 Find<Button>(tab.Content).Single(b=>Equals(b.Tag,"ApplyUniformRoster")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -55,6 +62,17 @@ public static class UniformSelfTest
                 Check(abbreviation+" undo restores disc roster",source.ReadAll().SequenceEqual(source.ReadOriginal()));
                 Check(abbreviation+" preview text survives undo",Text("UniformName").Text=="ABCDEFGHIJKL");
                 Check(abbreviation+" dirt survives history refresh",Find<CheckBox>(tab.Content).Single(c=>Equals(c.Tag,"UniformDirt:dcht")).IsChecked==true);
+                var pack = ((UniformVariant)Combo("UniformVariant").SelectedItem).Texture;
+                var ssh = SshFile.Read(pack.ReadAll());
+                var replaceable = ssh.Images.First(i => SshWriter.Unsupported(ssh, i) is null);
+                var pixels = ssh.Decode(replaceable);
+                for (int at = 0; at < pixels.Bgra.Length; at += 4) { pixels.Bgra[at] ^= 255; pixels.Bgra[at + 1] ^= 127; }
+                var before = Find<ModelView>(tab.Content).Last().UniformSurfaceSignature();
+                Editor.Session!.Commit(pack, SshWriter.ReplaceImage(ssh, replaceable, pixels.Bgra, pixels.Width, pixels.Height).File, "Uniform live surface check");
+                await Settle();
+                Check(abbreviation+" texture edit updates the dressed model", Find<ModelView>(tab.Content).Last().UniformSurfaceSignature() != before);
+                Editor.Session.Undo(); await Settle();
+                Check(abbreviation+" undo restores the dressed model surfaces", Find<ModelView>(tab.Content).Last().UniformSurfaceSignature() == before);
                 var dpi=VisualTreeHelper.GetDpi(window);
                 var bitmap=new RenderTargetBitmap((int)(window.ActualWidth*dpi.DpiScaleX),(int)(window.ActualHeight*dpi.DpiScaleY),dpi.PixelsPerInchX,dpi.PixelsPerInchY,PixelFormats.Pbgra32);
                 bitmap.Render(window); var png=new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));

@@ -40,6 +40,14 @@ try
     session.Undo(); var logo = root.Resolve("logos.big/l007.xsh")!; var logoPlan = SchoolAssetFork.Plan(session, logo, schools[0]); logoPlan.Apply(session, [42], "Replace logo");
     var assigned = MVPWorkshop.Core.Formats.TeamRoster.Read(schools[0].Roster.ReadAll(), true);
     Check("logo isolation retains the uniform assignment", assigned[0].LogoId == logoPlan.Family && assigned[0].UniformId == 7 && assigned[1].LogoId == 7);
+    var roles = UniformPreview.PreviewRoles(new[] { new UniformVariant('a', source, null), new UniformVariant('b', source, null), new UniformVariant('c', source, null) });
+    Check("three available variants receive explicit preview roles", roles["Home"] == 'a' && roles["Away"] == 'b' && roles["Alternate"] == 'c');
+    Check("absent alternate is never fabricated", !UniformPreview.PreviewRoles(new[] { new UniformVariant('a', source, null), new UniformVariant('b', source, null) }).ContainsKey("Alternate"));
+    var fabric = new byte[48]; "SHPX"u8.CopyTo(fabric); BinaryPrimitives.WriteInt32LittleEndian(fabric.AsSpan(4), 48); BinaryPrimitives.WriteInt32LittleEndian(fabric.AsSpan(8), 1);
+    "tors"u8.CopyTo(fabric.AsSpan(16)); BinaryPrimitives.WriteInt32LittleEndian(fabric.AsSpan(20), 24); BinaryPrimitives.WriteInt32LittleEndian(fabric.AsSpan(24), (24 << 8) | 0x60);
+    BinaryPrimitives.WriteUInt16LittleEndian(fabric.AsSpan(28), 4); BinaryPrimitives.WriteUInt16LittleEndian(fabric.AsSpan(30), 4); fabric[41] = 0xf8;
+    session.Commit(source, fabric, "Preview fabric palette");
+    Check("uniform colours come from decoded fabric pixels", UniformPreview.FabricColours(new UniformVariant('a', source, null)).SequenceEqual(new[] { 0xffff0000u }));
     Check("source game files were never written", originals.All(p => SHA256.HashData(File.ReadAllBytes(p.Key)).SequenceEqual(p.Value)) && Directory.GetFiles(game, "*", SearchOption.AllDirectories).Length == originals.Count);
 }
 finally { AssetNode.Overlay = null; AssetNode.ChildrenOverlay = null; Directory.Delete(temp, true); }
