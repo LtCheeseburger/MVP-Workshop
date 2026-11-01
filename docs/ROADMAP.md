@@ -60,7 +60,8 @@ each lands as its own commit and is checked in the running app.
 
 ## 6. Viewers and editors for every file type
 
-- [ ] Models: skinned preview, LODs, materials, wireframe, export (glTF/OBJ), import
+- [x] Models: sibling LODs, textured materials, wireframe/normals/UV/bones, glTF/OBJ export;
+      constrained Xbox FLOAT3 position import. See MODEL_INTERCHANGE.md for native storage limits.
 - [ ] Animations: timeline, play/scrub, bone view, export
 - [ ] Hex view with format overlays for every file; a structured viewer for each format the survey identifies
 - [ ] Audio: play, replace with automatic encoding

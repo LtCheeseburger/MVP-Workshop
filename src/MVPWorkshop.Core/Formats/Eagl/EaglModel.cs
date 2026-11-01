@@ -62,6 +62,8 @@ public readonly record struct SkinWeights(int B0, int B1, int B2, float W0, floa
 public sealed class EaglMesh
 {
     public List<Vector3> Positions { get; } = [];
+    /// <summary>Xbox source .data offsets for uncompressed native position writes.</summary>
+    public List<int> PositionDataOffsets { get; } = [];
     public List<Vector3> Normals { get; } = [];
     public List<Vector2> Uvs { get; } = [];
     /// <summary>Vertex colour, 1.0 = neutral (PS2 0x80).</summary>

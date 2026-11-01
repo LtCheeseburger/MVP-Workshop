@@ -74,6 +74,7 @@ public sealed partial class ModelView : Grid
 
     private ModelView(AssetNode node, RelocatedObject obj, EaglFile file, byte[] elf, Action<List<Prop>> setExtra, bool uniformPreview = false)
     {
+        _openedElf = elf.ToArray();
         _uniformPreview = uniformPreview;
         _node = node; _obj = obj; _file = file; _setExtra = setExtra;
         LoadMorphs();
@@ -134,6 +135,12 @@ public sealed partial class ModelView : Grid
             B.Button("Back", null, (_, _) => { _yaw = Math.PI; _pitch = 0; UpdateCamera(); }),
             B.Button("Top", null, (_, _) => { _yaw = 0; _pitch = 1.5; UpdateCamera(); }),
             B.Separator(),
+            LodPicker(),
+            B.Toggle("Wireframe", false, v => { _wireframe = v; Rebuild(); }),
+            B.Toggle("Normals", false, v => { _showNormals = v; Rebuild(); }),
+            B.Button("UVs", null, (_, _) => ShowUvs()),
+            B.Button("Export glTF", null, (_, _) => ExportGltf(), "Outline"),
+            B.Button("Import glTF positions", null, (_, _) => ImportGltf(), "Outline"),
             B.Button("Export OBJ", "", (_, _) => ExportObj(), "Outline", "OBJ + MTL + PNG textures"),
             B.Separator(), _stats);
 
@@ -187,6 +194,7 @@ public sealed partial class ModelView : Grid
         leftTabs.Items.Add(new TabItem { Header = "Pose", Content = BuildPosePanel() });
         leftTabs.Items.Add(new TabItem { Header = "Animate", Content = BuildAnimPanel() });
         leftTabs.Items.Add(new TabItem { Header = $"Shapes{(_morphs is null ? "" : $" ({_morphs.Shapes.Count})")}", Content = BuildShapesPanel() });
+        leftTabs.Items.Add(new TabItem { Header = "Materials", Content = BuildMaterialsPanel() });
         if (Array.IndexOf(Environment.GetCommandLineArgs(), "--left-tab") is var lt and > 0) leftTabs.SelectedIndex = int.Parse(Environment.GetCommandLineArgs()[lt + 1]);
         var left = B.Rows((modelPanel, B.Auto), (texPanel, B.Auto), (leftTabs, B.Star()));
         left.Background = Ui.Res("PanelBg");
@@ -443,6 +451,7 @@ public sealed partial class ModelView : Grid
         }
         _scene.Children.Add(_overlay);
         AddSkeletonOverlay();
+        AddInspectionOverlay();
     }
 
     private readonly List<(MeshGeometry3D Geometry, int[] Source, float Lift)> _live = [];
@@ -470,6 +479,7 @@ public sealed partial class ModelView : Grid
             g.Normals = nc;
         }
         AddSkeletonOverlay();
+        AddInspectionOverlay();
     }
 
     private System.Numerics.Vector3[]? _normals;
@@ -683,6 +693,7 @@ public sealed partial class ModelView : Grid
     {
         var dlg = new Microsoft.Win32.OpenFolderDialog { Title = $"Export {_model.Name} as OBJ into…" };
         if (dlg.ShowDialog(Window.GetWindow(this)) != true) return;
+        Exporter.CheckOutput(dlg.FolderName, _node.Root);
         var name = string.Concat(_model.Name.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
         var obj = $"mtllib {name}.mtl\n" + _model.Mesh.ToObj(_model.Name);
         File.WriteAllText(Path.Combine(dlg.FolderName, name + ".obj"), obj);

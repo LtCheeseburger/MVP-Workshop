@@ -222,6 +222,7 @@ public static class EaglXboxReader
         }
         for (var i = 0; i < n; i++)
         {
+            mesh.PositionDataOffsets.Add(compressed ? -1 : posVb.Data + i * 12);
             mesh.Positions.Add(compressed
                 ? boxMin + boxSize * new Vector3(Bin.U16LE(o.Data, posVb.Data + i * 6) / 65535f, Bin.U16LE(o.Data, posVb.Data + i * 6 + 2) / 65535f, Bin.U16LE(o.Data, posVb.Data + i * 6 + 4) / 65535f)
                 : new Vector3(o.F32(posVb.Data + i * 12), o.F32(posVb.Data + i * 12 + 4), o.F32(posVb.Data + i * 12 + 8)));
