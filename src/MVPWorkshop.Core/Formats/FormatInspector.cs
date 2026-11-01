@@ -21,6 +21,12 @@ public static class FormatInspector
         {
             switch (fmt)
             {
+                case FormatId.DdsImage:
+                {
+                    var type = XshFolder.DdsType(src.ReadAll(), out int width, out int height, out int levels, out int offset);
+                    p.Add(new("DDS", "Dimensions", $"{width} × {height}")); p.Add(new("DDS", "Mip levels", levels.ToString()));
+                    p.Add(new("DDS", "Native slot type", type < 0 ? "Unsupported encoding; raw bytes retained" : $"0x{type:X2}")); p.Add(new("DDS", "Payload offset", $"0x{offset:X}")); break;
+                }
                 case FormatId.BigArchive:
                 {
                     var big = BigArchive.Read(src);

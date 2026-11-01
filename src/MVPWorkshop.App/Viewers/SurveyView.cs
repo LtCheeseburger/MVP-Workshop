@@ -14,12 +14,15 @@ public sealed class SurveyView : Grid
     private readonly TextBlock _status = B.Text("Not run yet. Quick = identify formats; Deep = also parse/decode every asset.", "Muted");
     private List<SurveyRow> _rows = [];
     private CancellationTokenSource? _cts;
+    private bool _onlyGaps;
+    private void ShowRows() => _grid.ItemsSource = _rows.Where(r => !_onlyGaps || r.Viewer is "Structured fields / header" or "Raw / undecoded").OrderByDescending(r => r.Count).Select(r => new RowView(r)).ToList();
 
     public SurveyView(AssetNode root)
     {
         _root = root;
         _grid.Columns.Add(B.Col("Category", nameof(SurveyRow.Category), 90));
         _grid.Columns.Add(B.Col("Format", nameof(SurveyRow.Format), 150));
+        _grid.Columns.Add(B.Col("Viewer coverage", "Viewer", 180));
         _grid.Columns.Add(B.Col("Ext", nameof(SurveyRow.Extension), 70, true));
         _grid.Columns.Add(B.Col("Count", nameof(SurveyRow.Count), 70, format: "N0"));
         _grid.Columns.Add(B.Col("Size", "SizeText", 90));
@@ -37,6 +40,7 @@ public sealed class SurveyView : Grid
         var bar = B.Toolbar(
             B.Button("Quick Survey", "", (_, _) => Run(false), "Outline", "Identify formats of every file (reads headers)"),
             B.Button("Deep Survey", "", (_, _) => Run(true), "Primary", "Also parse every asset and decode every texture"),
+            B.Toggle("Needs specialized viewer", false, value => { _onlyGaps = value; ShowRows(); }),
             B.Button("Cancel", "", (_, _) => _cts?.Cancel()),
             B.Separator(),
             B.Button("Export Markdown", "", (_, _) => Export(), "Tool"),
@@ -67,7 +71,7 @@ public sealed class SurveyView : Grid
         try
         {
             _rows = await Task.Run(() => FormatSurvey.Run(_root, deep, progress, cts.Token));
-            _grid.ItemsSource = _rows.Select(r => new RowView(r)).ToList();
+            ShowRows();
             var files = _rows.Sum(r => r.Count); var failed = _rows.Sum(r => r.Failed);
             _status.Text = $"{files:N0} files · {_rows.Count} format/extension groups · {failed:N0} failures · {sw.Elapsed.TotalSeconds:0.0}s{(deep ? " (deep)" : "")}";
             Log.Info($"Format survey finished: {_status.Text}");
@@ -87,6 +91,7 @@ public sealed class SurveyView : Grid
     private sealed class RowView(SurveyRow r)
     {
         public SurveyRow Row { get; } = r;
+        public string Viewer => Row.Viewer;
         public string Category => Row.Category;
         public string Format => Row.Format;
         public string Extension => Row.Extension;

@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using MVPWorkshop.App.Viewers;
 using MVPWorkshop.Core.IO;
+using MVPWorkshop.Core.Formats;
 
 namespace MVPWorkshop.App.Controls;
 
@@ -19,9 +20,11 @@ public sealed class HexPanel : Grid
     private readonly TextBox _goto = new() { Width = 120, ToolTip = "Offset (hex, or decimal with #prefix)" };
     private readonly TextBlock _sel = B.Text("", "Muted");
 
-    public HexPanel(IByteSource src)
+    public HexPanel(IByteSource src, IReadOnlyList<StructureRegion>? regions = null)
     {
         _hex = new HexCanvas(src);
+        var regionPicker = new ComboBox { ItemsSource = regions ?? [], DisplayMemberPath = "Label", Width = 290, ToolTip = "Select a decoded byte region" };
+        regionPicker.SelectionChanged += (_, _) => { if (regionPicker.SelectedItem is StructureRegion region) SelectRegion(region); };
         _bar.Maximum = Math.Max(0, _hex.TotalRows - 1);
         _bar.SmallChange = 1;
         _bar.LargeChange = 16;
@@ -33,7 +36,7 @@ public sealed class HexPanel : Grid
 
         _goto.KeyDown += (_, e) => { if (e.Key == Key.Enter) Goto(); };
         var bar = B.Toolbar(B.Text($"{src.Length:N0} bytes (0x{src.Length:X})", "Muted"), B.Separator(),
-            B.Text("Go to  ", "Muted"), _goto, B.Button("Go", "", (_, _) => Goto()), B.Separator(), _sel);
+            B.Text("Go to  ", "Muted"), _goto, B.Button("Go", "", (_, _) => Goto()), B.Separator(), regionPicker, B.Separator(), _sel);
 
         var hexHost = B.Cols((_hex, B.Star()), (_bar, B.Auto));
         hexHost.Background = Ui.Res("WindowBg");
@@ -45,6 +48,8 @@ public sealed class HexPanel : Grid
         Children.Add(B.Rows((bar, B.Auto), (B.Cols((hexHost, B.Star()), (insp, B.Px(290))), B.Star())));
         UpdateInspector(0);
     }
+
+    public void SelectRegion(StructureRegion region) { _hex.Region = region; _hex.Select(region.Offset, true); }
 
     private void Goto()
     {
@@ -113,6 +118,7 @@ public sealed class HexPanel : Grid
         }
 
         public IByteSource Source { get; }
+        public StructureRegion? Region { get; set; }
         public long TotalRows => (Source.Length + PerRow - 1) / PerRow;
         public event Action<long>? SelectionChanged;
         public event Action<int>? ViewportRowsChanged;
@@ -178,6 +184,7 @@ public sealed class HexPanel : Grid
                     var i = r * PerRow + c;
                     if (i >= data.Length) break;
                     var abs = rowOff + c;
+                    if (Region is { } region && abs >= region.Offset && abs - region.Offset < region.Length) dc.DrawRectangle(StripeBrush, null, new Rect(HexX(c) - 2, y - 1, 2 * _charW + 4, _lineH - 2));
                     if (abs == _selected)
                     {
                         dc.DrawRoundedRectangle(SelBrush, null, new Rect(HexX(c) - 2, y - 1, 2 * _charW + 4, _lineH - 2), 2, 2);

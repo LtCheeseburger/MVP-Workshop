@@ -65,6 +65,8 @@ public static class AssetDocument
         var strItem = new TabItem { Header = Header("", "Strings") };
         tabs.Items.Add(hexItem);
         tabs.Items.Add(strItem);
+        var structureItem = new TabItem { Header = Header("", "Structure") }; tabs.Items.Add(structureItem);
+        void Navigate(StructureRegion region) { tabs.SelectedItem = hexItem; if (hexItem.Content is not HexPanel) hexItem.Content = new HexPanel(node.Open(), AssetStructure.Read(fmt, node.Open())); ((HexPanel)hexItem.Content).SelectRegion(region); }
         var chunks = FormatInspector.WalkChunks(src);
         TabItem? chunkItem = null;
         if (chunks.Count > 1)
@@ -75,7 +77,8 @@ public static class AssetDocument
         tabs.SelectionChanged += (_, e) =>
         {
             if (e.OriginalSource != tabs) return;
-            if (tabs.SelectedItem == hexItem && hexItem.Content is null) hexItem.Content = new HexPanel(node.Open());
+            if (tabs.SelectedItem == hexItem && hexItem.Content is null) hexItem.Content = new HexPanel(node.Open(), AssetStructure.Read(fmt, node.Open()));
+            if (tabs.SelectedItem == structureItem && structureItem.Content is null) structureItem.Content = new StructureView(node, node.Open(), Navigate);
             if (tabs.SelectedItem == strItem && strItem.Content is null) strItem.Content = new StringsView(node.Open());
             if (chunkItem is not null && tabs.SelectedItem == chunkItem && chunkItem.Content is null) chunkItem.Content = SimpleViews.Chunks(chunks);
         };
@@ -170,7 +173,7 @@ public static class ViewerFactory
         FormatId.MpcMovie or FormatId.Vp6Movie => new MovieView(node, setExtra),
         FormatId.XboxResource => new TextureView(SshFile.Read(XprTexture.ToShpx(src.ReadAll())), node, setExtra),
         FormatId.OffsetPack => new ArchiveView(node),
-        _ => InfoCard.For(node),
+        _ => new StructureView(node, src),
     };
 
     /// <summary>CSV tables keep their grid view, with the raw text editable on a second tab.</summary>

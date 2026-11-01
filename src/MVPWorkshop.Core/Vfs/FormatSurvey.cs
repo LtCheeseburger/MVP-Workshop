@@ -6,6 +6,8 @@ namespace MVPWorkshop.Core.Vfs;
 
 public sealed class SurveyRow
 {
+    public FormatId Id { get; init; }
+    public string Viewer => ViewerCoverage.For(Id);
     public string Format { get; init; } = "";
     public string Category { get; init; } = "";
     public string Extension { get; init; } = "";
@@ -39,7 +41,7 @@ public static class FormatSurvey
             var fmt = n.Format;
             var key = (fmt, n.Extension);
             if (!rows.TryGetValue(key, out var row))
-                rows[key] = row = new SurveyRow { Format = FormatDetector.Info[fmt].Name, Category = FormatDetector.Info[fmt].Category.ToString(), Extension = n.Extension, Sample = n.Path };
+                rows[key] = row = new SurveyRow { Id = fmt, Format = FormatDetector.Info[fmt].Name, Category = FormatDetector.Info[fmt].Category.ToString(), Extension = n.Extension, Sample = n.Path };
             row.Count++;
             row.Bytes += n.UnpackedSize ?? n.StoredSize;
             if (n.IsCompressed) row.Compressed++;
@@ -215,10 +217,10 @@ public static class FormatSurvey
     {
         var sb = new StringBuilder();
         sb.AppendLine($"# {title}").AppendLine();
-        sb.AppendLine("| Category | Format | Ext | Count | Size | RefPack | Parsed | Failed | Details | Sample |");
-        sb.AppendLine("|---|---|---|---:|---:|---:|---:|---:|---|---|");
+        sb.AppendLine("| Category | Format | Viewer | Ext | Count | Size | RefPack | Parsed | Failed | Details | Sample |");
+        sb.AppendLine("|---|---|---|---|---:|---:|---:|---:|---:|---|---|");
         foreach (var r in rows)
-            sb.AppendLine($"| {r.Category} | {r.Format} | {r.Extension} | {r.Count} | {IO.Bin.Size(r.Bytes)} | {r.Compressed} | {r.Parsed} | {r.Failed} | {r.DetailText} | `{r.Sample}` |");
+            sb.AppendLine($"| {r.Category} | {r.Format} | {r.Viewer} | {r.Extension} | {r.Count} | {IO.Bin.Size(r.Bytes)} | {r.Compressed} | {r.Parsed} | {r.Failed} | {r.DetailText} | `{r.Sample}` |");
         var errs = rows.Where(r => r.FirstError.Length > 0).ToList();
         if (errs.Count > 0)
         {

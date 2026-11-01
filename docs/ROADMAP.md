@@ -64,7 +64,8 @@ each lands as its own commit and is checked in the running app.
       constrained Xbox FLOAT3 position import. See MODEL_INTERCHANGE.md for native storage limits.
 - [x] Animations: model/bank/clip selection, timeline, play/pause/scrub/speed/loop, bone overlay,
       frame counter and sampled glTF clip export. Native animation-bank editing remains deferred.
-- [ ] Hex view with format overlays for every file; a structured viewer for each format the survey identifies
+- [x] Universal Hex and Structure tables, known byte-region overlays, decoded headers/fields and raw
+      header words; survey ranks missing specialized viewers. Undecoded layouts remain labelled raw.
 - [ ] Audio: play, replace with automatic encoding
 
 ## 7. Batch and round-trip
