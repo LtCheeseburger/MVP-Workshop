@@ -23,6 +23,11 @@ public sealed class AudioView : Grid, IDisposable
         public List<Prop> Extra { get; init; } = [];
         public Func<DecodedAudio, (byte[] Bytes, DecodedAudio Preview)>? Replace { get; init; }
         public Action? ValidateSource { get; init; }
+        /// <summary>Bulk import: the unwrapped container bytes, a composable per-sound replace, its decoder and the wrapper back to asset bytes.</summary>
+        public byte[]? Container { get; init; }
+        public Func<byte[], DecodedAudio, byte[]>? ReplaceIn { get; init; }
+        public Func<byte[], DecodedAudio>? DecodeIn { get; init; }
+        public Func<byte[], byte[]>? Wrap { get; init; }
     }
 
     private readonly AssetNode _node;
@@ -46,21 +51,26 @@ public sealed class AudioView : Grid, IDisposable
         var items = sounds.Select(sound =>
         {
             var patch = new EaPatchHeader { Platform = 5 }; patch.Tags.AddRange([(0x82, 1u, 0), (0x84, (uint)sound.SampleRate, 0), (0x85, (uint)(sound.Length / 16 * 28), 0), (0xA0, 5u, 0)]);
-            return new Item { Title = "Sony sample " + sound.Index, Subtitle = $"PS-ADPCM · {sound.SampleRate} Hz · HD Vagi @ BD 0x{sound.Offset:X}", Header = patch, Decode = () => SonySoundBank.Decode(bytes, sound), ValidateSource = () => { if (!header.ReadAll().AsSpan().SequenceEqual(headerBytes)) throw new InvalidOperationException("Sony header changed; reopen the sound bank."); }, Replace = audio => { if (sounds.Count(s => s.Offset == sound.Offset) != 1) throw new InvalidOperationException("This Sony payload is shared; isolated replacement is unavailable."); var replacement = AudioReplacement.Sony(bytes, sound, audio); return (replacement, SonySoundBank.Decode(replacement, sound)); } };
+            return new Item { Title = "Sony sample " + sound.Index, Subtitle = $"PS-ADPCM · {sound.SampleRate} Hz · HD Vagi @ BD 0x{sound.Offset:X}", Header = patch, Decode = () => SonySoundBank.Decode(bytes, sound), ValidateSource = () => { if (!header.ReadAll().AsSpan().SequenceEqual(headerBytes)) throw new InvalidOperationException("Sony header changed; reopen the sound bank."); }, Replace = audio => { var replacement = SonyIn(bytes, audio); return (replacement, SonySoundBank.Decode(replacement, sound)); }, Container = bytes, ReplaceIn = SonyIn, DecodeIn = b => SonySoundBank.Decode(b, sound) };
+            byte[] SonyIn(byte[] current, DecodedAudio audio) { if (sounds.Count(s => s.Offset == sound.Offset) != 1) throw new InvalidOperationException("This Sony payload is shared; isolated replacement is unavailable."); return AudioReplacement.Sony(current, sound, audio); }
         }).ToList();
         return new AudioView(items, body, setExtra);
     }
 
-    public static List<Item> FromStreams(IByteSource src) =>
-        SchlStream.ScanAll(src).Select((s, i) => new Item
+    public static List<Item> FromStreams(IByteSource src)
+    {
+        var container = src.ReadAll();
+        return SchlStream.ScanAll(src).Select((s, i) => new Item
         {
             Title = $"Stream {i}",
             Subtitle = s.Header is { } h ? $"{EaPatchHeader.CodecName(h.Codec2)} · {h.SampleRate} Hz · {h.Channels}ch" : "no header",
             Header = s.Header ?? new EaPatchHeader(),
             Decode = () => s.Decode(src),
             Replace = audio => { var bytes = AudioReplacement.Stream(src.ReadAll(), i, audio); var memory = new MemoryByteSource(bytes); return (bytes, SchlStream.ScanAll(memory)[i].Decode(memory)); },
+            Container = container, ReplaceIn = (current, audio) => AudioReplacement.Stream(current, i, audio), DecodeIn = b => { var m = new MemoryByteSource(b); return SchlStream.ScanAll(m)[i].Decode(m); },
             Extra = [new("Stream", "Offset", $"0x{s.Offset:X}"), new("Stream", "Length", $"{s.Length:N0}"), new("Stream", "Blocks", string.Join(" ", s.Blocks.GroupBy(b => b.Id).Select(g => $"{g.Key}×{g.Count()}")))],
         }).ToList();
+    }
 
     public static List<Item> FromBank(byte[] data, Func<byte[], byte[]>? wrap = null)
     {
@@ -72,6 +82,7 @@ public sealed class AudioView : Grid, IDisposable
             Header = s.Header,
             Decode = () => EaBank.Decode(data, s),
             Replace = audio => { var bytes = AudioReplacement.Bank(data, s.Index, audio); return (wrap?.Invoke(bytes) ?? bytes, EaBank.Decode(bytes, EaBank.Read(bytes).Sounds.Single(sound => sound.Index == s.Index))); },
+            Container = data, Wrap = wrap, ReplaceIn = (current, audio) => AudioReplacement.Bank(current, s.Index, audio), DecodeIn = b => EaBank.Decode(b, EaBank.Read(b).Sounds.Single(sound => sound.Index == s.Index)),
             Extra = [new("Sound", "Header offset", $"0x{s.HeaderOffset:X}"), new("Sound", "Bank version", bank.Version.ToString())],
         }).ToList();
     }
@@ -88,6 +99,7 @@ public sealed class AudioView : Grid, IDisposable
             B.Button("Play", "", (_, _) => Play(), "Primary"),
             B.Button("Stop", "", (_, _) => _player?.Stop()),
             B.Button("Replace audio…", null, async (_, _) => await ReplaceAudio(), "Outline"),
+            B.Button("Import folder…", null, async (_, _) => await ImportFolder(), "Outline"),
             B.Button("Used by / moments", null, (_, _) => MainWindow.Instance?.ShowDependencies(_node), "Outline"),
             B.Separator(),
             B.Button("Export WAV", "", (_, _) => ExportWav(), "Outline"),
@@ -156,6 +168,53 @@ public sealed class AudioView : Grid, IDisposable
             _msg.Foreground = Ui.Res("Accent");
         }
         _setExtra(props);
+    }
+
+    private List<Item> Items => (List<Item>)_list.ItemsSource;
+
+    /// <summary>Test hook: when set, replaces the review dialog and returns whether to continue.</summary>
+    internal Func<AudioBulkReview, bool>? ReviewOverride { get; set; }
+
+    internal async Task ImportFolder(string? folder = null)
+    {
+        if (!_node.ReadAll().AsSpan().SequenceEqual(_sourceBaseline)) { _msg.Text = "Reopen this asset before another import."; return; }
+        var items = Items; if (items.Count == 0 || items[0].Container is not { } container || items.Any(i => i.ReplaceIn is null)) { _msg.Text = "Folder import is unavailable for this audio layout."; return; }
+        if (folder is null) { var pick = new Microsoft.Win32.OpenFolderDialog { Title = "Import sounds named like Export All (" + AudioBulkImport.FileStem(_node.Name, items[0].Title) + ".wav)" }; if (pick.ShowDialog(Window.GetWindow(this)) != true) return; folder = pick.FolderName; }
+        var session = Editor.Session; var baseline = _node.ReadAll();
+        try
+        {
+            foreach (var i in items) i.ValidateSource?.Invoke();
+            var targets = items.Select((it, index) => new AudioBulkImport.Target(index, it.Title, it.Header, it.Header.SampleRate > 0 ? it.Header.Samples / (double)it.Header.SampleRate : 0)).ToList();
+            var rows = AudioBulkImport.Match(_node.Name, targets, Directory.EnumerateFiles(folder));
+            _msg.Text = $"Converting {rows.Count(r => r.Status == AudioBulkImport.Status.Matched)} matched input(s)…";
+            byte[] proposed = container; var previews = new Dictionary<int, DecodedAudio>();
+            await Task.Run(() =>
+            {
+                foreach (var row in rows.Where(r => r.Status == AudioBulkImport.Status.Matched))
+                {
+                    var it = items[row.Target!.Index];
+                    try { row.Input = ReadInput(row.File!, it.Header.SampleRate, it.Header.Channels, Math.Max(row.Target.Duration, 0.05) + 1); it.ReplaceIn!(container, row.Input); }
+                    catch (Exception ex) { row.Input = null; row.Error = ex.Message; }
+                }
+                proposed = AudioBulkImport.Build(container, rows, (cur, index, audio) => items[index].ReplaceIn!(cur, audio));
+                foreach (var row in rows.Where(r => r.Ready)) previews[row.Target!.Index] = items[row.Target.Index].DecodeIn!(proposed);
+            });
+            var review = new AudioBulkReview(_node.Name, folder, rows, items, previews);
+            bool accepted;
+            if (ReviewOverride is { } auto) accepted = auto(review);
+            else { review.Owner = Window.GetWindow(this); accepted = review.ShowDialog() == true; }
+            review.StopPreview();
+            if (!accepted || !rows.Any(r => r.Ready)) { _msg.Text = "Folder import cancelled; nothing was changed."; return; }
+            if (MainWindow.Instance is not { } main) return;
+            var decision = await main.PrepareReplacement(_node);
+            if (decision is null) { _msg.Text = "Folder import cancelled; nothing was changed."; return; }
+            if (!ReferenceEquals(session, Editor.Session) || !_node.ReadAll().AsSpan().SequenceEqual(baseline)) throw new InvalidOperationException("Audio changed during review; nothing was applied. Repeat the import.");
+            foreach (var i in items) i.ValidateSource?.Invoke();
+            int count = rows.Count(r => r.Ready);
+            decision.Apply(items[0].Wrap?.Invoke(proposed) ?? proposed, $"Import {count} sound(s) into {_node.Name} from {Path.GetFileName(folder)}");
+            _audio = null; _wave.SetAudio(null); _msg.Text = $"Saved {count} replacement(s) as one undoable edit. Reopen the asset to inspect them.";
+        }
+        catch (Exception ex) { _msg.Text = ex.Message; Log.Warn("Audio folder import: " + ex.Message); }
     }
 
     private void Play()

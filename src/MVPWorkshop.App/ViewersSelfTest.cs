@@ -74,6 +74,37 @@ public partial class MainWindow
             Check("audio import previews then reviews impact before commit", previews==2 && impacts==1 && Editor.Session.IsModified(node));
             Check("committed audio keeps native rate channels and sample count", decoded.SampleRate==22050 && decoded.Channels==1 && decoded.Pcm.Length==2205 && decoded.Pcm[0]==16000 && decoded.Pcm[^1]==0);
             Editor.Session.Undo(); Check("audio undo restores every native byte", node.ReadAll().SequenceEqual(original));
+            var bulk = Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(reportPath)!,"bulk-audio")).FullName;
+            foreach(var f in Directory.GetFiles(bulk)) File.Delete(f);
+            File.Copy(path,Path.Combine(bulk,"tone_Stream_0.wav")); File.WriteAllText(Path.Combine(bulk,"tone_Stream_7.wav"),"x"); File.WriteAllText(Path.Combine(bulk,"notes.txt"),"x");
+            AudioBulkReview? seen = null; view.ReviewOverride = r =>
+            {
+                seen = r; if(File.Exists(reportPath+".bulk-audio.png")) return false; r.Owner = this; r.Show(); r.UpdateLayout();
+                var shot = new RenderTargetBitmap((int)r.ActualWidth,(int)r.ActualHeight,96,96,PixelFormats.Pbgra32); shot.Render((Visual)r.Content);
+                var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(shot)); using(var o=File.Create(reportPath+".bulk-audio.png")) png.Save(o);
+                r.Close(); return false;
+            };
+            await view.ImportFolder(bulk);
+            Check("bulk audio matches exact Export All names and lists unmatched inputs", seen!.Rows.Count(r=>r.Ready)==1 && seen.Rows.Any(r=>r.Status==AudioBulkImport.Status.Unmatched && r.File!.EndsWith("tone_Stream_7.wav")) && seen.Rows.Any(r=>r.File!.EndsWith("notes.txt")));
+            Check("bulk audio cancel applies nothing", !Editor.Session.IsModified(node) && node.ReadAll().SequenceEqual(original) && !Editor.Session.CanUndo);
+            File.WriteAllBytes(Path.Combine(bulk,"tone_Stream_0.ogg"),[1,2,3]); seen=null; await view.ImportFolder(bulk);
+            Check("bulk audio reports duplicate inputs and never picks one", seen!.Rows.Count(r=>r.Status==AudioBulkImport.Status.Duplicate)==2 && !seen.Rows.Any(r=>r.Ready));
+            File.Delete(Path.Combine(bulk,"tone_Stream_0.wav")); seen=null; await view.ImportFolder(bulk);
+            Check("bulk audio shows corrupt inputs as conversion failures", seen!.Rows.Single(r=>r.Target is not null).Error is not null && !seen.Rows.Any(r=>r.Ready));
+            File.Delete(Path.Combine(bulk,"tone_Stream_0.ogg")); File.Copy(path,Path.Combine(bulk,"tone_Stream_0.wav"));
+            var newer = original.ToArray(); newer[^1] ^= 1; view.ReviewOverride = r => { Editor.Session.Commit(node, newer, "Concurrent edit"); return true; };
+            accept = true; impacts = 0; await view.ImportFolder(bulk);
+            Check("stale bulk review cannot overwrite a newer edit", node.ReadAll().SequenceEqual(newer) && Editor.Session.History.Count==1 && Editor.Session.History[0].Description=="Concurrent edit");
+            while(Editor.Session.CanUndo) Editor.Session.Undo();
+            view.ReviewOverride = r => true; impacts = 0; await view.ImportFolder(bulk);
+            var bulkBytes = node.ReadAll(); var bm = new MemoryByteSource(bulkBytes); var bd = SchlStream.ScanAll(bm).Single().Decode(bm);
+            Check("bulk audio commits one undoable edit after impact review", impacts==1 && Editor.Session.History.Count==1 && Editor.Session.History[0].Description.StartsWith("Import 1 sound") && bd.Pcm.Length==2205 && bd.Pcm[0]==16000 && bulkBytes.Length==original.Length);
+            Editor.Session.Undo(); bool undone = node.ReadAll().SequenceEqual(original); Editor.Session.Redo();
+            Check("bulk audio undo and redo restore exact bytes", undone && node.ReadAll().SequenceEqual(bulkBytes));
+            var project = Path.Combine(Path.GetDirectoryName(reportPath)!,"bulk-audio.mvpproj"); var active = Editor.Session;
+            ProjectFile.Save(active, project, markSaved:false); var reloaded = ProjectFile.Load(project, active.GameRoot, out _); active.ActivateOverlay();
+            Check("bulk audio survives project save and reload", reloaded.GetOverride(reloaded.Resolve(node.Key)!)?.SequenceEqual(bulkBytes) == true);
+            Editor.Session.Undo(); view.ReviewOverride = null;
             await Task.Delay(200); UpdateLayout();
             var bitmap = new RenderTargetBitmap((int)ActualWidth,(int)ActualHeight,96,96,PixelFormats.Pbgra32); bitmap.Render(this);
             var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap)); using(var output=File.Create(reportPath+".png")) encoder.Save(output);

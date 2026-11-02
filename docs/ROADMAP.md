@@ -77,7 +77,7 @@ each lands as its own commit and is checked in the running app.
       index-qualified, unchanged folder re-import preserves native bytes, with round-trip tests
 - [x] School/all-school roster CSV export/import with readable columns, source identities,
       changed-row review, DAT value-span validation, known jersey ranges and stale-review protection
-- [ ] Bulk replace from a folder for audio
+- [x] Bulk replace from a folder for audio — **Import folder…** in the audio viewer matches Export All names (`<asset>_<Sound N|Stream N|Sony sample N>.wav/.mp3/.ogg`), reviews every input/target/conversion/preview, rejects duplicates, corrupt and unsupported inputs, and commits one undoable edit per container. MicroTalk targets stay listed as unsupported until a verified encoder exists (see 6.4).
 
 ## 8. Release
 

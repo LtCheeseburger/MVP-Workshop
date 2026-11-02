@@ -32,6 +32,28 @@ VAG flags are preserved. Shared bank/sample payloads are rejected for isolated r
 Playback and export remain available. The tool does not silently substitute another codec.
 Growing/repacking banks, changing durations or authoring new loop points are also unsupported.
 
+## Folder import
+
+**Import folder…** replaces many sounds of the open container (SCHl stream file or pack, BNKl bank
+including ABKC-wrapped banks, or a Sony HD/BD pair) at once. Inputs are matched by exact,
+case-insensitive file name, the same names **Export All** writes:
+
+| Target | File name |
+| --- | --- |
+| Stream file / stream pack | `<asset stem>_Stream_<index>.wav` |
+| Bank sound | `<asset stem>_Sound_<index>.wav` |
+| Sony HD/BD sample | `<BD stem>_Sony_sample_<index>.wav` |
+
+`.wav`, `.mp3` and `.ogg` are accepted; each goes through the same conversion as a single import.
+The review lists every input with its native target (codec, rate, channels, duration), conversion
+result and an encoded preview. Files with no matching sound, other extensions, two inputs naming one
+sound (all copies are rejected; none is chosen), conversion failures and MicroTalk targets are shown
+with a reason and not applied. Proposed bytes are built before review by applying each accepted sound
+in index order to one copy of the container, so several sounds in one bank form one edit and untouched
+sounds keep their bytes. Cancel applies nothing. After the impact review the asset bytes and partner
+sources are rechecked; any newer edit aborts the import. The result is committed as a single undoable
+change of the container asset (stream-pack virtual children are views of that same asset).
+
 ## Usage and impact
 
 The viewer shows confirmed dependency consumers and opens **Used by / moments** for the complete
@@ -45,5 +67,5 @@ their writable assignments are decoded; global replacement uses the existing imp
 headers/frames, shared payload rejection, WAV input, resampling/channel conversion and unsupported
 codecs. A PS2 game-folder argument additionally checks real Sony HD/BD and EA-XA stream replacement.
 The desktop viewers check covers WAV/MP3/OGG input (compressed inputs when ffmpeg is installed),
-encoded-preview cancel, impact review, commit and byte-exact undo. `scripts/verify.ps1` runs it with
+encoded-preview cancel, impact review, commit and byte-exact undo, plus folder import matching, unmatched/duplicate/corrupt rows, cancel, stale-review rejection, single-edit commit, undo/redo and project save/reload. `tests/AudioReplacement` covers name matching and composing several sounds of one bank. `scripts/verify.ps1` runs it with
 synthetic fixtures and isolated app settings; it does not require game files.

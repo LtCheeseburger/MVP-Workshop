@@ -36,6 +36,25 @@ bool sharedRejected=false; try { AudioReplacement.Bank(sharedBank,0,input); } ca
 Check("PCM WAV round trip retains exact samples", AudioReplacement.ReadPcmWav(AudioCodecs.ToWav(input)).Pcm.SequenceEqual(input.Pcm));
 var stereo = new DecodedAudio([1000,-1000,2000,0],2,22050,""); Check("channel mixing and silence padding preserve target duration", AudioReplacement.Normalize(stereo,22050,1,4).Pcm.SequenceEqual(new short[]{0,1000,0,0}));
 var unsupported = new EaPatchHeader { Platform=5 }; unsupported.Tags.Add((0xA0,4,0)); Check("MicroTalk replacement reports missing verified encoder", AudioReplacement.Unsupported(unsupported)?.Contains("No verified encoder") == true);
+var bulkTargets = new List<AudioBulkImport.Target> { new(0,"Sound 0",Header5(),1), new(1,"Sound 1",Header5(),1), new(2,"Sound 2",unsupported,1) };
+static EaPatchHeader Header5() { var h = new EaPatchHeader { Platform=5 }; h.Tags.Add((0xA0,5,0)); return h; }
+var matched = AudioBulkImport.Match("crowd.bnk", bulkTargets, ["x/crowd_sound_0.WAV","x/crowd_Sound_1.wav","x/crowd_Sound_1.ogg","x/crowd_Sound_2.mp3","x/crowd_Sound_9.wav","x/crowd_Sound_0.flac","x/readme.txt"]);
+Check("bulk names match Export All case-insensitively", matched.Single(r=>r.Status==AudioBulkImport.Status.Matched).File=="x/crowd_sound_0.WAV");
+Check("bulk duplicate inputs stay ambiguous", matched.Count(r=>r.Status==AudioBulkImport.Status.Duplicate && r.Target!.Index==1)==2);
+Check("bulk MicroTalk target stays visible with reason", matched.Single(r=>r.Target?.Index==2).Problem!.Contains("No verified encoder"));
+Check("bulk unmatched and unsupported inputs are listed", matched.Count(r=>r.Status==AudioBulkImport.Status.Unmatched)==1 && matched.Count(r=>r.Status==AudioBulkImport.Status.UnsupportedInput)==2);
+var twoBank = BankOf(2); var rowsTwo = new List<AudioBulkImport.Row> { new("a",bulkTargets[0],AudioBulkImport.Status.Matched,null){Input=input}, new("b",bulkTargets[1],AudioBulkImport.Status.Matched,null){Input=input} };
+var built = AudioBulkImport.Build(twoBank, rowsTwo, (cur,i,a)=>AudioReplacement.Bank(cur,i,a)); var builtBank = EaBank.Read(built);
+Check("bulk composes multiple sounds of one bank into one result", built.Length==twoBank.Length && builtBank.Sounds.Count==2 && builtBank.Sounds.All(s=>EaBank.Decode(built,s).Pcm.Zip(input.Pcm).All(p=>Math.Abs(p.First-p.Second)<1600)) && !built.SequenceEqual(twoBank));
+var oneOnly = AudioBulkImport.Build(twoBank, rowsTwo.Take(1), (cur,i,a)=>AudioReplacement.Bank(cur,i,a)); int sound1At = (int)EaBank.Read(twoBank).Sounds[1].Header.Get(0x88)!.Value;
+Check("bulk leaves unmatched sounds byte-identical", oneOnly.AsSpan(sound1At,16).SequenceEqual(twoBank.AsSpan(sound1At,16)) && !oneOnly.SequenceEqual(twoBank));
+byte[] BankOf(int count)
+{
+    int headerLength = Header(5, offset:1).Length, table = 20 + count*4, payload = table + count*headerLength; var data = new byte[payload + count*16];
+    "BNKl"u8.CopyTo(data); data[4]=5; data[6]=(byte)count;
+    for (int i = 0; i < count; i++) { int at = table + i*headerLength; BinaryPrimitives.WriteInt32LittleEndian(data.AsSpan(20+i*4), at-(20+i*4)); Header(5, offset:payload+i*16).CopyTo(data, at); }
+    return data;
+}
 if(args.Length>0)
 {
     var root=GameFileSystem.OpenGame(args[0]); var nodes=root.EnumerateDeep().ToList(); var hd=nodes.First(n=>n.Extension==".hd"); var bd=hd.Parent!.Children.First(n=>n.Name.Equals(Path.ChangeExtension(hd.Name,".bd"),StringComparison.OrdinalIgnoreCase)); var bytes=bd.ReadAll(); var sounds=SonySoundBank.Read(hd.ReadAll(),bytes.Length);
