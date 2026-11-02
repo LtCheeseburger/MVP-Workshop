@@ -528,7 +528,7 @@ public sealed class TextureView : Grid
         _zoomText.Text = $"{_zoom * 100:0}%";
     }
 
-    private void ExportCurrent()
+    internal void ExportCurrent()
     {
         if (_current is null || _list.SelectedItem is not Entry e) return;
         Exporter.SaveBytes(PngWriter.Encode(_current.Width, _current.Height, _current.Bgra), $"{Path.GetFileNameWithoutExtension(_node.Name)}_{Safe(e.Title)}.png", "PNG image|*.png");

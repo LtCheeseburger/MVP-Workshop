@@ -280,11 +280,13 @@ public sealed class AudioView : Grid, IDisposable
         finally { if (File.Exists(output)) File.Delete(output); }
     }
 
-    private void ExportWav()
+    internal void ExportWav()
     {
         if (_audio is null || _list.SelectedItem is not Item it) return;
         Exporter.SaveBytes(AudioCodecs.ToWav(_audio), $"{Path.GetFileNameWithoutExtension(_node.Name)}_{it.Title.Replace(' ', '_')}.wav", "WAV audio|*.wav");
     }
+
+    internal void ExportAllSounds() => ExportAll(Items);
 
     private void ExportAll(List<Item> items)
     {

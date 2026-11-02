@@ -689,7 +689,7 @@ public sealed partial class ModelView : Grid
 
     // ------------------------------------------------------------------ export
 
-    private void ExportObj()
+    internal void ExportObj()
     {
         var dlg = new Microsoft.Win32.OpenFolderDialog { Title = $"Export {_model.Name} as OBJ into…" };
         if (dlg.ShowDialog(Window.GetWindow(this)) != true) return;

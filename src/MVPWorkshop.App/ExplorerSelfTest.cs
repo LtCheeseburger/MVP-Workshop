@@ -37,8 +37,8 @@ public static class ExplorerSelfTest
                 foreach (var child in Find<T>(VisualTreeHelper.GetChild(parent, i))) yield return child;
         }
         async Task Settle() { await Task.Delay(150); w.UpdateLayout(); }
-        void Click(MenuItem item) { ((ContextMenu)item.Parent).IsOpen = false; item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); }
-        MenuItem Item(ContextMenu menu, string prefix) => menu.Items.OfType<MenuItem>().Single(i => i.Header.ToString()!.StartsWith(prefix));
+        void Click(MenuItem item) { ItemsControl parent = (ItemsControl)item.Parent; while (parent is MenuItem submenu) { submenu.IsSubmenuOpen = false; parent = (ItemsControl)submenu.Parent; } if (parent is ContextMenu context) context.IsOpen = false; item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); }
+        MenuItem Item(ContextMenu menu, string prefix) => menu.Items.OfType<MenuItem>().FirstOrDefault(i => Equals(i.Header, prefix)) ?? menu.Items.OfType<MenuItem>().Single(i => i.Header.ToString()!.StartsWith(prefix));
         async Task<ContextMenu> Menu(FrameworkElement surface, FrameworkElement row)
         {
             row.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Right) { RoutedEvent = Mouse.PreviewMouseDownEvent });
@@ -96,6 +96,23 @@ public static class ExplorerSelfTest
                 menu = await Open(a); await Dialog(Item(menu, "Import file"), "Import over a.txt");
                 w.ImportRaw(a, replacement);
                 Check(surface.Name + " import commits clicked asset", s.IsModified(a) && !s.IsModified(b) && s.GetBytes(a).SequenceEqual(File.ReadAllBytes(replacement)));
+                var historyCount = s.History.Count;
+                var sources = MainWindow.CaptureSources(a);
+                Check(surface.Name + " sources distinguish vanilla from current edit", sources.Count == 2 && sources[0].Bytes.SequenceEqual(a.ReadOriginal()) && sources[1].Bytes.SequenceEqual(s.GetBytes(a)) && !sources[0].Bytes.SequenceEqual(sources[1].Bytes));
+                menu = await Open(a); Click(Item(menu, "Open original"));
+                Check(surface.Name + " original inspection is separate and read-only", ((DocumentTab)w.Docs.SelectedItem).Node is null && ((DocumentTab)w.Docs.SelectedItem).Title.Contains("read-only") && s.History.Count == historyCount);
+                if (!search)
+                {
+                    await Settle();
+                    var shot = new RenderTargetBitmap((int)w.ActualWidth, (int)w.ActualHeight, 96, 96, PixelFormats.Pbgra32); shot.Render(w);
+                    var image = new PngBitmapEncoder(); image.Frames.Add(BitmapFrame.Create(shot)); using var file = File.Create(reportPath + ".sources.png"); image.Save(file);
+                }
+                Check(surface.Name + " source snapshots survive later edits", !ReferenceEquals(sources[1].Bytes, s.GetBytes(a)));
+                menu = await Open(a);
+                var formatMenu = Item(menu, "Format import / export");
+                Check(surface.Name + " text interchange routes are reachable", formatMenu.Items.OfType<MenuItem>().Any(i => Equals(i.Header, "Import text / CSV file…")) && formatMenu.Items.OfType<MenuItem>().Any(i => Equals(i.Header, "Export text / CSV file…")));
+                menu.IsOpen = false;
+                await Dialog(formatMenu.Items.OfType<MenuItem>().Single(i => Equals(i.Header, "Export text / CSV file…")));
                 menu = await Open(a); Click(Item(menu, "Copy SHA")); Check(surface.Name + " SHA-1 uses edited bytes", Clipboard.GetText() == Convert.ToHexString(SHA1.HashData(s.GetBytes(a))));
                 var raw = Path.Combine(output, $"{(search ? "search" : "tree")}-export-{Guid.NewGuid():N}.txt");
                 menu = await Open(a); await Dialog(Item(menu, "Export raw"));
@@ -129,7 +146,19 @@ public static class ExplorerSelfTest
                     w.OpenAsset(b); await Settle();
                     menu = await Open(texture); await Dialog(Item(menu, "Replace image"), "Replace");
                     Check(surface.Name + " texture opens clicked asset", ((DocumentTab)w.Docs.SelectedItem).Node == texture);
+                    menu = await Open(texture);
+                    var textureCommands = Item(menu, "Format import / export");
+                    menu.IsOpen = false;
+                    await Dialog(textureCommands.Items.OfType<MenuItem>().Single(i => Equals(i.Header, "Export selected image as PNG…")));
+                    Check(surface.Name + " PNG format command targets clicked texture", ((DocumentTab)w.Docs.SelectedItem).Node == texture);
                 }
+                var audio = root.Resolve("sample.big/tone.asf")!;
+                if (search) w.SearchResults.ItemsSource = new[] { audio, b }; else w.Reveal(audio);
+                w.OpenAsset(b); await Settle();
+                menu = await Open(audio);
+                var audioCommands = Item(menu, "Format import / export"); menu.IsOpen = false;
+                await Dialog(audioCommands.Items.OfType<MenuItem>().Single(i => Equals(i.Header, "Export selected sound as WAV…")));
+                Check(surface.Name + " WAV format command targets clicked audio", ((DocumentTab)w.Docs.SelectedItem).Node == audio && !s.IsModified(audio));
             }
             IEnumerable<TreeItem> Rows(IEnumerable<TreeItem> items)
             {
@@ -169,6 +198,10 @@ public static class ExplorerSelfTest
                 addedRow.IsSelected = true; await Settle();
                 var visual = Find<TreeViewItem>(w.Tree).First(r => r.DataContext == addedRow);
                 var addedMenu = await Menu(w.Tree, visual);
+                Check("Added source has no invented vanilla layer " + mode, MainWindow.CaptureSources(addedRow.Node).Count == 1);
+                Check("Added assets expose source inspection " + mode, addedMenu.Items.OfType<MenuItem>().Any(i => Equals(i.Header, "Open original / sources (read-only)")));
+                Check("Unsupported Added format has explicit disabled interchange " + mode, Item(addedMenu, "Format import / export").Items.OfType<MenuItem>().Single().IsEnabled == false);
+                Check("Added assets expose Bookmark " + mode, addedMenu.Items.OfType<MenuItem>().Any(i => Equals(i.Header, "Bookmark")));
                 Click(Item(addedMenu, "Remove")); await Settle();
                 Check("Remove updates session and tree " + mode, s.Added.Count == 0 && !AllRows().Any(r => r.IsAdded));
                 Filter(false, false); await Settle();

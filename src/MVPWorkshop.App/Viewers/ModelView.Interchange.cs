@@ -23,14 +23,14 @@ public sealed partial class ModelView
         { var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(source)); using var output = new MemoryStream(); encoder.Save(output); result[tag] = output.ToArray(); }
         return result;
     }
-    private void ExportGltf(bool clip = false)
+    internal void ExportGltf(bool clip = false)
     {
         var dialog = new Microsoft.Win32.SaveFileDialog { Filter = "glTF 2.0|*.gltf", FileName = (clip ? _anim?.Name : _model.Name) + ".gltf" };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         try { Exporter.CheckOutput(dialog.FileName, _node.Root); if (clip && _anim is null) throw new InvalidOperationException("Select an animation first."); GltfInterchange.Export(dialog.FileName, _model, TexturePngs(), Skeleton, clip ? _anim : null, clip && _withRoot ? _animRoot : null); Log.Info("Exported glTF: " + dialog.FileName); }
         catch (Exception ex) { MessageBox.Show(Window.GetWindow(this), ex.Message, "glTF export"); }
     }
-    private async void ImportGltf()
+    internal async void ImportGltf()
     {
         var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "glTF 2.0 JSON|*.gltf", Title = "Replace native mesh positions · keep topology and vertex order" };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;

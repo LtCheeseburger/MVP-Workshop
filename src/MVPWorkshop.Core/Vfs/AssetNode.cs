@@ -140,7 +140,12 @@ public sealed class AssetNode
     }
 
     /// <summary>Find a node from a <see cref="Key"/> relative to this root.</summary>
-    public AssetNode? Resolve(string key)
+    public AssetNode? Resolve(string key) => Resolve(key, originalOnly: false);
+
+    /// <summary>Resolve against source children only, excluding base-mod and project Added nodes.</summary>
+    public AssetNode? ResolveOriginal(string key) => Resolve(key, originalOnly: true);
+
+    private AssetNode? Resolve(string key, bool originalOnly)
     {
         var n = this;
         foreach (var part in key.Split('/', StringSplitOptions.RemoveEmptyEntries))
@@ -148,7 +153,7 @@ public sealed class AssetNode
             var hash = part.LastIndexOf('#');
             int? idx = hash > 0 && int.TryParse(part.AsSpan(hash + 1), out var v) ? v : null;
             var name = idx is null ? part : part[..hash];
-            n = n.IsContainer || n.IsLooseTexturePack ? n.Children.FirstOrDefault(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && (idx is null || c.BigIndex == idx)) : null;
+            n = n.IsContainer || n.IsLooseTexturePack ? (originalOnly ? n.OriginalChildren : n.Children).FirstOrDefault(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && (idx is null || c.BigIndex == idx)) : null;
             if (n is null) return null;
         }
         return n;

@@ -27,8 +27,9 @@ public partial class MainWindow
             _settings.GameExePath = Path.Combine(port, "MVP06.exe");
             var mod = Path.Combine(port, "mods", "base-ui.mvpmod");
             session.Commit(node, Encoding.ASCII.GetBytes("Base viewer bytes"), "fixture base");
+            session.AddFile("sample_big/base-only.txt", Encoding.ASCII.GetBytes("Base-only bytes"));
             Check("synthetic base exported", MvpModExporter.Export(session, new ModInfo { Id = "ui-base", Name = "UI base" }, mod, false).Ok);
-            session.Revert(node); session.MarkSaved();
+            session.Revert(node); session.RemoveAdded("sample_big/base-only.txt"); session.MarkSaved();
             OpenAsset(node); Check("original document opens", _docs.Any(d => d.Node == node));
             BaseMods_Click(this, new RoutedEventArgs());
             Window? selector = null;
@@ -42,6 +43,9 @@ public partial class MainWindow
             apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             for (int i = 0; i < 100 && session.BaseLayer is null; i++) await Task.Delay(50);
             Check("selector applies chosen base", session.BaseLayer?.References.Count == 1);
+            var baseOnly = session.Resolve("sample.big/base-only.txt")!;
+            var baseSources = CaptureSources(baseOnly);
+            Check("base-added sources have no invented vanilla", baseSources.Count == 2 && baseSources[0].Label.StartsWith("Selected base mods") && root.ResolveOriginal(baseOnly.Key) is null);
             Check("base switch closes stale documents", !_docs.Any(d => d.Node == node));
             Check("base selection dirties project without exporting inherited files", session.IsDirty && MvpModExporter.Collect(session, [], []).Count == 0);
             BrowseMode.SelectedIndex = 1; UpdateBrowser();
@@ -50,6 +54,10 @@ public partial class MainWindow
             OpenAsset(node); Docs.SelectedItem = _docs.First(d => d.Node == node); UpdateLayout();
             Check("viewer marks source mod and reads merged bytes", Find<TextBlock>(((DocumentTab)Docs.SelectedItem).Content).Any(t => t.Text == "from UI base") && Encoding.ASCII.GetString(node.ReadAll()) == "Base viewer bytes");
             session.Commit(node, Encoding.ASCII.GetBytes("own bytes"), "own edit");
+            var sources = CaptureSources(node);
+            Check("source inspection separates vanilla, selected base and project bytes", sources.Count == 3 && sources[0].Bytes.SequenceEqual(node.ReadOriginal()) && Encoding.ASCII.GetString(sources[1].Bytes) == "Base viewer bytes" && Encoding.ASCII.GetString(sources[2].Bytes) == "own bytes");
+            OpenSources(node); UpdateLayout();
+            Check("base source inspection cannot edit active node", ((DocumentTab)Docs.SelectedItem).Node is null && ((DocumentTab)Docs.SelectedItem).Title.Contains("read-only"));
             var project = Path.Combine(Path.GetDirectoryName(reportPath)!, "base-ui.mvpwproj"); ProjectFile.Save(session, project);
             var restored = ProjectFile.Load(project, root, out var warnings); ResetBaseViews(); Editor.Attach(restored);
             Check("project reload restores layer and own edits", warnings.Count == 0 && restored.BaseLayer?.References.Count == 1 && Encoding.ASCII.GetString(node.ReadAll()) == "own bytes");

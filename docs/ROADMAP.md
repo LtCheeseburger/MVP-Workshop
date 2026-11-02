@@ -9,7 +9,9 @@ each lands as its own commit and is checked in the running app.
 - [x] Asset right-click menu in the tree and search results: Open, Replace image, Import file over this,
       Add new file here, Export raw, Extract folder, Revert, Revert everything in here, Show in Changes,
       Dependencies, Copy name / path / SHA-1
-- [ ] Additional asset actions: Open original, format-specific Import / Export, Bookmark
+- [x] Additional asset actions: read-only Open original / sources snapshots (vanilla, selected base mods,
+      current project/preview), format-specific texture/audio/model/text Import / Export, Bookmark.
+      Unsupported formats retain raw commands with an explicit unavailable interchange entry.
 - [x] Explorer filter: Modified / Added checkboxes filter Categories and Files trees, keep matching parents,
       refresh after edits / revert / undo / redo, and show added nodes with right-click Remove
 - [x] An untitled project starts when a game opens; autosave into rotating backups; recent projects;

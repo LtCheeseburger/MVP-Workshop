@@ -40,7 +40,9 @@ public partial class MainWindow
         if (sender == Tree && SelectedTreeItem?.AddedPath is { } added)
         {
             Add("Open", () => OpenAsset(n));
+            AddExplorerActions(menu, n);
             Add("Export raw…", () => Exporter.SaveRaw(n));
+            Add("Bookmark", () => { var list = GameBookmarks(); if (list.All(b => b.Key != n.Key)) list.Add(new AssetBookmark { Key = n.Key, Name = n.Name }); _settings.Save(); ShowBookmarks(); });
             Add("Remove", () =>
             {
                 foreach (var tab in _docs.Where(d => d.Node == n).ToList()) CloseDocument(tab);
@@ -52,6 +54,7 @@ public partial class MainWindow
         void Sep() { if (menu.Items.Count > 0 && menu.Items[^1] is not Separator) menu.Items.Add(new Separator()); }
         var s = Editor.Session;
         if (!n.IsFolder || n.IsLooseTexturePack) Add("Open", () => OpenAsset(n));
+        AddExplorerActions(menu, n);
         Sep();
         if (texture) Add("Replace image… (PNG, TGA, DDS…)", () => ReplaceImage(n));
         if (texture) Add("Export pack as PNGs…", () => TexturePackExport.ExportPack(n.Parent?.IsLooseTexturePack == true ? n.Parent : n));

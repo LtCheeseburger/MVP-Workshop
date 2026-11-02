@@ -61,6 +61,10 @@ they are not represented as synthetic evidence.
 
 ## Checks requiring a game installation
 
+Explorer desktop checks also verify original/current source snapshots, separate read-only documents,
+Added assets without vanilla bytes, and reachable text interchange. Base-mod desktop checks verify
+distinct vanilla, selected-base and current-project source bytes.
+
 Native port reload checks require the selected port's sources and Visual Studio
 toolchain, but no game assets:
 
