@@ -72,6 +72,8 @@ each lands as its own commit and is checked in the running app.
       encoding, encoded preview, impact review, undo and confirmed/unresolved usage labels.
 - [ ] MicroTalk replacement encoder and undecoded school/event assignment authoring; playback/export
       remain available. Fixed-duration/native-allocation limits are documented in AUDIO_REPLACEMENT.md.
+      Independent revision-3 encoder/repack research and Xbox school/nickname selector traces are
+      recorded in RUNTIME_BINDINGS_AND_MICROTALK.md; safe per-block encoding and runtime isolation remain incomplete.
 
 ## 7. Batch and round-trip
 

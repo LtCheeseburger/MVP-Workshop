@@ -30,6 +30,9 @@ VAG flags are preserved. Shared bank/sample payloads are rejected for isolated r
 
 **MicroTalk replacement remains unavailable:** no verified MicroTalk encoder is implemented.
 Playback and export remain available. The tool does not silently substitute another codec.
+An independent revision-3 encoding/repack experiment now establishes a feasible codec path, but
+per-block allocation and quality still prevent production integration. See
+[the runtime/codec investigation](RUNTIME_BINDINGS_AND_MICROTALK.md) for measurements and remaining gates.
 Growing/repacking banks, changing durations or authoring new loop points are also unsupported.
 
 ## Folder import

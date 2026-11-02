@@ -24,6 +24,18 @@ AssetNode? Find(string vpath)
 
 switch (args[0])
 {
+    case "runtime-research":
+        RuntimeResearch.Run(root, args[2]);
+        break;
+    case "microtalk-study":
+        RuntimeResearch.Study(root, args[2], args[3], args[4], args.Length > 5 && args[5] == "--rev3");
+        break;
+    case "xbe-slice":
+        RuntimeResearch.Slice(root, Convert.ToUInt32(args[2], 16), int.Parse(args[3]), args[4]);
+        break;
+    case "xbe-references":
+        RuntimeResearch.References(root, args[2]);
+        break;
     case "uniform-runtime":
     {
         foreach(var pack in root.EnumerateDeep().Where(n=>n.Name=="basebody.ssh"))

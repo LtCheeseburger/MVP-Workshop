@@ -28,6 +28,10 @@ yet have writable per-school bindings in the decoded formats. Their school-only
 button is disabled with that reason; copying a file without a valid runtime reference
 would not isolate it. Shared replacement and its impact preview remain available.
 
+The [runtime investigation](RUNTIME_BINDINGS_AND_MICROTALK.md) traces Xbox school/nickname audio
+selectors and shared body consumers. Audio event-to-payload resolution and safe stadium mapping
+extension remain incomplete; these research findings do not enable additional school-only scopes.
+
 Verification: `tests/SchoolFork` covers ownership, allocation, family completeness,
 assignment preservation, VFS resolution, undo/redo and stale-review rejection.
 The `--replacement-selftest` WPF check operates the real dialog, applies both scopes,

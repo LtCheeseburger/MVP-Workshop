@@ -61,6 +61,12 @@ they are not represented as synthetic evidence.
 
 ## Checks requiring a game installation
 
+Read-only `scripts/codec-research/run-study.ps1` inventories native speech/bindings and compares
+standard/revision-3 MicroTalk experiments with a pinned independent decoder. Setup, dataset hashes,
+measurements and the distinction from production support are documented in
+[RUNTIME_BINDINGS_AND_MICROTALK.md](RUNTIME_BINDINGS_AND_MICROTALK.md). These research experiments
+require game data plus the optional GCC/upstream tools and are not part of no-game CI.
+
 Explorer desktop checks also verify original/current source snapshots, separate read-only documents,
 Added assets without vanilla bytes, and reachable text interchange. Base-mod desktop checks verify
 distinct vanilla, selected-base and current-project source bytes.
