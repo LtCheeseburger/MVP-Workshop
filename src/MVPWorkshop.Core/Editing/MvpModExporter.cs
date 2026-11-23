@@ -17,6 +17,7 @@ public sealed class ModInfo
     public string Author { get; set; } = "";
     public string Description { get; set; } = "";
     public bool AffectsSaves { get; set; }
+    public bool Required { get; set; }
     /// <summary>A PNG on disk that goes in as icon.png; empty for none.</summary>
     public string IconPath { get; set; } = "";
 
@@ -162,6 +163,7 @@ public static class MvpModExporter
             ["layout"] = Layout,
         };
         if (info.AffectsSaves) j["affectsSaves"] = true;
+        if (info.Required) j["required"] = true;
         if (refpack is { Count: > 0 }) j["refpack"] = new JsonArray([.. refpack.Select(r => (JsonNode)r)]);
         return j.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }

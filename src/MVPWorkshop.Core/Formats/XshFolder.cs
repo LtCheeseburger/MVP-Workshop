@@ -313,6 +313,24 @@ public static class XshFolder
 
     // ---- xsh.meta ----
 
+    /// <summary>Rename a school's directory/attachment tags without touching its image pixels.</summary>
+    public static Dictionary<string,byte[]> RetagSchool(IReadOnlyDictionary<string,byte[]> files,int assetId)
+    {
+        if(assetId is <1 or >511 || !ReadMeta(files[MetaName],out var head,out var images))throw new InvalidDataException("Invalid school texture metadata.");
+        var result=new Dictionary<string,byte[]>();var renamed=new List<Image>();
+        foreach(var image in images) {
+            int at=16+image.DirIndex*8;if(at+4>head.Length)throw new InvalidDataException("Invalid texture directory.");
+            string tag=Encoding.ASCII.GetString(head,at,4);
+            if(tag[0] is not ('l' or 'j' or 'i' or 'e' or 'd' or 'a') || !tag.Skip(1).All(char.IsAsciiDigit))throw new InvalidDataException("Not a school logo pack.");
+            string replacement=tag[0]+assetId.ToString("000");Encoding.ASCII.GetBytes(replacement).CopyTo(head,at);
+            byte[] rest=image.Rest.ToArray();var oldTag=Encoding.ASCII.GetBytes(tag);var newTag=Encoding.ASCII.GetBytes(replacement);
+            for(int p=0;p<=rest.Length-4;p++)if(rest.AsSpan(p,4).SequenceEqual(oldTag)){newTag.CopyTo(rest,p);p+=3;}
+            string name=image.File.Replace(tag,replacement,StringComparison.Ordinal);
+            renamed.Add(image with {File=name,Rest=rest});result.Add(name,files[image.File].ToArray());
+        }
+        result[MetaName]=WriteMeta(head,renamed);return result;
+    }
+
     static byte[] WriteMeta(byte[] head, List<Image> images)
     {
         var ms = new MemoryStream();
