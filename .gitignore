@@ -9,3 +9,8 @@ test-output*
 research/
 docs/**/*.png
 !src/**/Assets/*.png
+.tmp/
+release-assets/*.zip
+release-assets/*.zip.sha256
+release-assets/*-preview.png
+release-assets/*-win-x64/
