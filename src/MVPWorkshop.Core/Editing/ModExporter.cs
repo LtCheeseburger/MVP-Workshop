@@ -65,6 +65,7 @@ public static class ModExporter
 
         Directory.CreateDirectory(outputFolder);
         var manifest = new List<object>();
+        var terfs = new Dictionary<AssetNode, byte[]>();
         foreach (var group in perFile)
         {
             var file = group.Key;
@@ -73,6 +74,7 @@ public static class ModExporter
             try
             {
                 var bytes = RebuildStored(file, session.Overrides, reencodeAll: false);
+                if (file.Format == FormatId.TerfArchive) terfs[file] = bytes;
                 var dest = Path.Combine(outputFolder, rel);
                 Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
                 var compared = 0;
@@ -97,6 +99,28 @@ public static class ModExporter
                 report.Files.Add(new ExportedFile(rel, bytes.Length, hash, group.Count(), compared));
             }
             catch (Exception ex) { report.Problems.Add($"{rel}: {ex.Message}"); }
+        }
+
+        // The game's quick-load files cache TERF directories and some stored entries.
+        // Export matching caches alongside changed archives so old cached offsets/data cannot mask edits.
+        foreach (var folder in terfs.Keys.Select(n => n.Parent).Where(n => n is not null).Distinct())
+        {
+            var changes = terfs.Where(p => p.Key.Parent == folder).ToDictionary(p => p.Key.Name, p => (Original: p.Key.ReadOriginal(), Rebuilt: p.Value), StringComparer.OrdinalIgnoreCase);
+            foreach (var cache in folder!.Children.Where(n => n.Extension == ".qkl" && !n.IsFolder))
+            {
+                string rel = RelativePath(root, cache);
+                try
+                {
+                    if (session.Overrides.ContainsKey(cache.Key)) throw new InvalidOperationException("Revert the direct QKL replacement before exporting dependent archive edits.");
+                    var bytes = QklFile.Synchronize(cache.ReadOriginal(), changes, out int updated);
+                    if (updated == 0) continue;
+                    progress?.Invoke($"Synchronizing {rel}: {updated} cached records");
+                    string destination = Path.Combine(outputFolder, rel); Directory.CreateDirectory(Path.GetDirectoryName(destination)!); File.WriteAllBytes(destination, bytes);
+                    if (!File.ReadAllBytes(destination).AsSpan().SequenceEqual(bytes)) throw new InvalidDataException("QKL write verification failed.");
+                    report.Files.Add(new(rel, bytes.Length, Convert.ToHexString(SHA256.HashData(bytes)), updated, updated));
+                }
+                catch (Exception ex) { report.Problems.Add($"{rel}: {ex.Message}"); }
+            }
         }
 
         var manifestPath = Path.Combine(outputFolder, "mod_manifest.json");
@@ -128,12 +152,22 @@ public static class ModExporter
         var stored = node.ReadStored();
         var replaced = overrides.TryGetValue(node.Key, out var logical);
         var touched = replaced || affected.Contains(node.Key);
-        var compressed = stored.Length >= 8 && RefPack.IsCompressed(stored);
+        var compressed = node.TerfEntry is not { Compression: not 0 } && stored.Length >= 8 && RefPack.IsCompressed(stored);
         if (!touched && !(reencodeAll && (compressed || node.Format == FormatId.BigArchive))) return stored;
 
         if (!replaced)
         {
-            if (node.Format != FormatId.BigArchive)
+            if (node.Format == FormatId.TerfArchive)
+            {
+                var parts = new Dictionary<int, byte[]>();
+                foreach (var child in node.Children.Where(c => c.TerfEntry is not null))
+                {
+                    if (!overrides.ContainsKey(child.Key) && !affected.Contains(child.Key)) continue;
+                    parts[child.TerfEntry!.Index] = Rebuild(child, overrides, affected, reencodeAll);
+                }
+                logical = TerfWriter.Write(node.ReadOriginal(), parts);
+            }
+            else if (node.Format != FormatId.BigArchive)
             {
                 // untouched leaf, only re-encoded on request
                 logical = node.ReadOriginal();

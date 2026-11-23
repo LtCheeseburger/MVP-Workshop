@@ -11,6 +11,23 @@ int failures = 0;
 void Check(string label, bool value) { Console.WriteLine($"{(value ? "PASS" : "FAIL")} {label}"); if (!value) failures++; }
 try
 {
+    var categoryRoot = new AssetNode("MVP06", null, true, 0, null, "fixture");
+    AssetNode CategoryFile(string pack, string name) => new(name,
+        new AssetNode(pack, categoryRoot, true, 0, null, "fixture"), false, 0,
+        () => throw new Exception("Organization must not read known base-game assets"), "fixture");
+    Check("database archive is preassigned to rosters", AssetCatalog.Category(CategoryFile("database.big", "roster.bin")) == "Teams/Rosters and databases");
+    Check("frontend archive is preassigned to UI", AssetCatalog.Category(CategoryFile("frontend.big", "menu.xsh")) == "UI/Menu artwork and shared resources");
+    Check("animation archive is preassigned", AssetCatalog.Category(CategoryFile("anims.big", "swing.ord")) == "Animations/Animation banks");
+    Check("movie classification uses metadata without opening assets", AssetCatalog.Category(CategoryFile("movies", "intro.vp6")) == "Video/Movies");
+    var quickGame = Path.Combine(folder, "quick");
+    Directory.CreateDirectory(Path.Combine(quickGame, "data"));
+    File.WriteAllBytes(Path.Combine(quickGame, "data", "database.big"), [0]);
+    File.WriteAllBytes(Path.Combine(quickGame, "data", "frontend.big"), [0]);
+    File.WriteAllBytes(Path.Combine(quickGame, "default.xbe"), [0]);
+    var quickRoot = GameFileSystem.OpenGame(quickGame);
+    var sources = AssetCatalog.Sources(quickRoot);
+    Check("startup groups packed sources without parsing their corrupt payloads", sources["Teams/Rosters and databases"].Single().Name == "database.big" && sources["UI/Menu artwork and shared resources"].Single().Name == "frontend.big" && sources.Values.SelectMany(v => v).All(n => n.LoadError is null));
+    Check("startup keeps executable in System", sources["System/Executables and code"].Single().Name == "default.xbe");
     var game = Path.Combine(folder, "game"); var mods = Path.Combine(folder, "mods");
     File.WriteAllText(Path.Combine(game, "sample_big", "_big.json"), "{}");
     File.WriteAllBytes(Path.Combine(game, "default.xbe"), [1, 2, 3]); File.WriteAllText(Path.Combine(game, "sample_big", "a.txt"), "original");
@@ -30,11 +47,21 @@ try
     Zip("zip-mod.mvpmod", "zip-mod", "sample_big/a.txt", sha);
     Zip("unlisted.mvpmod", "unlisted", "other.txt", sha);
     Zip("incompatible.mvpmod", "incompatible", "other.txt", "bad-sha");
+    var innerMods = Path.Combine(game, "mods");
+    var exeFolder = Path.Combine(folder, "port");
+    Directory.CreateDirectory(innerMods);
+    Directory.CreateDirectory(Path.Combine(exeFolder, "mods"));
+    File.Copy(Path.Combine(mods, "unlisted.mvpmod"), Path.Combine(innerMods, "inner.mvpmod"));
+    File.Copy(Path.Combine(mods, "unlisted.mvpmod"), Path.Combine(exeFolder, "mods", "external.mvpmod"));
     var orderPath = Path.Combine(mods, "mods.json");
     File.WriteAllText(orderPath, "{\"format\":1,\"order\":[{\"id\":\"folder-mod\",\"enabled\":false},{\"id\":\"zip-mod\",\"enabled\":true},{\"id\":\"ghost\",\"enabled\":true}]}");
     var before = Directory.GetFiles(folder, "*", SearchOption.AllDirectories).ToDictionary(p => p, p => SHA256.HashData(File.ReadAllBytes(p)));
     var root = GameFileSystem.OpenGame(game);
     var catalog = InstalledModCatalog.Read(mods, root);
+    var allInstalled = InstalledModCatalog.ReadForGame(root, Path.Combine(exeFolder, "MVP06.exe"));
+    Check("discovers mods in both game and EXE directories even when both exist", allInstalled.Mods.Count == 6 && allInstalled.Mods.Any(m => m.Source == Path.Combine(innerMods, "inner.mvpmod")) && allInstalled.Mods.Any(m => m.Source == Path.Combine(exeFolder, "mods", "external.mvpmod")));
+    Check("overlapping EXE and parent directories are searched once", InstalledModCatalog.Directories(game, Path.Combine(folder, "MVP06.exe")).Count == 2);
+    Check("uniform texture names expose dressed player entry point", UniformPreview.IsPlayerTexture(CategoryFile("models.big", "u060a.xsh")) && UniformPreview.IsPlayerTexture(CategoryFile("models.big", "f060b.xsh")) && !UniformPreview.IsPlayerTexture(CategoryFile("models.big", "logo.xsh")));
     Check("ZIP and folder mods are discovered", catalog.Mods.Count == 4);
     Check("launcher enable flags and order are preserved", catalog.Mods.Single(m => m.Id == "zip-mod") is { Order: 1, Enabled: true } && catalog.Mods.Single(m => m.Id == "folder-mod") is { Order: 0, Enabled: false });
     Check("unlisted mods are disabled", !catalog.Mods.Single(m => m.Id == "unlisted").Enabled);

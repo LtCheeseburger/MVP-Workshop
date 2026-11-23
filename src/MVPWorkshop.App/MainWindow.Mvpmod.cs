@@ -15,7 +15,7 @@ namespace MVPWorkshop.App;
 // .mvpmod export and test runs for the port's loose install (docs/MVPMOD.md in the port)
 public partial class MainWindow
 {
-    internal static string TestModFolder { get; set; } = Path.Combine(Path.GetTempPath(), "MVP-Workshop", "test-mod");
+    internal static string TestModFolder { get; set; } = Path.Combine(Path.GetTempPath(), AppInfo.Name, "test-mod");
     // ---- asset right-click (tree and search results) ----
 
     private void Tree_RightButtonDown(object sender, MouseButtonEventArgs e)

@@ -13,6 +13,15 @@ try
     var matching = PortCompatibility.Read(folder, game);
     Check("matching release and layout metadata is accepted", matching.Version == "0.2.2-beta" && matching.ModFormat == 1 && matching.ExpectedLayout == 1 && matching.InstalledLayout == 1 && matching.Warnings.Count == 0);
     Check("Windows PowerShell UTF-8 BOM manifest is readable", !matching.Warnings.Any(w => w.Contains("Cannot read")));
+    using (var writer = new StreamWriter(installed, false, new UTF8Encoding(true)))
+    {
+        writer.Write("{\"format\":1,\"files\":[");
+        for (int i = 0; i < 180000; i++) { if (i > 0) writer.Write(','); writer.Write("{\"path\":\"" + new string('a', 100) + "\",\"size\":1}"); }
+        writer.Write("]}");
+    }
+    var large = PortCompatibility.Read(folder, game);
+    Check("large BOM-prefixed installed inventory is streamed without an oversized error", new FileInfo(installed).Length > 16 * 1024 * 1024 && large.InstalledLayout == 1 && !large.Warnings.Any(w => w.Contains("Cannot read")));
+    File.WriteAllText(installed, "{\"format\":1}");
     File.WriteAllText(manifest, "{\"format\":1,\"version\":\"0.2.2-beta\",\"modFormat\":2,\"layout\":3}");
     var newer = PortCompatibility.Read(folder, game);
     Check("newer port formats request a Workshop update", newer.RequiresNewerWorkshop && newer.Warnings.Any(w => w.Contains("mod format 2")) && newer.Warnings.Any(w => w.Contains("layout 3")));

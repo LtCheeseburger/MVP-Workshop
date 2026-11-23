@@ -42,6 +42,15 @@ public enum FormatId
     XboxExecutable,
     XboxResource,
     Binary,
+    SpeechEvents,
+    TeamRoster,
+    TerfArchive,
+    MmapTexture,
+    TiburonModel,
+    TiburonDatabase,
+    QklCache,
+    MadMovie,
+    TiburonSkeleton,
 }
 
 public enum FormatCategory { Folder, Archive, Texture, Audio, Video, Model, Code, Ui, Text, Data, Font, Unknown }
@@ -52,7 +61,15 @@ public static class FormatDetector
 {
     public static readonly IReadOnlyDictionary<FormatId, FormatInfo> Info = new Dictionary<FormatId, FormatInfo>
     {
+        [FormatId.TerfArchive] = new(FormatId.TerfArchive, "TERF Archive", FormatCategory.Archive, "", "Tiburon entry archive; uncompressed and EA Madden compression", true),
+        [FormatId.MmapTexture] = new(FormatId.MmapTexture, "MMAP Textures", FormatCategory.Texture, "", "Xbox Tiburon PAL8, BGRA32 and linear L8 texture files and mipmaps"),
+        [FormatId.TiburonModel] = new(FormatId.TiburonModel, "Tiburon Model", FormatCategory.Model, "", "TMdl section directory and partial geometry preview/OBJ export; unsupported declarations are listed"),
+        [FormatId.TiburonDatabase] = new(FormatId.TiburonDatabase, "Tiburon Database", FormatCategory.Data, "", "EA DB v8 tables, packed fields and plain/Huffman text"),
+        [FormatId.QklCache] = new(FormatId.QklCache, "QKL Quick-load Cache", FormatCategory.Data, "", "QL01 source file references and cached TERF headers/entries; synchronized during archive export"),
+        [FormatId.TiburonSkeleton] = new(FormatId.TiburonSkeleton, "Tiburon Skeleton", FormatCategory.Model, "", "SKL1 bone hierarchy, names and local translations; rotation/binding payloads undecoded"),
         [FormatId.Unknown] = new(FormatId.Unknown, "Unknown", FormatCategory.Unknown, "", "Unidentified data"),
+        [FormatId.SpeechEvents] = new(FormatId.SpeechEvents, "Speech Event Directory", FormatCategory.Audio, "", "EA speech event names and bounded directory; script bytecode remains undecoded"),
+        [FormatId.TeamRoster] = new(FormatId.TeamRoster, "Team Roster Records", FormatCategory.Data, "", "Validated variable-length school and player-slot records"),
         [FormatId.Empty] = new(FormatId.Empty, "Empty", FormatCategory.Unknown, "", "Zero-length entry"),
         [FormatId.Folder] = new(FormatId.Folder, "Folder", FormatCategory.Folder, "", "Directory", true),
         [FormatId.BigArchive] = new(FormatId.BigArchive, "BIGF Archive", FormatCategory.Archive, "", "EA BIG archive (big-endian directory, RefPack-compressed entries)", true),
@@ -68,6 +85,7 @@ public static class FormatDetector
         [FormatId.XboxExecutable] = new(FormatId.XboxExecutable, "Xbox Executable", FormatCategory.Code, "", "Xbox XBE executable (certificate and section table)"),
         [FormatId.ElfFragment] = new(FormatId.ElfFragment, "ELF Link Fragment", FormatCategory.Model, "", "ORL relocation/section-name fragment paired with an .ord"),
         [FormatId.MpcMovie] = new(FormatId.MpcMovie, "MPC Movie", FormatCategory.Video, "", "MPCh container with MPEG-2 video"),
+        [FormatId.MadMovie] = new(FormatId.MadMovie, "MAD Movie", FormatCategory.Video, "", "EA MAD video; playback and MP4 export through FFmpeg"),
         [FormatId.Vp6Movie] = new(FormatId.Vp6Movie, "VP6 Movie", FormatCategory.Video, "", "EA MVhd container with On2 VP6 video and EA-XA audio (Xbox)"),
         [FormatId.AudioBankAbk] = new(FormatId.AudioBankAbk, "ABK Bank", FormatCategory.Audio, "", "EA AEMS ABKC audio event bank"),
         [FormatId.MoirCsi] = new(FormatId.MoirCsi, "CSI Script", FormatCategory.Audio, "", "MOIR audio script/state data"),
@@ -98,9 +116,16 @@ public static class FormatDetector
         var head = src.ReadBytes(0, 512);
         var ext = Path.GetExtension(name).ToLowerInvariant();
         var magic = Bin.FourCC(head);
+        if (head.Length >= 4 && Bin.U32LE(head, 0) == SpeechEvents.Signature) return FormatId.SpeechEvents;
+        if (head.Length >= 5 && head[0] == 'D' && head[1] == 'B' && head[2] == 0 && head[3] == 8 && head[4] == 0) return FormatId.TiburonDatabase;
 
         switch (magic)
         {
+            case "TERF": return FormatId.TerfArchive;
+            case "MMAP": return FormatId.MmapTexture;
+            case "TMdl": return FormatId.TiburonModel;
+            case "1LKS": return FormatId.TiburonSkeleton;
+            case "QL01": return FormatId.QklCache;
             case "BIGF" or "BIG4": return FormatId.BigArchive;
             case "SCHl": return LooksLikeSchlContainer(src) ? FormatId.SchlContainer : FormatId.SchlStream;
             case "BNKl" or "BNKb": return FormatId.EaBank;
@@ -108,6 +133,7 @@ public static class FormatDetector
             case "SHPS" or "ShpS" or "SHPX": return FormatId.SshTexture;
             case "DDS ": return FormatId.DdsImage;
             case "MPCh": return FormatId.MpcMovie;
+            case "MADk" or "MADm" or "MADe": return FormatId.MadMovie;
             case "MVhd": return FormatId.Vp6Movie;
             case "XBEH": return FormatId.XboxExecutable;
             case "XPR0": return FormatId.XboxResource;
@@ -130,7 +156,12 @@ public static class FormatDetector
         if (ext == ".orl" && head.Length > 1 && head[0] == 0 && head[1] == (byte)'.') return FormatId.ElfFragment;
         if (ext == ".rgb" && RawRgbDims(src.Length) is not null) return FormatId.RawRgb;
         if (ext == ".bin" && name.Contains("overlay", StringComparison.OrdinalIgnoreCase)) return FormatId.Ps2Overlay;
-        if (ext == ".hdr" && src.Length >= 18 && head[4] == 0xFF && head[5] == 0xFF) return FormatId.SpeechHeader;
+        if (ext == ".hdr" && SpeechHeader.Recognizes(head)) return FormatId.SpeechHeader;
+        if (ext == ".bin" && name.Equals("roster.bin", StringComparison.OrdinalIgnoreCase) && src.Length is >= 491 and <= 64000000)
+        {
+            try { _ = TeamRoster.Read(src.ReadAll()); return FormatId.TeamRoster; }
+            catch (InvalidDataException) { /* An unrecognized roster variant stays raw. */ }
+        }
 
         if (LooksLikeText(head))
         {

@@ -149,15 +149,65 @@ The independent decoder reproduced the candidate PCM byte-for-byte after repacki
 Xbox `proj4/nnamedat.big/001a.dat` fits at 32 kb/s with 15.16 dB SNR and no clipped samples.
 No game source was changed, and no native-game playback acceptance is claimed.
 
+### Per-block budgeted encoder (2026-11-07)
+
+`src/MVPWorkshop.Core/Formats/MicroTalkEncoder.cs` is a C# port of the pinned utkencode. With utkencode's
+two uninitialised arrays zeroed (`values`, `zero_counts`; the original reads `zero_counts[107]` undefined
+when `a=1`) and its integer-division bit target (138 innovation bits at 32 kb/s, 22,050 Hz), the port is
+**byte-identical** to utkencode-rev3 over a 20-frame test signal, so the analysis is a faithful port,
+not a reimplementation.
+
+Rate control is per SCDl block. Each block's frames are encoded from a snapshot of the encoder state at a
+single innovation bit target, binary-searched for the largest target whose byte-aligned frames fit that
+block's fixed capacity. Only then is state committed, so the adaptive codebook and reflection-coefficient
+history always equal what the decoder reconstructs from the committed bits. The decoder carries state across
+blocks and resets only its bit reader, so rate changes at block boundaries need no state reconciliation.
+For starved blocks the encoder has two additions beyond utkencode:
+
+- an all-zero innovation candidate with `a=0, z=1` (one 14-bit run per subframe). This reaches the native
+  minimum of 26 bytes per frame, the same size the stock encoder uses in silent stretches (e.g. blocks of
+  1,728 samples in 107 bytes). It is offered only below 32 target bits, so default-rate output is unchanged.
+- a fallback that clamps the first reflection index into the Huffman range when triangular frames
+  (≥48 bytes each) cannot fit. It is reported per block (`ForcedHuffmanBlocks`); the real study needed it
+  nowhere.
+
+**Closed-loop stability check.** utkencode is open loop: LPC analysis sees the original signal, not the decoder's
+synthesis. At an onset after silence, near-unity reflection coefficients give the synthesis filter enough gain to
+amplify innovation error into clipping. In the 2,327-stream trial, `pnamedat.big/600.dat` decoded at -30.7 dB in
+its first block (a full-scale burst over a source peaking at 3,015). Each block candidate is now decoded through
+a mirror of the real decoder. If its SNR is below 3 dB, the first four reflection indices are clamped progressively
+(|rc| ≤ 0.971, 0.952, 0.828) until the block is stable; otherwise the lowest-error candidate is used. That block
+now decodes at +2.1 dB or better with no burst, and the other blocks are unchanged. Reports carry
+`StabilizedBlocks` and `WorstBlockSnrDb` (near-silent blocks excluded). The synthetic onset test in
+`tests/AudioReplacement` checks stability but does not itself trigger the clamp; `600.dat` is the real regression case.
+
+`MVPWorkshop.Probe microtalk-test-mod <game> <out.mvpmod> <folder>...` builds an in-game trial mod that re-encodes
+every MicroTalk stream under the given loose folders from its own decode. Packed archives such as `proj4dat.big`
+cannot be overridden by mods.
+
+`MVPWorkshop.Probe microtalk-budget-study <dir> <dir> mt-reference.exe` re-encodes each study sample into
+its own native SCHl and checks the result with the pinned vgmstream decoder:
+
+| Samples | Fit every block | Framing exact | Independent decoder | SNR vs original decode |
+| ---: | ---: | ---: | --- | --- |
+| 11 | 11 | 11 | same sample count, max 1 PCM unit | 17.3–21.5 dB (mean 18.98 dB over the 10 non-silent samples) |
+
+Native capacity is the stock encoder's own output size (blocks are tightly packed, about 39 kb/s), so a
+replacement can only match the stock rate, never exceed it. The `xbox` and `ps2` study folders hold
+identical decoded samples and block layouts. Their results are identical and are not independent evidence.
+Clip counts (up to 17 samples) mirror clipping already in the stock decodes. Encoding takes about 0.1–0.6 s
+per utterance.
+
 Remaining gates for production replacement:
 
-1. A state-consistent encoder with per-block budgets, rather than a single whole-utterance bitrate.
-   Changing rate independently at block boundaries must preserve LPC/pitch/gain state correctly.
+1. ~~A state-consistent encoder with per-block budgets.~~ Done, see above. Banks remain unhandled because
+   a bank sound is one allocation without SCDl blocks.
 2. Representative listening tests and a defensible signal-quality policy; SNR alone is insufficient.
 3. Loop/substream state, banks/shared allocations, PCM-patch behavior and real MT5 assets. The surveyed
    streams and experimental output do not validate all of these cases.
 4. Native game-path verification, bounded/cancellable tool integration or a maintained encoder port,
    then preview, impact review, stale checks, atomic undo and bulk import integration.
 
-The blocker is now **safe budgeted integration and validation**, not an absence of public encoder
-source. Keep production rejection until those gates are satisfied; do not mark 6.4 complete.
+The blocker is now **listening and native-game validation**, not the encoder. Keep production rejection in
+the editor until gates 2–4 are satisfied; do not mark 6.4 complete. Per-sample `*-budget.wav` (Workshop
+decode) and `*-budget.schl` files written by the budget study are the listening-test inputs.

@@ -2,7 +2,10 @@ using System.Numerics;
 
 namespace MVPWorkshop.Core.Formats;
 
-public sealed record AptInstance(int Character, int Depth, string Name, Matrix3x2 Matrix, uint Tint, uint Additive, int ClipDepth, int Born);
+public sealed record AptInstance(int Character, int Depth, string Name, Matrix3x2 Matrix, uint Tint, uint Additive, int ClipDepth, int Born)
+{
+    public int SourceOffset { get; init; }
+}
 
 public static class AptTimeline
 {
@@ -30,6 +33,7 @@ public static class AptTimeline
                     Name = (item.Flags & 32) != 0 ? item.Name ?? "" : previous.Name,
                     ClipDepth = (item.Flags & 64) != 0 ? item.ClipDepth : previous.ClipDepth,
                     Born = item.Character.HasValue && item.Character != previous.Character ? i : previous.Born,
+                    SourceOffset = item.Offset,
                 };
                 if (instance.Character >= 0) display[depth] = instance;
             }

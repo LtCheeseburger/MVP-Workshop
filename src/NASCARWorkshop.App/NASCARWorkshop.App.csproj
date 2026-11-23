@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>NASCAR-Workshop</AssemblyName>
+    <RootNamespace>MVPWorkshop.App</RootNamespace>
+    <Product>NASCAR-Workshop</Product>
+    <Version>0.1.7</Version>
+    <DefineConstants>$(DefineConstants);NASCAR_WORKSHOP</DefineConstants>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <Description>Asset workbench for NASCAR 06: Total Team Control (Xbox)</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\MVPWorkshop.App\**\*.cs" Exclude="..\MVPWorkshop.App\bin\**;..\MVPWorkshop.App\obj\**" LinkBase="Shared" />
+    <ApplicationDefinition Include="..\MVPWorkshop.App\App.xaml" Link="App.xaml" />
+    <Page Include="..\MVPWorkshop.App\MainWindow.xaml" Link="MainWindow.xaml" />
+    <Resource Include="..\MVPWorkshop.App\Assets\*" Link="Assets\%(Filename)%(Extension)" />
+    <ProjectReference Include="..\MVPWorkshop.Core\MVPWorkshop.Core.csproj" />
+  </ItemGroup>
+</Project>

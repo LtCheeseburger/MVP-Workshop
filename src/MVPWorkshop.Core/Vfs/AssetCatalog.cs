@@ -5,11 +5,12 @@ namespace MVPWorkshop.Core.Vfs;
 /// <summary>Semantic browsing aliases. Leaves retain the original node and archive path.</summary>
 public static class AssetCatalog
 {
-    public static string Category(AssetNode node)
+    public static string Category(AssetNode node, bool metadataOnly = false)
     {
         var p = "/" + node.Path.Replace('\\', '/').ToUpperInvariant() + "/";
         var ext = node.Extension;
-        bool Has(string segment) => p.Contains("/" + segment + "/", StringComparison.Ordinal);
+        bool Has(string segment) => p.Contains("/" + segment + "/", StringComparison.Ordinal)
+            || (!segment.Contains('.') && p.Contains("/" + segment + ".BIG/", StringComparison.Ordinal));
         if (ext == ".orl") return "System/Link fragments (.orl, opened with their .ord)";
         if (ModelCategory(node, Has) is { } model) return model;
         if (Has("UNIFORMS.BIG") || Has("UNIFORM") || Has("UNIFORMS")) return "Teams/Uniforms";
@@ -29,8 +30,23 @@ public static class AssetCatalog
         if (Has("GEOMETRY.BIG") || Has("MODELS.BIG")) return "Players/Uniform and body textures";
         if (Has("AUDIO")) return "Audio/Banks and streams";
         if (Has("IGSHAPES")) return "UI/In-game HUD";
-        return node.FormatInfo.Category switch
+        // The base game's file types are known. Classify from metadata rather than
+        // opening every texture/model/audio file just to organize the browser.
+        var kind = ext switch
         {
+            ".dds" or ".xsh" or ".ssh" or ".xpr" => FormatCategory.Texture,
+            ".ord" or ".o" => FormatCategory.Model,
+            ".vp6" or ".mad" or ".mpc" or ".m2v" => FormatCategory.Video,
+            ".asf" or ".wav" or ".bnk" or ".abk" or ".csi" or ".hdr" => FormatCategory.Audio,
+            ".xbe" or ".irx" => FormatCategory.Code,
+            ".txt" or ".ini" or ".json" => FormatCategory.Text,
+            _ => metadataOnly ? FormatCategory.Data : node.FormatInfo.Category
+        };
+        return kind switch
+        {
+            FormatCategory.Video => "Video/Movies",
+            FormatCategory.Ui => "UI/Other resources",
+            FormatCategory.Model => "Models/Other",
             FormatCategory.Audio => "Audio/Other audio",
             FormatCategory.Texture => "Textures/Other textures",
             FormatCategory.Font => "UI/Fonts",
@@ -38,6 +54,26 @@ public static class AssetCatalog
             FormatCategory.Text => "Data/Text and configuration",
             _ => "Data/Other assets",
         };
+    }
+
+    /// <summary>Preassigned base-game source groups. Never opens archives or texture payloads.
+    /// Only routing directories are listed; each source remains lazy until expanded.</summary>
+    public static SortedDictionary<string, List<AssetNode>> Sources(AssetNode root)
+    {
+        var groups = new SortedDictionary<string, List<AssetNode>>(StringComparer.OrdinalIgnoreCase);
+        void Add(AssetNode parent)
+        {
+            foreach (var node in parent.Children)
+            {
+                if (node.IsFolder && !node.IsLooseArchive && node.Name.ToUpperInvariant() is "DATA" or "ASSETS" or "GAME")
+                { Add(node); continue; }
+                var category = Category(node, metadataOnly: true);
+                if (!groups.TryGetValue(category, out var sources)) groups[category] = sources = [];
+                sources.Add(node);
+            }
+        }
+        Add(root);
+        return groups;
     }
 
     /// <summary>3D models outside stadium archives, grouped by what they are (stadium models stay with their stadium).</summary>

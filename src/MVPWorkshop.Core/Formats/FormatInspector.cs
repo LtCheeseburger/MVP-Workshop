@@ -21,6 +21,30 @@ public static class FormatInspector
         {
             switch (fmt)
             {
+                case FormatId.QklCache:
+                    var qkl = QklFile.Read(src); p.Add(new("QKL", "Source files", qkl.Files.Count.ToString())); p.Add(new("QKL", "Cached records", qkl.Records.Count.ToString()));
+                    p.Add(new("QKL", "Export", "Matching archive directories and cached entries are synchronized when exporting DAT edits.")); break;
+                case FormatId.TiburonDatabase:
+                    var db = TiburonDatabase.Read(src.ReadAll());
+                    p.Add(new("DB", "Tables", db.Tables.Count.ToString()));
+                    p.Add(new("DB", "Records", db.Tables.Sum(t => t.Rows).ToString()));
+                    var issues = db.CheckChecksums(); p.Add(new("DB", "Checksums", issues.Count == 0 ? "All valid" : string.Join(", ", issues)));
+                    break;
+                case FormatId.TerfArchive:
+                    var terf = TerfArchive.ReadDirectory(src);
+                    p.Add(new("TERF", "Entries", terf.Entries.Count.ToString()));
+                    p.Add(new("TERF", "Alignment", terf.Alignment.ToString()));
+                    foreach (var group in terf.Entries.GroupBy(e => e.Compression)) p.Add(new("TERF", $"Compression {group.Key}", group.Count().ToString()));
+                    break;
+                case FormatId.MmapTexture:
+                    var mmap = MmapTexture.Read(src.ReadAll());
+                    p.Add(new("MMAP", "Bitmaps / mipmaps", mmap.Images.Count.ToString()));
+                    p.Add(new("MMAP", "Named textures", mmap.Images.Select(i => i.FileIndex).Distinct().Count().ToString()));
+                    p.Add(new("MMAP", "Palettes", mmap.Palettes.Count.ToString()));
+                    break;
+                case FormatId.TiburonModel:
+                    foreach (var section in TiburonModel.Read(src)) p.Add(new("TMdl", section.Tag, $"@0x{section.Offset:X}, {section.Length} bytes, {section.Count} records"));
+                    break;
                 case FormatId.DdsImage:
                 {
                     var type = XshFolder.DdsType(src.ReadAll(), out int width, out int height, out int levels, out int offset);
@@ -218,10 +242,32 @@ public static class FormatInspector
                     p.Add(new("MOIR", "Labels", m.Labels.Count.ToString()));
                     break;
                 }
+                case FormatId.TeamRoster:
+                {
+                    var teams = TeamRoster.Read(src.ReadAll());
+                    p.Add(new("Roster", "Named schools", teams.Count.ToString()));
+                    p.Add(new("Roster", "Player slots", teams.Sum(t => t.PlayerCount).ToString()));
+                    p.Add(new("Roster", "Records", "487 fixed bytes plus 8 bytes per player slot; assignment bit interpretation is platform-specific."));
+                    break;
+                }
+                case FormatId.SpeechEvents:
+                {
+                    var events = SpeechEvents.Read(src.ReadAll());
+                    p.Add(new("EVT", "Project index", events.Project.ToString()));
+                    p.Add(new("EVT", "Directory records", events.Events.Count.ToString()));
+                    p.Add(new("EVT", "Directory offset", $"0x{events.TableOffset:X}"));
+                    p.Add(new("EVT", "Names offset", $"0x{events.NamesOffset:X}"));
+                    p.Add(new("EVT raw", "u32 @0x0C (unknown)", $"0x{events.RawHeaderValue:X8}"));
+                    p.Add(new("EVT", "Remaining decoding", "Script opcodes and record +4..31 remain unknown; names do not establish school/stream ownership."));
+                    break;
+                }
                 case FormatId.SpeechHeader:
                 {
                     var h = SpeechHeader.Parse(src.ReadBytes(0, (int)Math.Min(src.Length, 4096)));
                     if (h is null) break;
+                    p.Add(new("Speech header", "Parser variant", h.Variant));
+                    p.Add(new("Speech header raw", "u32 @0x0C (unknown)", $"0x{src.U32LE(12):X8}"));
+                    p.Add(new("Speech header raw", "u16 @0x10 (unknown)", $"0x{Bin.U16LE(src.ReadBytes(16, 2), 0):X4}"));
                     p.Add(new("Speech header", "Record id", $"{h.Id} (0x{h.Id:X})"));
                     p.Add(new("Speech header", "Kind", h.Kind.ToString()));
                     p.Add(new("Speech header", "Segments", h.Segments.ToString()));

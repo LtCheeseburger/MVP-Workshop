@@ -38,7 +38,7 @@ public static class Editor
     public static bool IsDirty => Session?.IsDirty == true;
 
     /// <summary>Formats the tool has an editor for.</summary>
-    public static bool HasEditor(AssetNode n) => !n.IsFolder && n.Format is FormatId.SshTexture or FormatId.AptMovie or FormatId.AptConst or FormatId.LocBinary or FormatId.Text or FormatId.LocText or FormatId.Csv;
+    public static bool HasEditor(AssetNode n) => !n.IsFolder && n.Format is FormatId.TiburonDatabase or FormatId.MmapTexture or FormatId.SshTexture or FormatId.AptMovie or FormatId.AptConst or FormatId.LocBinary or FormatId.Text or FormatId.LocText or FormatId.Csv;
 
     public static EditCapability CapabilityOf(AssetNode n)
     {

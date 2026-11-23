@@ -221,6 +221,80 @@ internal static class RuntimeResearch
         Console.WriteLine($"{results.Count} independent encoding experiments. Total-size fit does not establish native per-block or loop compatibility.");
     }
 
+    /// <summary>
+    /// Re-encode every study sample into its own native SCHl with the per-block budgeted encoder, then check it with the
+    /// independent pinned decoder. Writes budget-study.json and per-sample *-budget.schl / *-budget.wav for listening.
+    /// </summary>
+    public static void BudgetStudy(string directory, string decoder)
+    {
+        var samples = JsonSerializer.Deserialize<List<Sample>>(File.ReadAllText(Path.Combine(directory, "samples.json")))!;
+        var results = new List<object>();
+        foreach (var sample in samples.Where(s => s.Codec == 4 && s.Version == 3))
+        {
+            var native = File.ReadAllBytes(Path.Combine(directory, sample.File + ".schl"));
+            var original = AudioReplacement.ReadPcmWav(File.ReadAllBytes(Path.Combine(directory, sample.File + ".wav")));
+            var watch = Stopwatch.StartNew();
+            var encoded = AudioReplacement.MicroTalkStream(native, 0, original, out var report);
+            watch.Stop();
+            string output = Path.Combine(directory, sample.File + "-budget.schl");
+            File.WriteAllBytes(output, encoded); Exec(decoder, output, output + ".pcm", "--rev3");
+            var reference = File.ReadAllBytes(output + ".pcm");
+            var memory = new MemoryByteSource(encoded); var stream = SchlStream.ScanAll(memory).Single(); var own = stream.Decode(memory);
+            File.WriteAllBytes(Path.Combine(directory, sample.File + "-budget.wav"), AudioCodecs.ToWav(own));
+            var framing = stream.Blocks.All(b => native.AsSpan((int)b.Offset, b.Id == "SCDl" ? 17 : (int)b.Size).SequenceEqual(encoded.AsSpan((int)b.Offset, b.Id == "SCDl" ? 17 : (int)b.Size)));
+            int maxDelta = 0, clipped = 0; double signal = 0, error = 0;
+            for (int i = 0; i < own.Pcm.Length && i * 2 + 1 < reference.Length; i++)
+            {
+                int x = original.Pcm[i], y = Bin.S16LE(reference, i * 2);
+                maxDelta = Math.Max(maxDelta, Math.Abs(y - own.Pcm[i])); signal += (double)x * x; error += (double)(x - y) * (x - y);
+                if (y is short.MinValue or short.MaxValue) clipped++;
+            }
+            results.Add(new { sample.Asset, sample.Rate, sample.Samples, report.Blocks, report.Frames, report.BytesUsed, report.BytesAvailable,
+                report.MinTarget, report.MaxTarget, report.MeanTarget, report.ForcedHuffmanBlocks, NativeFramingPreserved = framing && encoded.Length == native.Length,
+                IndependentSampleCount = reference.Length == original.Pcm.Length * 2, IndependentDecoderMaxDelta = maxDelta,
+                SnrDb = 10 * Math.Log10(Math.Max(1, signal) / Math.Max(1, error)), Clipped = clipped, EncodeMs = watch.ElapsedMilliseconds });
+        }
+        File.WriteAllText(Path.Combine(directory, "budget-study.json"), JsonSerializer.Serialize(results, Json));
+        Console.WriteLine($"{results.Count} per-block budget experiments written; no game source was changed and no native playback is claimed.");
+    }
+
+    /// <summary>
+    /// In-game trial: every revision-3 MicroTalk stream below the given folders is re-encoded from its own decode with the
+    /// per-block encoder and exported as an ordinary .mvpmod. Audibly broken lines in game mean the encoder failed there.
+    /// </summary>
+    public static void TestMod(AssetNode root, string output, string[] folders)
+    {
+        var session = new EditSession(root, Path.Combine(Path.GetTempPath(), "mvp-mt-test-" + Guid.NewGuid().ToString("N")));
+        var rows = new List<string>(); int streams = 0, files = 0, refused = 0; double snrSum = 0;
+        foreach (var folder in folders)
+        {
+            var top = root.Resolve(folder) ?? throw new DirectoryNotFoundException(folder);
+            foreach (var node in top.EnumerateDeep().Where(n => !n.IsFolder && n.Format != FormatId.BigArchive && n.WriteBlocker is null && n.StoredSize >= 8 && Bin.FourCC(n.Open().ReadBytes(0, 4)) == "SCHl"))
+            {
+                var bytes = node.ReadAll(); var result = bytes; var found = SchlStream.ScanAll(new MemoryByteSource(bytes)); var changed = false;
+                for (int i = 0; i < found.Count; i++)
+                {
+                    if (found[i].Header is not { } h || AudioReplacement.MicroTalkUnsupported(h) is not null) { refused++; continue; }
+                    var source = new MemoryByteSource(result); var original = SchlStream.ScanAll(source)[i].Decode(source);
+                    result = AudioReplacement.MicroTalkStream(result, i, original, out var report);
+                    var after = new MemoryByteSource(result); var decoded = SchlStream.ScanAll(after)[i].Decode(after);
+                    double sig = 0, err = 0; for (int k = 0; k < original.Pcm.Length; k++) { sig += (double)original.Pcm[k] * original.Pcm[k]; double d = original.Pcm[k] - decoded.Pcm[k]; err += d * d; }
+                    if (decoded.Pcm.Length != original.Pcm.Length || result.Length != bytes.Length) throw new InvalidDataException($"{node.Key} stream {i}: dimensions changed.");
+                    var snr = sig < 1 ? double.NaN : 10 * Math.Log10(sig / Math.Max(err, 1)); if (!double.IsNaN(snr)) snrSum += snr;
+                    rows.Add($"{node.Key}\t{i}\t{original.Pcm.Length}\t{report.BytesUsed}/{report.BytesAvailable}\t{report.ForcedHuffmanBlocks}\t{snr:F2}\t{report.StabilizedBlocks}\t{report.WorstBlockSnrDb:F2}");
+                    streams++; changed = true;
+                }
+                if (changed) { session.Commit(node, result, "MicroTalk encoder in-game trial"); files++; }
+            }
+        }
+        var info = new ModInfo { Id = "microtalk-encoder-trial", Name = "MicroTalk encoder trial", Version = "0.1.0", Author = "MVP-Workshop",
+            Description = $"Re-encodes {streams} announcer speech streams in {string.Join(", ", folders)} with the experimental per-block MicroTalk encoder. Content is unchanged; listen for artifacts." };
+        var exported = MvpModExporter.Export(session, info, output, asFolder: false);
+        if (exported.Problems.Count > 0) throw new InvalidOperationException(string.Join("; ", exported.Problems));
+        File.WriteAllText(Path.ChangeExtension(output, ".streams.tsv"), "asset\tstream\tsamples\tbytes\tforced\tsnr_db\tstabilized\tworst_block_snr_db\n" + string.Join("\n", rows));
+        Console.WriteLine($"{streams} streams in {files} files re-encoded ({refused} non-MicroTalk/unsupported skipped), mean SNR {snrSum / Math.Max(1, rows.Count(r => !r.EndsWith("NaN"))):F2} dB -> {output}");
+    }
+
     private static string Exec(string tool, params string[] args)
     {
         var start = new ProcessStartInfo(Path.GetFullPath(tool)) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };

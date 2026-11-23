@@ -35,8 +35,8 @@
       <Border Background="#101114">
         <Grid>
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-            <Image Source="Assets/MvpWorkshop.png" Width="80" Height="32" Stretch="Uniform" ToolTip="MVP Workshop"/>
-            <TextBlock Text="MVP-Workshop" FontWeight="Bold" Margin="10,0,0,0" VerticalAlignment="Center"/>
+            <Image x:Name="ProductLogo" Source="Assets/MvpWorkshop.png" Width="80" Height="32" Stretch="Uniform" ToolTip="MVP Workshop"/>
+            <TextBlock x:Name="ProductNameLabel" Text="MVP-Workshop" FontWeight="Bold" Margin="10,0,0,0" VerticalAlignment="Center"/>
             <TextBlock x:Name="VersionLabel" FontWeight="SemiBold" Cursor="Hand" ToolTip="Check for updates" WindowChrome.IsHitTestVisibleInChrome="True" MouseLeftButtonUp="VersionLabel_Click" Foreground="{StaticResource Muted}" Margin="6,0,0,0" VerticalAlignment="Center"/>
             <Border Background="{StaticResource AccentSoft}" CornerRadius="3" Padding="6,1" Margin="12,0,0,0" VerticalAlignment="Center">
               <TextBlock Text="EDITOR" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Accent}"/>
@@ -95,11 +95,12 @@
               </Style>
             </Menu.Resources>
             <MenuItem Header="_File">
-              <MenuItem Header="Open game…" Command="{x:Static local:MainWindow.OpenFolderCmd}" InputGestureText="Ctrl+O"/>
+              <MenuItem Header="Open game folder…" Command="{x:Static local:MainWindow.OpenFolderCmd}" InputGestureText="Ctrl+O"/>
               <MenuItem Header="Open ISO…" Click="OpenIso_Click" InputGestureText=""/>
               <MenuItem Header="Open loose file…" Click="OpenFile_Click" InputGestureText=""/>
               <MenuItem Header="Open project…" Click="OpenProject_Click" InputGestureText=""/>
               <MenuItem Header="Open mod…" Click="OpenMod_Click"/>
+              <MenuItem x:Name="InstalledModsMenu" Header="Open installed mod" SubmenuOpened="InstalledMods_Opened"/>
               <MenuItem x:Name="RecentProjectsMenu" Header="Recent projects" SubmenuOpened="RecentProjects_Opened"/>
               <MenuItem Header="Save project" Command="{x:Static local:MainWindow.SaveProjectCmd}" InputGestureText="Ctrl+S"/>
               <MenuItem Header="Save project as…" Command="{x:Static local:MainWindow.SaveProjectAsCmd}" InputGestureText="Ctrl+Shift+S"/>
@@ -127,6 +128,8 @@
             <MenuItem Header="_Tools">
               <MenuItem Header="Options…" Click="Options_Click"/>
               <MenuItem Header="Installed mods as base…" Click="BaseMods_Click"/>
+              <MenuItem Header="Locate overhaul…" Click="LocateOverhaul_Click" ToolTip="Layer an MVP 27 overhaul .mvpmod over the opened game (found automatically when MVP27-Overhaul.mvpmod is beside MVP06.exe)"/>
+              <MenuItem Header="Build overhaul…" Click="BuildOverhaul_Click" ToolTip="Write a new MVP27-Overhaul.mvpmod: the loaded package plus this project's edits"/>
               <MenuItem Header="Export all rosters CSV…" Click="ExportAllRosters_Click"/>
               <MenuItem Header="Import roster CSV (all schools)…" Click="ImportAllRosters_Click"/>
               <MenuItem Header="Test in Game" Command="{x:Static local:MainWindow.TestGameCmd}" InputGestureText="F5"/>
@@ -140,23 +143,31 @@
               <MenuItem Header="About MVP Workshop" Click="About_Click" InputGestureText=""/>
             </MenuItem>
           </Menu>
-          <DockPanel Margin="8,2,8,5" LastChildFill="False">
-            <StackPanel Orientation="Horizontal">
-              <Button  Style="{StaticResource Tool}" Command="{x:Static local:MainWindow.OpenFolderCmd}" Content="Open" ToolTip="Open (Ctrl+O)"/>
-              <Button  Style="{StaticResource Tool}" Command="{x:Static local:MainWindow.SaveProjectCmd}" Content="Save" ToolTip="Save (Ctrl+S)"/>
+          <Grid Margin="8,2,8,5">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <WrapPanel>
+              <Button Style="{StaticResource Tool}" Command="{x:Static local:MainWindow.OpenFolderCmd}" Content="Open Game Folder" ToolTip="Open (Ctrl+O)"/>
+              <Button Style="{StaticResource Tool}" Content="Open Project" Click="OpenProject_Click"/>
+              <Button Style="{StaticResource Tool}" Content="Open Mod" Click="OpenMod_Click"/>
+              <Button Style="{StaticResource Tool}" Content="Installed Mods" Click="InstalledMods_Click"/>
+              <Button Style="{StaticResource Tool}" Command="{x:Static local:MainWindow.SaveProjectCmd}" Content="Save Project" ToolTip="Save (Ctrl+S)"/>
               <Button x:Name="UndoButton" Style="{StaticResource Tool}" Command="{x:Static local:MainWindow.UndoCmd}" Content="Undo" ToolTip="Undo (Ctrl+Z)"/>
               <Button x:Name="RedoButton" Style="{StaticResource Tool}" Command="{x:Static local:MainWindow.RedoCmd}" Content="Redo" ToolTip="Redo (Ctrl+Y)"/>
+              <Button Style="{StaticResource Tool}" Content="Changes" Click="ShowChanges_Click"/>
+              <Button Style="{StaticResource Tool}" Command="{x:Static local:MainWindow.ExportModCmd}" Content="Export Mod"/>
               <Button x:Name="DiagnosticsButton" Style="{StaticResource Tool}" Content="Diagnostics (0)" Click="Diagnostics_Click" ToolTip="Errors and warnings for the current project"/>
-            </StackPanel>
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+              <CheckBox Content="Log" Margin="10,0,0,0" VerticalAlignment="Center" IsChecked="{Binding IsChecked, ElementName=LogToggle, Mode=TwoWay}" Click="LogToggle_Click"/>
+              <CheckBox Content="Properties" Margin="10,0,0,0" VerticalAlignment="Center" IsChecked="{Binding IsChecked, ElementName=PropsToggle, Mode=TwoWay}" Click="PropsToggle_Click"/>
+            </WrapPanel>
+            <StackPanel x:Name="ExportActions" Grid.Row="1" HorizontalAlignment="Right" Orientation="Horizontal">
               <ComboBox x:Name="LaunchTargetPicker" Width="135" SelectedIndex="0" SelectionChanged="LaunchTarget_SelectionChanged" Margin="0,0,4,0" ToolTip="Launch target; automatic follows the last edited school/stadium">
                 <ComboBoxItem Content="Last edited asset"/><ComboBoxItem Content="Main menu"/><ComboBoxItem Content="Team…"/><ComboBoxItem Content="Stadium…"/><ComboBoxItem Content="Exhibition…"/>
               </ComboBox>
               <Button Style="{StaticResource Tool}" Content="…" Click="ConfigureLaunchTarget_Click" ToolTip="Configure launch target" Margin="0,0,6,0"/>
               <Button Style="{StaticResource Primary}" Command="{x:Static local:MainWindow.TestGameCmd}" Content="Test in Game" ToolTip="Test edits as a temporary mod (F5)" Margin="0,0,8,0"/>
-              <Button Style="{StaticResource Outline}" Command="{x:Static local:MainWindow.ExportModCmd}" Content="Export .mvpmod" FontWeight="SemiBold" Foreground="{StaticResource Good}" ToolTip="Export mod (Ctrl+E)"/>
+              <Button x:Name="ExportModButton" Style="{StaticResource Outline}" Command="{x:Static local:MainWindow.ExportModCmd}" Content="Export .mvpmod" FontWeight="SemiBold" Foreground="{StaticResource Good}" ToolTip="Export mod (Ctrl+E)"/>
             </StackPanel>
-          </DockPanel>
+          </Grid>
         </StackPanel>
       </Border>
 
@@ -222,7 +233,7 @@
                       <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition/></Grid.ColumnDefinitions>
                       <TextBlock Text="{Binding FormatInfo.Glyph}" Style="{StaticResource Glyph}" FontSize="13" Foreground="{StaticResource Muted}"/>
                       <StackPanel Grid.Column="1">
-                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Converter={x:Static local:AssetBrowserLabelConverter.Instance}}" TextTrimming="CharacterEllipsis"/>
                         <TextBlock Text="{Binding Path}" Foreground="{StaticResource Faint}" FontSize="10.5" TextTrimming="CharacterEllipsis"/>
                       </StackPanel>
                     </Grid>

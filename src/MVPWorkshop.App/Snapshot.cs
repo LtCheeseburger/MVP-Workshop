@@ -65,6 +65,12 @@ public static class Snapshot
                     timeIndex >= 0 && timeIndex + 1 < args.Length && double.TryParse(args[timeIndex + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var seconds) ? seconds : 0, shows);
             }
             if (tab > 0 && int.TryParse(args[tab + 1], out var ti)) SelectInnerTab(w, ti);
+            if (args.Contains("--nascar-2d"))
+            {
+                FindChild<MVPWorkshop.App.Viewers.NascarAssetView>(w)?.Show2D();
+                FindChild<MVPWorkshop.App.Viewers.EmbeddedModelView>(w)?.Show2D();
+            }
+            if (Array.IndexOf(args, "--nascar-model") is var nmi and >= 0 && nmi + 1 < args.Length) FindChild<MVPWorkshop.App.Viewers.NascarAssetView>(w)?.SelectModel(args[nmi + 1]);
             var t2 = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1200) };
             t2.Tick += (_, _) =>
             {

@@ -10,6 +10,11 @@ public partial class MainWindow
     /// <summary>Checks GitHub for a newer build; quiet unless there is one (or <paramref name="manual"/>).</summary>
     private async Task CheckForUpdates(bool manual)
     {
+        if (AppInfo.IsNascar)
+        {
+            if (manual) MessageBox.Show(this, "NASCAR-Workshop builds are installed separately. This build does not use the MVP-Workshop update feed.", "NASCAR-Workshop", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
         if (_updating) return;
         UpdateInfo? update;
         try

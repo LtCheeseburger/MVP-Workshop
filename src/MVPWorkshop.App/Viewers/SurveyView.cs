@@ -15,7 +15,7 @@ public sealed class SurveyView : Grid
     private List<SurveyRow> _rows = [];
     private CancellationTokenSource? _cts;
     private bool _onlyGaps;
-    private void ShowRows() => _grid.ItemsSource = _rows.Where(r => !_onlyGaps || r.Viewer is "Structured fields / header" or "Raw / undecoded").OrderByDescending(r => r.Count).Select(r => new RowView(r)).ToList();
+    private void ShowRows() => _grid.ItemsSource = _rows.Where(r => !_onlyGaps || r.Viewer.Contains("undecoded", StringComparison.OrdinalIgnoreCase) || r.Viewer == "Structured fields / header").OrderByDescending(r => r.Count).Select(r => new RowView(r)).ToList();
 
     public SurveyView(AssetNode root)
     {

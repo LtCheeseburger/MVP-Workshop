@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private int _catalogGeneration;
     private readonly Dictionary<TeamProfile, DocumentTab> _teamTabs = [];
     private Task<List<AssetNode>>? _assetIndexTask;
+    private bool _openingGame;
 
     public Task<List<AssetNode>> GetAssetIndex()
     {
@@ -41,6 +42,13 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        ProductNameLabel.Text = AppInfo.Name;
+        Title = AppInfo.Name;
+        if (AppInfo.IsNascar) { ProductLogo.Visibility = Visibility.Collapsed; Icon = null; BrowseMode.SelectedIndex = 0;
+            ExportModButton.Content = "Export Mod Folder";
+            foreach (var child in ExportActions.Children.OfType<FrameworkElement>().Where(c => c != ExportModButton)) child.Visibility = Visibility.Collapsed;
+            foreach (var menu in MainMenu.Items.OfType<MenuItem>()) foreach (var item in menu.Items.OfType<MenuItem>())
+                if (item.Header is string header && (header.Contains("roster", StringComparison.OrdinalIgnoreCase) || header.Contains("Test in Game") || header.Contains("Installed mods as base"))) item.Visibility = Visibility.Collapsed; }
         Log.MinimumLevel = _settings.LogLevel;
         Instance = this;
         Tree.ItemsSource = _roots;
@@ -91,7 +99,7 @@ public partial class MainWindow : Window
             if (requestedGame is not null) LoadGame(requestedGame);
             Snapshot.RunIfRequested(this);
             SelfTest.RunIfRequested(this);
-            if (startupArgs.Length == 1) Dispatcher.BeginInvoke(() => { if (!OfferRecovery()) PromptOpenGame(); }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            if (startupArgs.Length == 1) Dispatcher.BeginInvoke(() => { if (!OfferRecovery()) { if (AppInfo.IsNascar) PromptOpenDataFolder(); else PromptOpenGame(); } }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
             // a normal launch checks for a newer build in the background (tests and snapshots pass arguments)
             if (startupArgs.Length == 1) _ = CheckForUpdates(manual: false);
         };
@@ -147,7 +155,7 @@ public partial class MainWindow : Window
 
     // ---------------------------------------------------------------- game loading
 
-    public void LoadGame(string folder, bool confirm = true)
+    public async void LoadGame(string folder, bool confirm = true)
     {
         if (confirm && !ConfirmDiscard("Open another game source")) return;
         try
@@ -159,19 +167,30 @@ public partial class MainWindow : Window
             _gameRoot = openedGame;
             _explicitLaunchTarget = null; _syncLaunchTarget = true; LaunchTargetPicker.SelectedIndex = 0; _syncLaunchTarget = false;
             var output = _settings.OutputFolders.TryGetValue(folder, out var chosen) ? chosen : ModExporter.DefaultOutputFolder(folder);
-            Editor.Attach(new EditSession(_gameRoot, output));
+            _openingGame = true;
+            try { Editor.Attach(new EditSession(_gameRoot, output)); }
+            finally { _openingGame = false; }
+            // the MVP 27 overhaul beside MVP06.exe joins the workspace as a read-only base layer
+            await AttachOverhaul(Editor.Session!);
+            if (_gameRoot != openedGame) return;
             _searchCts?.Cancel();
             SearchPanel.Visibility = Visibility.Collapsed;
             SearchResults.ItemsSource = null;
             _roots.Clear();
-            var root = new TreeItem(_gameRoot, 0);
-            _roots.Add(root);
-            root.IsExpanded = true;
+            _searchIndex = null;
+            _categoryRoots = null;
+            BrowseMode.SelectedIndex = 0;
+            ModifiedFilter.IsChecked = false;
+            AddedFilter.IsChecked = false;
+            foreach (var name in new[] { "Models", "Teams", "Players", "Animations", "UI", "Audio", "Video", "Textures", "Data", "System" })
+                _roots.Add(new TreeItem(name, 0, []));
             _searchIndex = null;
             // Editor.Attach already started the new root index; reuse that task.
             _categoryRoots = null; _teamRefreshSession = null; _refreshTeamGrid = null;
             _catalogGeneration++;
-            UpdateBrowser();
+            RefreshInstalledMods();
+            await UpdateBrowserAsync();
+            if (_gameRoot != openedGame) return;
             var exe = _gameRoot.Children.FirstOrDefault(n => n.Name.StartsWith("SLUS_", StringComparison.OrdinalIgnoreCase) || n.Name.StartsWith("SLES_", StringComparison.OrdinalIgnoreCase) || n.Name.Equals("default.xbe", StringComparison.OrdinalIgnoreCase))?.Name;
             if (exe is not null && exe.EndsWith(".xbe", StringComparison.OrdinalIgnoreCase))
                 try { exe = $"{exe} ({XbeFile.Read(_gameRoot.Children.First(n => n.Name == exe).ReadAll()).Title}, Xbox)"; } catch { }
@@ -179,6 +198,7 @@ public partial class MainWindow : Window
             _settings.Remember(folder);
             Log.Info($"Loaded game source {folder}");
             SetStatus($"Loaded {folder}");
+            ShowOverhaulState();
             if (_docs.FirstOrDefault(d => !d.CanClose) is { } start)
             {
                 var i = _docs.IndexOf(start);
@@ -196,7 +216,9 @@ public partial class MainWindow : Window
         if (e.OriginalSource == BrowseMode && IsLoaded) UpdateBrowser();
     }
 
-    private async void UpdateBrowser()
+    private void UpdateBrowser() => _ = UpdateBrowserAsync();
+
+    private async Task UpdateBrowserAsync()
     {
         if (_gameRoot is not { } game || BrowseMode is null) return;
         var generation = ++_catalogGeneration;
@@ -207,12 +229,34 @@ public partial class MainWindow : Window
         }
         if (_categoryRoots is null)
         {
+            if (!AppInfo.IsNascar)
+            {
+                _categoryRoots = BuildPreorganizedCategories(game);
+                ShowExplorer(_categoryRoots);
+                SetStatus("Ready · expand a source to browse its files");
+                RestoreSchoolBrowser(game);
+                return;
+            }
             SetStatus("Categorizing assets inside archives…");
             try
             {
                 var nodes = await GetAssetIndex();
+                if (AppInfo.IsNascar)
+                {
+                    var catalog = await Task.Run(() => NascarAssetCatalog.Build(nodes));
+                    if (_gameRoot != game || generation != _catalogGeneration) return;
+                    _searchIndex = nodes;
+                    _categoryRoots = BuildNascarCategories(catalog);
+                    ShowExplorer(_categoryRoots);
+                    SetStatus($"{catalog.Count:N0} NASCAR assets categorized · search names, categories or original paths");
+                    return;
+                }
                 var groups = await Task.Run(() => AssetCatalog.Build(nodes));
-                var teams = await Task.Run(() => TeamAssetCatalog.Build(nodes));
+                var teams = await Task.Run(() =>
+                {
+                    try { return TeamAssetCatalog.Build(nodes); }
+                    catch (Exception ex) { Log.Warn("School organization: " + ex.Message); return new List<TeamProfile>(); }
+                });
                 if (_gameRoot != game || generation != _catalogGeneration) return;
                 _searchIndex = nodes;
                 var roots = new List<TreeItem>();
@@ -262,7 +306,7 @@ public partial class MainWindow : Window
         }
         if (generation != _catalogGeneration || BrowseMode.SelectedIndex != 0) return;
         ShowExplorer(_categoryRoots);
-        SetStatus($"{_searchIndex?.Count(n => !n.IsFolder && !n.IsContainer && !n.IsLooseTexturePack):N0} assets categorized · original paths retained");
+        SetStatus("Ready · original paths retained");
     }
 
     // ---------------------------------------------------------------- documents
@@ -376,6 +420,12 @@ public partial class MainWindow : Window
 
     public void OpenSchoolAsset(TeamProfile profile, AssetNode asset)
     {
+        if (profile.Assets.Any(a => a.Asset == asset && a.Category == "Uniforms/Player textures"))
+        {
+            OpenTeam(profile);
+            if (Docs.SelectedItem is DocumentTab { Content: TeamView uniforms }) uniforms.ShowUniform(asset);
+            return;
+        }
         if (asset.Name is "roster.bin" or "attrib.dat" or "lhattrib.dat" or "rhattrib.dat" or "pitcher.dat")
         {
             OpenTeam(profile);
@@ -451,7 +501,7 @@ public partial class MainWindow : Window
             var results = await Task.Run(() =>
             {
                 var terms = q.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                return index.Where(n => !n.IsFolder && terms.All(t => n.Path.Contains(t, StringComparison.OrdinalIgnoreCase))).Take(5000).ToList();
+                return index.Where(n => !n.IsFolder && terms.All(t => (AppInfo.IsNascar ? NascarAssetCatalog.SearchText(n) : n.Path).Contains(t, StringComparison.OrdinalIgnoreCase))).Take(5000).ToList();
             }, cts.Token);
             if (cts.IsCancellationRequested) return;
             SearchResults.ItemsSource = results;
@@ -475,7 +525,30 @@ public partial class MainWindow : Window
 
     // ---------------------------------------------------------------- toolbar
 
-    private void OpenFolder_Click(object sender, RoutedEventArgs e) => PromptOpenGame();
+    private void OpenFolder_Click(object sender, RoutedEventArgs e) => PromptOpenDataFolder();
+
+    public void PromptOpenDataFolder()
+    {
+        var picker = new OpenFolderDialog { Title = "Open extracted game or DATA folder" };
+        // Directory.Exists accepts forward slashes, but the shell's item resolver does not.
+        if (_settings.LastGameFolder is { } last && Directory.Exists(last))
+            picker.InitialDirectory = Path.GetFullPath(last).Replace('/', Path.DirectorySeparatorChar);
+        bool? selected;
+        try { selected = picker.ShowDialog(this); }
+        catch (ArgumentException ex)
+        {
+            Log.Warn($"Folder picker rejected its initial location: {ex.Message}");
+            picker = new OpenFolderDialog { Title = "Open extracted game or DATA folder" };
+            try { selected = picker.ShowDialog(this); }
+            catch (ArgumentException retry)
+            {
+                Log.Warn($"Unable to open folder picker: {retry.Message}");
+                MessageBox.Show(this, "Windows could not open the folder picker. You can also open a folder by starting MVP-Workshop with --game followed by its path.", "Open game folder", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+        }
+        if (selected == true) LoadGame(picker.FolderName);
+    }
 
     /// <summary>Asks for the installed game's MVP06.exe and loads its loose <c>game/</c> folder.</summary>
     public void PromptOpenGame()
@@ -604,7 +677,7 @@ public partial class MainWindow : Window
         foreach (var (profile, tab) in _teamTabs) if (_docs.Contains(tab)) tab.IsEdited = s is not null && profile.Assets.Any(a => s.IsAffected(a.Asset));
         foreach (var root in _roots) root.RefreshEdited(s);
         if (_categoryRoots is not null && BrowseMode.SelectedIndex != 0) foreach (var root in _categoryRoots) root.RefreshEdited(s);
-        if (_gameRoot == s?.GameRoot) UpdateBrowser();
+        if (!_openingGame && _gameRoot == s?.GameRoot) UpdateBrowser();
     }
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -728,7 +801,7 @@ public partial class MainWindow : Window
         if (Editor.Session is not { } s) { Log.Warn("Open a game folder first."); return; }
         if (_exporting) return;
         // the port's loose install: edits become a .mvpmod the launcher loads (docs/MVPMOD.md in the port)
-        if (MvpModExporter.SessionProblem(s) is null) { ExportMvpMod(test: false); return; }
+        if (!AppInfo.IsNascar && MvpModExporter.SessionProblem(s) is null) { ExportMvpMod(test: false); return; }
         if (s.Overrides.Count == 0)
         {
             MessageBox.Show(this, s.PreviewOnlyCount > 0 ? "Nothing can be exported: the only changes are preview-only (they cannot be written into game files)." : "There are no edited assets to export.", "Export Mod", MessageBoxButton.OK, MessageBoxImage.Information);

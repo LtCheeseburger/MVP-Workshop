@@ -1,6 +1,7 @@
 using System.IO;
 using System.Security.Cryptography;
 using System.Windows;
+using System.Windows.Controls;
 using MVPWorkshop.Core.Editing;
 using Microsoft.Win32;
 
@@ -8,6 +9,41 @@ namespace MVPWorkshop.App;
 
 public partial class MainWindow
 {
+    private void InstalledMods_Opened(object sender, RoutedEventArgs e)
+    {
+        if (e.OriginalSource == InstalledModsMenu) RefreshInstalledMods();
+    }
+
+    private void InstalledMods_Click(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu { PlacementTarget = sender as UIElement };
+        menu.IsOpen = true;
+        RefreshInstalledMods(menu);
+    }
+
+    private async void RefreshInstalledMods(ItemsControl? target = null)
+    {
+        target ??= InstalledModsMenu;
+        target.Items.Clear();
+        if (Editor.Session is not { } session || MvpModExporter.SessionProblem(session) is not null)
+        { target.Items.Add(new MenuItem { Header = "Open a loose game installation first", IsEnabled = false }); return; }
+        var executable = _settings.GameExePath;
+        var directories = InstalledModCatalog.Directories(session.GameRoot.DiskPath!, executable);
+        target.Items.Add(new MenuItem { Header = "Loading installed mods…", IsEnabled = false });
+        var catalog = await Task.Run(() => InstalledModCatalog.ReadForGame(session.GameRoot, executable));
+        if (Editor.Session != session) return;
+        target.Items.Clear();
+        foreach (var mod in catalog.Mods)
+        {
+            var item = new MenuItem { Header = $"{mod.Name} ({mod.Version})", ToolTip = mod.Source, Tag = mod.Source };
+            item.Click += (_, _) => { if (Editor.Session == session) OpenMod(mod.Source); };
+            target.Items.Add(item);
+        }
+        if (catalog.Mods.Count == 0) target.Items.Add(new MenuItem { Header = "No installed mods found", ToolTip = string.Join("\n", directories), IsEnabled = false });
+        foreach (var directory in directories) target.Items.Add(new MenuItem { Header = directory, IsEnabled = false });
+        foreach (var problem in catalog.Problems) target.Items.Add(new MenuItem { Header = problem, IsEnabled = false });
+    }
+
     private void OpenMod_Click(object sender, RoutedEventArgs e)
     {
         if (Editor.Session is not { } current || MvpModExporter.SessionProblem(current) is { })
@@ -27,7 +63,7 @@ public partial class MainWindow
             // Keep the icon in durable application storage so future exports and project reloads retain it.
             if (package.Icon is { } icon)
             {
-                var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MVP-Workshop", "ModIcons");
+                var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppInfo.Name, "ModIcons");
                 Directory.CreateDirectory(folder);
                 var iconPath = Path.Combine(folder, Convert.ToHexString(SHA256.HashData(icon)) + ".png");
                 File.WriteAllBytes(iconPath, icon);

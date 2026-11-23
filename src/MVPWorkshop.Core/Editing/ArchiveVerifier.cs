@@ -34,6 +34,24 @@ public static class ArchiveVerifier
 
         var replaced = overrides.TryGetValue(a.Key, out var ov);
         count++;
+        if (!replaced && a.Format == FormatId.TerfArchive)
+        {
+            if (b.Format != FormatId.TerfArchive) { problems.Add($"{a.Path}: no longer a TERF archive"); return; }
+            var before = TerfArchive.ReadDirectory(a.OpenOriginal());
+            var after = TerfArchive.ReadDirectory(b.OpenOriginal());
+            if (before.Alignment != after.Alignment) problems.Add($"{a.Path}: TERF alignment changed");
+            foreach (var entry in before.Entries)
+            {
+                var child = a.Children.FirstOrDefault(c => c.TerfEntry?.Index == entry.Index);
+                if (child is null || overrides.Keys.Any(k => k.Equals(child.Key, StringComparison.OrdinalIgnoreCase) || k.StartsWith(child.Key + "/", StringComparison.OrdinalIgnoreCase))) continue;
+                if (entry.Index >= after.Entries.Count) continue;
+                var other = after.Entries[entry.Index];
+                if (entry.Compression != other.Compression || entry.UnpackedSize != other.UnpackedSize || entry.Offset != other.Offset || !a.OpenOriginal().ReadBytes(entry.Offset, checked((int)entry.Size)).AsSpan().SequenceEqual(b.OpenOriginal().ReadBytes(other.Offset, checked((int)other.Size))))
+                    problems.Add($"{a.Path}: untouched TERF entry {entry.Index} changed");
+            }
+            CompareChildren(a, b, overrides, problems, ref count, depth);
+            return;
+        }
         if (!replaced && a.Format == FormatId.BigArchive)
         {
             // archives are compared structurally: their bytes legitimately change when an entry inside is edited or re-encoded

@@ -13,6 +13,11 @@ public sealed record PortCompatibilityInfo(string Version, int? ModFormat, int? 
 
 public static class PortCompatibility
 {
+    private sealed class LayoutMetadata
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("format")]
+        public int? Format { get; set; }
+    }
     /// <summary>Release manifest format is its packaging schema, never the runtime's mod format.</summary>
     public static PortCompatibilityInfo Read(string portDirectory, string gameDirectory)
     {
@@ -60,8 +65,19 @@ public static class PortCompatibility
         catch (Exception ex) { warnings.Add("Cannot read port-manifest.json compatibility metadata: " + ex.Message); }
         try
         {
-            using var manifest = Manifest(Path.Combine(gameDirectory, "manifest.json"));
-            if (manifest is not null) installed = Number(manifest.RootElement, "format");
+            var path = Path.Combine(gameDirectory, "manifest.json");
+            if (File.Exists(path))
+            {
+                // The installed manifest includes the complete asset inventory and can
+                // legitimately exceed the release-manifest size limit. Stream it and
+                // retain only compatibility metadata instead of materializing a DOM.
+                using var stream = File.OpenRead(path);
+                var bom = new byte[3];
+                var count = stream.Read(bom);
+                stream.Position = count == 3 && bom.AsSpan().SequenceEqual(new byte[] { 0xef, 0xbb, 0xbf }) ? 3 : 0;
+                installed = JsonSerializer.Deserialize<LayoutMetadata>(stream)?.Format;
+                if (installed < 1) throw new InvalidDataException("format must be a positive integer.");
+            }
         }
         catch (Exception ex) { warnings.Add("Cannot read installed loose-layout metadata: " + ex.Message); }
         bool newer = false;

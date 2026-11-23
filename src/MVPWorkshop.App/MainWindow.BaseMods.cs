@@ -26,7 +26,7 @@ public partial class MainWindow
     {
         if (_exporting || Editor.Session is not { } session || _gameRoot is not { } root || !CheckPlayerDrafts()) return;
         var directory = InstalledModsDirectory();
-        var catalog = await Task.Run(() => InstalledModCatalog.Read(directory, root));
+        var catalog = await Task.Run(() => InstalledModCatalog.ReadForGame(root, _settings.GameExePath));
         if (Editor.Session != session) return;
         var window = new Window { Owner = this, Title = "Installed mods as a base", Width = 720, Height = 510,
             WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = Ui.Res("PanelBg"), Foreground = Ui.Res("Text") };
@@ -53,6 +53,8 @@ public partial class MainWindow
         {
             _exporting = true;
             var sources = choices.Where(c => c.Check.IsChecked == true).Select(c => c.Mod.Source).ToList();
+            // keep the adjacent overhaul (not an installed mod) unless an installed copy with its id was chosen
+            if (OverhaulPackage.Loaded(session) is { } overhaul && !choices.Any(c => c.Check.IsChecked == true && c.Mod.Id == overhaul.Id) && !choices.Any(c => c.Mod.Source.Equals(overhaul.Source, StringComparison.OrdinalIgnoreCase))) sources.Add(overhaul.Source);
             var layer = sources.Count == 0 ? null : await Task.Run(() => BaseModLayer.Build(root, sources));
             if (Editor.Session != session) return;
             ApplyBaseLayer(layer);

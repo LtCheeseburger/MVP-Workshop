@@ -21,6 +21,10 @@ public partial class MainWindow
             var view = (TaskStartView)start.Content;
             for (int i = 0; i < 200 && view.Profiles.Count < 2; i++) await Task.Delay(30);
             Check("loose installation shows task-first Start", view.Profiles.Count >= 2);
+            var schoolTree = Tree.Items.OfType<TreeItem>().FirstOrDefault(t => t.Name == "Teams");
+            Check("explorer restores expanded school-by-school browser", schoolTree is { IsExpanded: true } && schoolTree.Children.Count(c => c.Team is not null) == view.Profiles.Count);
+            Check("Start and explorer share indexed school profiles", schoolTree is not null && view.Profiles.All(p => schoolTree.Children.Any(c => ReferenceEquals(c.Team, p))));
+            Check("school tree retains uniform source groups", schoolTree?.Children.FirstOrDefault(c => c.Team?.Team.UniformId == 0)?.Children.Any(c => c.Name == "Uniforms") == true);
             var picker = ((StackPanel)view.Content).Children.OfType<ComboBox>().Single();
             UpdateLayout();
             IEnumerable<TextBlock> Labels(DependencyObject parent)
@@ -30,6 +34,11 @@ public partial class MainWindow
             }
             Check("picker displays the selected school", view.SelectedSchool is { } selected && Labels(picker).Any(t => t.Text == selected.Label));
             var first = view.Profiles[0]; var second = view.Profiles[1];
+            var uniformAsset = first.Assets.First(a => a.Category == "Uniforms/Player textures" && a.Asset.Name.StartsWith('u')).Asset;
+            OpenAsset(uniformAsset);
+            Check("texture editor exposes dressed player shortcut", Docs.SelectedItem is DocumentTab textureTab && Labels((DependencyObject)textureTab.Content).Any(t => t.Text == "Dressed player"));
+            OpenSchoolAsset(first, uniformAsset);
+            Check("opening school uniform selects player workspace and variant", Docs.SelectedItem is DocumentTab { Content: TeamView uniformTeam } && uniformTeam.SelectedSectionName.StartsWith("Uniforms") && uniformTeam.UniformState.Variant == uniformAsset.Name[4]);
             view.SelectedSchool = second;
             foreach (var task in new[] { "Uniforms", "Logos", "Stadium", "Roster", "Audio" })
             {

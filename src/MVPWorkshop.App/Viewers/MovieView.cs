@@ -30,6 +30,8 @@ public sealed partial class MovieView : Grid, IDisposable
 
     public static string? FindFfmpeg()
     {
+        var bundled = Path.Combine(AppContext.BaseDirectory, "ffmpeg.exe");
+        if (File.Exists(bundled)) return bundled;
         foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
         {
             try { var p = Path.Combine(dir.Trim('"'), "ffmpeg.exe"); if (File.Exists(p)) return p; }
@@ -84,26 +86,23 @@ public sealed partial class MovieView : Grid, IDisposable
     private async Task PrepareAsync(Action<List<Prop>> setExtra)
     {
         var ffmpeg = FindFfmpeg();
-        if (ffmpeg is null) { Fail("ffmpeg.exe not found on PATH — install ffmpeg to play MPC movies."); return; }
+        if (ffmpeg is null) { Fail("Place ffmpeg.exe beside the workshop or install FFmpeg on PATH to play movies."); return; }
         try
         {
-            var cache = Path.Combine(Path.GetTempPath(), "MVP-Workshop", "movies");
+            var cache = Path.Combine(Path.GetTempPath(), AppInfo.Name, "movies");
             Directory.CreateDirectory(cache);
-            var key = $"{Path.GetFileNameWithoutExtension(_node.Name)}_{_node.StoredSize:X}";
+            var bytes = await Task.Run(() => _node.ReadAll(), _cts.Token);
+            var key = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
             var mp4 = Path.Combine(cache, key + ".mp4");
-            var input = _node.DiskPath;
-            if (input is null)
-            {
-                input = Path.Combine(cache, key + ".mpc");
-                if (!File.Exists(input)) await File.WriteAllBytesAsync(input, _node.ReadAll(), _cts.Token);
-            }
+            var input = Path.Combine(cache, key + ".movie");
+            if (!File.Exists(input)) await File.WriteAllBytesAsync(input, bytes, _cts.Token);
             var info = await Task.Run(() => Probe(ffmpeg, input), _cts.Token);
             setExtra([.. info.Select(kv => new Prop("ffmpeg", kv.Key, kv.Value))]);
             if (!File.Exists(mp4))
             {
                 _status.Text = "Transcoding with ffmpeg…";
                 var duration = info.TryGetValue("Duration", out var ds) && TimeSpan.TryParse(ds, out var d) ? d.TotalSeconds : 0;
-                var tmp = mp4 + ".part.mp4";
+                var tmp = mp4 + "." + Guid.NewGuid().ToString("N") + ".part.mp4";
                 var ok = await Task.Run(() => Transcode(ffmpeg, input, tmp, duration), _cts.Token);
                 if (!ok) { Fail("ffmpeg could not convert this movie (see Log)."); return; }
                 File.Move(tmp, mp4, true);

@@ -9,6 +9,15 @@ namespace MVPWorkshop.App.Viewers;
 
 public sealed class TeamView : Grid
 {
+    private UniformWorkspaceView? _uniformPreview;
+    private TabControl? _uniformTabs;
+    public void ShowUniform(AssetNode asset)
+    {
+        if (asset.Name.Length > 4) { UniformState.Variant = asset.Name[4]; UniformState.Role = null; }
+        SelectSection("Uniforms");
+        if (_uniformTabs is not null) _uniformTabs.SelectedIndex = 0;
+        if (UniformState.Variant is { } suffix) _uniformPreview?.SelectVariant(suffix);
+    }
     private readonly TabControl _tabs;
     private readonly DataGrid? _players;
     public UniformWorkspaceState UniformState { get; }
@@ -114,6 +123,7 @@ public sealed class TeamView : Grid
             if (category == "Uniforms")
             {
                 var uniformTabs = new TabControl();
+                _uniformTabs = uniformTabs;
                 var preview = new Grid();
                 bool initialized = false;
                 preview.Loaded += (_, _) =>
@@ -122,12 +132,13 @@ public sealed class TeamView : Grid
                     initialized = true;
                     try
                     {
-                        var nodes = MainWindow.Instance!.GameRoot!.EnumerateDeep().ToList();
+                        var nodes = UniformPreview.Sources(MainWindow.Instance!.GameRoot!);
                         var body = nodes.First(n => n.Name == "mebody.ord");
                         var head = nodes.First(n => n.Name == "hihead.ord");
                         var executable = GameExecutable.Find(nodes)!;
                         var bindings = UniformPreview.ReadBindings(executable.ReadAll());
-                        preview.Children.Add(new UniformWorkspaceView(profile, nodes, bindings, UniformState));
+                        _uniformPreview = new UniformWorkspaceView(profile, nodes, bindings, UniformState);
+                        preview.Children.Add(_uniformPreview);
                     }
                     catch (Exception ex) { preview.Children.Add(B.Text("Uniform preview unavailable: " + ex.Message, "Muted")); }
                 };
@@ -139,6 +150,14 @@ public sealed class TeamView : Grid
                 content = B.Rows((B.Button("Open proposed stadium in 3D", null, (_, _) => MainWindow.Instance?.OpenAsset(stadiumModel.Asset), "Primary"), B.Auto), (content, B.Star()));
             tabs.Items.Add(new TabItem { Header = $"{category} ({links.Count})", Content = content });
         }
+        // The uniform workspace already identifies the school in its document tab.
+        // Keep school metadata and roster actions out of the model's vertical space.
+        tabs.SelectionChanged += (_, e) =>
+        {
+            if (e.OriginalSource == tabs)
+                header.Visibility = (tabs.SelectedItem as TabItem)?.Header.ToString()?.StartsWith("Uniforms", StringComparison.Ordinal) == true
+                    ? Visibility.Collapsed : Visibility.Visible;
+        };
         Children.Add(assignmentPreview ? tabs : B.Rows((header, B.Auto), (tabs, B.Star())));
     }
 }

@@ -15,6 +15,12 @@ namespace MVPWorkshop.App.Viewers;
 /// </summary>
 public sealed class AptEditPanel : Grid
 {
+    internal void SelectPlacement(int offset)
+    {
+        _kind = "All"; _search.Text = ""; Filter();
+        var item = _all.FirstOrDefault(i => i.Key == $"place:{offset}");
+        if (item is not null) { _list.SelectedItem = item; _list.ScrollIntoView(item); }
+    }
     private sealed record Item(string Key, string Kind, string Title, string Subtitle, object Tag);
 
     private readonly AssetNode _apt;
@@ -36,7 +42,7 @@ public sealed class AptEditPanel : Grid
         Background = Ui.Res("PanelBg");
         Collect();
 
-        var kinds = B.Segments("", ["All", "Text", "Placements", "Constants", "Stage"], 0, i => { _kind = new[] { "All", "Text", "Placement", "Constant", "Stage" }[i]; Filter(); });
+        var kinds = B.Segments("", ["All", "Text", "Placements", "Buttons", "Constants", "Stage"], 0, i => { _kind = new[] { "All", "Text", "Placement", "Button", "Constant", "Stage" }[i]; Filter(); });
         _search.TextChanged += (_, _) => Filter();
         _list.SelectionChanged += (_, _) => { if (_list.SelectedItem is Item it) { _remember(it.Key); ShowFields(it); } };
         _list.DisplayMemberPath = null;
@@ -82,6 +88,11 @@ public sealed class AptEditPanel : Grid
         _all.Add(new Item("stage", "Stage", "Stage / movie", $"{_file.Width}×{_file.Height} · {_file.FrameTime} ms per frame", "stage"));
         foreach (var c in _file.Characters.OfType<AptCharacter>())
         {
+            for (int i = 0; i < c.ButtonRecords.Count; i++)
+            {
+                var record = c.ButtonRecords[i];
+                _all.Add(new Item($"button:{c.Id}:{i}", "Button", $"Button [{c.Id}] state record {i}", $"states {record.Flags} · character {record.Character} · depth {record.Depth}", (c, i, record)));
+            }
             if (c.Type == AptCharacterType.EditText)
                 _all.Add(new Item($"text:{c.Id}", "Text", $"[{c.Id}] “{Short(c.Text)}”", string.IsNullOrEmpty(c.Variable) ? "text field" : $"text field · variable {c.Variable}", c));
             foreach (var f in c.Frames)
@@ -89,8 +100,8 @@ public sealed class AptEditPanel : Grid
                     _all.Add(new Item($"place:{it.Offset}", "Placement", $"[{c.Id}] f{f.Index} · depth {it.Depth} · {(it.Character is { } ch ? $"char {ch}{CharLabel(ch)}" : "move")}{(it.Name is { Length: > 0 } nm ? $" “{nm}”" : "")}", $"{c.Type} {c.Id} · placement @0x{it.Offset:X}", (c, f, it)));
         }
         if (_consts is not null)
-            foreach (var k in _consts.Items.Where(k => k.Type == 1))
-                _all.Add(new Item($"const:{k.Index}", "Constant", $"#{k.Index} “{Short(k.Text)}”", "string constant (used by scripts)", k));
+            foreach (var k in _consts.Items.Where(k => k.Type is 1 or 5 or 6 or 7))
+                _all.Add(new Item($"const:{k.Index}", "Constant", $"#{k.Index} {Short(k.Display)}", k.TypeName + " constant (used by scripts)", k));
     }
 
     private string CharLabel(int id) => id >= 0 && id < _file.Characters.Count && _file.Characters[id] is { } c ? $" {c.Type}" : "";
@@ -111,6 +122,7 @@ public sealed class AptEditPanel : Grid
         {
             case AptCharacter c: TextFields(c); break;
             case ValueTuple<AptCharacter, AptFrame, AptFrameItem> p: PlacementFields(p.Item1, p.Item2, p.Item3); break;
+            case ValueTuple<AptCharacter, int, AptButtonRecord> b: ButtonFields(b.Item1, b.Item2, b.Item3); break;
             case AptConstant k: ConstantFields(k); break;
             default: StageFields(); break;
         }
@@ -210,6 +222,7 @@ public sealed class AptEditPanel : Grid
         Info("Flags", $"0x{it.Flags:X} ({(hasMatrix ? "matrix " : "")}{((it.Flags & 8) != 0 ? "colour " : "")}{((it.Flags & 2) != 0 ? "character " : "")}{((it.Flags & 1) != 0 ? "move" : "")})");
         Field("Character", (it.Character ?? -1).ToString(), v => Do(new PlacementChange { Character = I(v) }, "character"), tip: "Character id placed at this depth");
         Field("Depth", (it.Depth ?? 0).ToString(), v => Do(new PlacementChange { Depth = I(v) }, "depth"));
+        Field("Instance name", it.Name ?? "", v => Do(new PlacementChange { Name = v }, "instance name"));
         Field("X", N(m.M31), v => Do(new PlacementChange { X = F(v) }, "x"), tip: hasMatrix ? null : "This placement has no matrix; setting a value enables it");
         Field("Y", N(m.M32), v => Do(new PlacementChange { Y = F(v) }, "y"));
         Field("Scale X", N(m.M11), v => Do(new PlacementChange { ScaleX = F(v) }, "scale x"));
@@ -217,6 +230,7 @@ public sealed class AptEditPanel : Grid
         Field("Skew X", N(m.M12), v => Do(new PlacementChange { SkewX = F(v) }, "skew x"));
         Field("Skew Y", N(m.M21), v => Do(new PlacementChange { SkewY = F(v) }, "skew y"));
         Field("Tint (AABBGGRR)", it.Tint.ToString("X8"), v => Do(new PlacementChange { Tint = X(v) }, "tint"), tip: "Colour multiplier; FFFFFFFF leaves the picture unchanged");
+        Field("Add (AABBGGRR)", it.Additive.ToString("X8"), v => Do(new PlacementChange { Additive = X(v) }, "additive colour"));
         Field("Clip depth", it.ClipDepth.ToString(), v => Do(new PlacementChange { ClipDepth = I(v) }, "clip depth"));
         Info("Offset", $"0x{it.Offset:X}");
     }
@@ -224,6 +238,18 @@ public sealed class AptEditPanel : Grid
     private void ConstantFields(AptConstant k)
     {
         if (_const is null || _consts is null) { Info("Constants", "No .const file next to this movie."); return; }
+        if (k.Type != 1)
+        {
+            Field(k.TypeName, k.Type == 6 ? BitConverter.UInt32BitsToSingle(k.Value).ToString("R", CultureInfo.InvariantCulture) : k.Type == 5 ? (k.Value == 0 ? "false" : "true") : unchecked((int)k.Value).ToString(CultureInfo.InvariantCulture), v =>
+            {
+                uint raw;
+                if (k.Type == 5) raw = bool.Parse(v) ? 1u : 0u;
+                else if (k.Type == 6) { float number = F(v); if (!float.IsFinite(number)) throw new InvalidOperationException("The constant must be finite."); raw = BitConverter.SingleToUInt32Bits(number); }
+                else raw = unchecked((uint)I(v));
+                Editor.Apply(_const, AptEditor.ConstantValue(_constData, k, raw), $"Edit UI {k.TypeName} constant #{k.Index}");
+            });
+            Info("Used by", "Every script reference to this constant."); return;
+        }
         Field("Text", k.Text ?? "", v =>
         {
             var bytes = AptEditor.ConstantString(_constData, k, v, out var how);
@@ -233,6 +259,21 @@ public sealed class AptEditPanel : Grid
         Info("Index", k.Index.ToString());
         Info("Used by", "ActionScript in this movie — changing it changes every use of the string");
         Info("File", _const.Path);
+    }
+
+    private void ButtonFields(AptCharacter owner, int index, AptButtonRecord record)
+    {
+        void Apply(int? flags = null, int? target = null, int? depth = null, Matrix3x2? matrix = null, Vector4? tint = null) => ApplyApt(AptEditor.ButtonRecord(_aptData, owner, index, flags, target, depth, matrix, tint), $"Edit button [{owner.Id}] state record {index}");
+        Info("State bits", "Up=1, Over=2, Down=4, Hit=8. Add bits to share a record across states.");
+        Field("States", record.Flags.ToString(), v => Apply(flags: I(v)));
+        Field("Character", record.Character.ToString(), v => { int id = I(v); if (id < 0 || id >= _file.Characters.Count) throw new InvalidOperationException("Character ID is outside this movie."); Apply(target: id); });
+        Field("Depth", record.Depth.ToString(), v => Apply(depth: I(v)));
+        var m = record.Matrix;
+        Field("X", N(m.M31), v => Apply(matrix: m with { M31 = F(v) })); Field("Y", N(m.M32), v => Apply(matrix: m with { M32 = F(v) }));
+        Field("Scale X", N(m.M11), v => Apply(matrix: m with { M11 = F(v) })); Field("Scale Y", N(m.M22), v => Apply(matrix: m with { M22 = F(v) }));
+        Field("Skew X", N(m.M12), v => Apply(matrix: m with { M12 = F(v) })); Field("Skew Y", N(m.M21), v => Apply(matrix: m with { M21 = F(v) }));
+        Field("Tint R", N(record.Tint.X), v => Apply(tint: record.Tint with { X = F(v) })); Field("Tint G", N(record.Tint.Y), v => Apply(tint: record.Tint with { Y = F(v) }));
+        Field("Tint B", N(record.Tint.Z), v => Apply(tint: record.Tint with { Z = F(v) })); Field("Tint A", N(record.Tint.W), v => Apply(tint: record.Tint with { W = F(v) }));
     }
 
     private void StageFields()

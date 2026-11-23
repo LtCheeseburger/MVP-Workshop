@@ -7,6 +7,7 @@
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="..\NASCARWorkshop.Native\bin\NASCAR-Decoder.exe" Link="NASCAR-Decoder.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="Exists('..\NASCARWorkshop.Native\bin\NASCAR-Decoder.exe')" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="9.0.0" />
   </ItemGroup>
 </Project>

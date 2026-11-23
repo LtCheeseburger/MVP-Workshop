@@ -26,13 +26,23 @@ public static class UniformSelfTest
         {
             window.Width=2100; window.Height=1200;
             window.LogRow.Height=new GridLength(0); window.LogSplitRow.Height=new GridLength(0);
-            var profiles = TeamAssetCatalog.Build(await window.GetAssetIndex());
+            var profiles = TeamAssetCatalog.Build(UniformPreview.Sources(window.GameRoot!));
             Check("Decoded school catalog is available", profiles.Count > 0);
+            var body = UniformPreview.Sources(window.GameRoot!).First(n => n.Name == "mebody.ord");
+            var geometry = MVPWorkshop.Core.Formats.Eagl.EaglReader.Read(MVPWorkshop.Core.Formats.Eagl.RelocatedObject.Load(body.ReadElfJoined().Data)).Models[0];
+            if (MVPWorkshop.Core.Formats.Eagl.EaglXboxReader.LooksLikeXbox(MVPWorkshop.Core.Formats.Eagl.RelocatedObject.Load(body.ReadElfJoined().Data)))
+                Check("Xbox compact pants index buffers retain complete geometry", geometry.Mesh.Draws[59].TriangleCount == 30 && geometry.Mesh.Draws[62].TriangleCount == 17);
             foreach(var abbreviation in new[]{"LSU","BAMA","STAN"})
             {
                 var profile=profiles.Single(p => p.Team.Abbreviation == abbreviation);
                 window.OpenTeam(profile); var tab=(DocumentTab)window.Docs.SelectedItem;
-                ((TeamView)tab.Content).SelectedSection=6; await Settle();
+                ((TeamView)tab.Content).SelectSection("Uniforms"); await Settle();
+                var compare = Find<CheckBox>(tab.Content).Single(c => Equals(c.Tag, "UniformCompare"));
+                Check(abbreviation + " starts with one edited model", compare.IsChecked == false);
+                compare.IsChecked = true;
+                Find<Expander>(tab.Content).Single(e => Equals(e.Header, "Player name & number")).IsExpanded = true;
+                Find<Expander>(tab.Content).Single(e => Equals(e.Header, "Dirt regions · preview only")).IsExpanded = true;
+                await Settle();
                 ComboBox Combo(string tag)=>Find<ComboBox>(tab.Content).Single(c=>Equals(c.Tag,tag));
                 TextBox Text(string tag)=>Find<TextBox>(tab.Content).Single(c=>Equals(c.Tag,tag));
                 var variant=Combo("UniformVariant");
@@ -73,6 +83,9 @@ public static class UniformSelfTest
                 Check(abbreviation+" texture edit updates the dressed model", Find<ModelView>(tab.Content).Last().UniformSurfaceSignature() != before);
                 Editor.Session.Undo(); await Settle();
                 Check(abbreviation+" undo restores the dressed model surfaces", Find<ModelView>(tab.Content).Last().UniformSurfaceSignature() == before);
+                Find<CheckBox>(tab.Content).Single(c => Equals(c.Tag, "UniformCompare")).IsChecked = false;
+                foreach (var expander in Find<Expander>(tab.Content).ToList()) expander.IsExpanded = false;
+                await Settle();
                 var dpi=VisualTreeHelper.GetDpi(window);
                 var bitmap=new RenderTargetBitmap((int)(window.ActualWidth*dpi.DpiScaleX),(int)(window.ActualHeight*dpi.DpiScaleY),dpi.PixelsPerInchX,dpi.PixelsPerInchY,PixelFormats.Pbgra32);
                 bitmap.Render(window); var png=new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));

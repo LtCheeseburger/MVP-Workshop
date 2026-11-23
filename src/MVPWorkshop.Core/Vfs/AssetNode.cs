@@ -30,6 +30,9 @@ public sealed class AssetNode
     public bool IsVirtualFolder { get; init; }
     /// <summary>Directory index when this node is an entry of a BIGF archive; lets edits find the entry again even if names repeat.</summary>
     public int? BigIndex { get; init; }
+    public TerfArchive.Entry? TerfEntry { get; init; }
+    public bool IsPhysicalTerfBlock { get; init; }
+    public Func<IByteSource>? LogicalSource { get; init; }
     public string? DiskPath { get; init; }
     /// <summary>An archive the loose install laid out as a folder (<c>name_big/</c>); shown as <c>name.big</c>.</summary>
     public bool IsLooseArchive { get; init; }
@@ -76,7 +79,7 @@ public sealed class AssetNode
     }
 
     public FormatInfo FormatInfo => FormatDetector.Info[Format];
-    public bool IsContainer => IsFolder || Format is FormatId.BigArchive or FormatId.SchlContainer or FormatId.OffsetPack;
+    public bool IsContainer => IsFolder || Format is FormatId.TerfArchive or FormatId.BigArchive or FormatId.SchlContainer or FormatId.OffsetPack;
 
     /// <summary>
     /// Supplies edited contents for a node (the active edit session). Everything that reads assets through <see cref="Open"/> — viewers,
@@ -100,6 +103,13 @@ public sealed class AssetNode
         lock (_lock)
         {
             if (_cache is not null && _cache.TryGetTarget(out var cached)) return new MemoryByteSource(cached);
+            if (LogicalSource is not null)
+            {
+                var decoded = LogicalSource().ReadAll();
+                IsCompressed = true; UnpackedSize = decoded.Length;
+                _cache = new WeakReference<byte[]>(decoded);
+                return new MemoryByteSource(decoded);
+            }
             var stored = _openStored();
             var head = stored.ReadBytes(0, 8);
             if (RefPack.IsCompressed(head))
@@ -165,10 +175,11 @@ public sealed class AssetNode
         get
         {
             if (IsFolder) return "Folders are not assets.";
+            if (IsPhysicalTerfBlock) return "Physical TERF blocks are for inspection; edit directory entries instead.";
             for (var p = Parent; p is not null; p = p.Parent)
             {
                 if (p.IsFolder) continue;
-                if (p.Format != FormatId.BigArchive)
+                if (p.Format != FormatId.BigArchive && p.Format != FormatId.TerfArchive)
                     return $"Stored inside {p.Name} ({p.FormatInfo.Name}); only BIG archives and loose files can be rebuilt.";
             }
             return null;
@@ -218,6 +229,7 @@ public sealed class AssetNode
         if (IsFolder) return [];
         return Format switch
         {
+            FormatId.TerfArchive => BuildTerfChildren(),
             FormatId.BigArchive => BuildBigChildren(),
             FormatId.SchlContainer => BuildSchlChildren(),
             FormatId.OffsetPack => BuildOffsetChildren(),
@@ -249,6 +261,37 @@ public sealed class AssetNode
         }).ToList();
     }
 
+    private List<AssetNode> BuildTerfChildren()
+    {
+        var source = Open();
+        if (TerfArchive.Read(source).Any(b => b.Tag == "DIR1"))
+        {
+            var directory = TerfArchive.ReadDirectory(source);
+            return directory.Entries.Select(entry =>
+            {
+                Func<IByteSource> stored = source is FileRangeByteSource file
+                    ? () => new FileRangeByteSource(file.Path, file.Start + entry.Offset, entry.Size)
+                    : () => new MemoryByteSource(OpenOriginal().ReadBytes(entry.Offset, checked((int)entry.Size)));
+                return new AssetNode($"{entry.Index:D5}.bin", this, false, entry.Size, stored,
+                    $"TERF entry #{entry.Index} @0x{entry.Offset:X}; compression {entry.Compression}; logical size {entry.UnpackedSize}")
+                {
+                    TerfEntry = entry,
+                    LogicalSource = entry.Compression == 0 ? null : () => new MemoryByteSource(TerfArchive.Decode(OpenOriginal(), entry)),
+                };
+            }).ToList();
+        }
+        return TerfArchive.Read(source).Select((block, index) =>
+        {
+            // Expose payload only, so the TERF header cannot recursively detect itself.
+            long offset = block.Offset + 8;
+            var length = checked((int)(block.Size - 8));
+            Func<IByteSource> open = source is FileRangeByteSource file
+                ? () => new FileRangeByteSource(file.Path, file.Start + offset, length)
+                : () => new MemoryByteSource(Open().ReadBytes(offset, length));
+            return new AssetNode($"{index:D3}_{block.Tag}.bin", this, false, length, open,
+                $"TERF physical block @0x{block.Offset:X}; directory/compression undecoded") { IsPhysicalTerfBlock = true };
+        }).ToList();
+    }
     private List<AssetNode> BuildBigChildren()
     {
         var src = Open();
@@ -334,7 +377,11 @@ public sealed class AssetNode
         {
             var n = stack.Pop();
             yield return n;
-            if ((n.IsLooseTexturePack || n.IsContainer) && (descend?.Invoke(n) ?? true))
+            // Known leaf formats cannot contain browsable children. In particular,
+            // probing a loose XSH/DDS or model must not rebuild/read its payload
+            // just to enumerate names for the school browser and search.
+            var leaf = n.Extension is ".dds" or ".xsh" or ".ssh" or ".ord" or ".orl" or ".o" or ".loc" or ".apt" or ".const" or ".xbe" or ".sfn" or ".xfn" or ".ttf" or ".txt" or ".csv" or ".json";
+            if ((n.IsFolder || n.IsLooseTexturePack || (!leaf && n.IsContainer)) && (descend?.Invoke(n) ?? true))
                 for (var i = n.Children.Count - 1; i >= 0; i--) stack.Push(n.Children[i]);
         }
     }

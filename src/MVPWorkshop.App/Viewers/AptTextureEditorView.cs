@@ -9,9 +9,9 @@ namespace MVPWorkshop.App.Viewers;
 /// <summary>Embeds the existing native texture editor with explicit APT/import ownership.</summary>
 public sealed class AptTextureEditorView : Grid
 {
-    private sealed record Pack(AssetNode Movie, AssetNode Texture)
+    private sealed record Pack(AssetNode Movie, AssetNode Texture, string? Label = null)
     {
-        public override string ToString() => $"{Movie.Name} → {Texture.Path}";
+        public override string ToString() => Label ?? $"{Movie.Name} → {Texture.Path}";
     }
     private readonly AssetNode _movie;
     private readonly Action<IReadOnlyList<AssetNode>> _watch;
@@ -38,7 +38,7 @@ public sealed class AptTextureEditorView : Grid
         Loaded += async (_, _) => await Discover();
     }
 
-    private string Signature() => string.Join("|", _dependencies.Where(n => n.Extension is ".apt" or ".const")
+    private string Signature() => string.Join("|", _dependencies.Where(n => n.Format is FormatId.AptMovie or FormatId.AptConst)
         .Select(n => n.Key + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(n.ReadAll()))));
 
     private async Task Discover()
@@ -57,6 +57,12 @@ public sealed class AptTextureEditorView : Grid
                 foreach (var asset in new[] { movie, AptView.Sibling(movie, ".const"), AptView.Sibling(movie, ".o"), AptView.Sibling(movie, ".ssh") })
                     if (asset is not null) dependencies.Add(asset);
                 if (AptView.Sibling(movie, ".ssh") is { } texture && !packs.Any(p => p.Texture == texture)) packs.Add(new(movie, texture));
+                foreach (var resource in NascarAptResources.Read(movie))
+                {
+                    dependencies.Add(resource.Node);
+                    if (resource.Node.Format == FormatId.MmapTexture && !packs.Any(p => p.Texture == resource.Node))
+                        packs.Add(new(movie, resource.Node, $"Image [{resource.Character}] · {resource.Node.Key}"));
+                }
                 try
                 {
                     var constants = AptView.Sibling(movie, ".const") is { } c ? AptConstants.Read(c.ReadAll()) : null;
@@ -77,7 +83,7 @@ public sealed class AptTextureEditorView : Grid
             _packs.ItemsSource = packs;
             _packs.SelectedItem = packs.FirstOrDefault(p => p.Texture.Key == _packKey) ?? packs.FirstOrDefault();
             if (packs.Count == 0) { _editor.Content = null; _texture = null; }
-            _notes.Text = (packs.Count == 0 ? "No paired SSH texture pack was found for this movie or its resolved imports."
+            _notes.Text = (packs.Count == 0 ? "No paired texture pack was found for this movie or its resolved imports."
                 : "Replace image… uses the existing native texture importer. Edits use project history, undo/redo and Export Mod. Imported packs are shared: replacing an image changes every use of that source. Unsupported replacements remain local to the texture preview.")
                 + (notes.Count == 0 ? "" : "\n" + string.Join("\n", notes));
         }
@@ -91,6 +97,10 @@ public sealed class AptTextureEditorView : Grid
         _packs.ToolTip = $"Movie: {pack.Movie.Path}\nTexture pack: {pack.Texture.Path}";
         try
         {
+            if (pack.Texture.Format == FormatId.MmapTexture)
+            {
+                _texture = null; _editor.Content = new MmapView(pack.Texture); return;
+            }
             _texture = new TextureView(SshFile.Read(pack.Texture.ReadAll()), pack.Texture, _ => { });
             _texture.SelectedImageIndex = _selection.GetValueOrDefault(_packKey);
             var key = _packKey;

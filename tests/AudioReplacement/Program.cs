@@ -55,6 +55,45 @@ byte[] BankOf(int count)
     for (int i = 0; i < count; i++) { int at = table + i*headerLength; BinaryPrimitives.WriteInt32LittleEndian(data.AsSpan(20+i*4), at-(20+i*4)); Header(5, offset:payload+i*16).CopyTo(data, at); }
     return data;
 }
+// MicroTalk 10:1 revision 3: per-block budgets on a synthetic multi-block stream.
+double Snr(short[] reference, short[] actual) { double s = 0, n = 0; for (int i = 0; i < reference.Length; i++) { s += (double)reference[i] * reference[i]; double d = reference[i] - actual[i]; n += d * d; } return 10 * Math.Log10(s / Math.Max(n, 1)); }
+byte[] MicroTalkStreamOf((int Samples, int Capacity)[] blocks)
+{
+    using var memory = new MemoryStream(); using var writer = new BinaryWriter(memory);
+    var header = Header(4, 3); writer.Write("SCHl"u8); writer.Write(header.Length + 8); writer.Write(header);
+    foreach (var (samples, capacity) in blocks) { writer.Write("SCDl"u8); writer.Write(16 + 1 + capacity); writer.Write(samples); writer.Write(0); writer.Write((byte)0x5A); writer.Write(new byte[capacity]); }
+    writer.Write("SCEl"u8); writer.Write(8); return memory.ToArray();
+}
+var mtBlocks = new[] { (1296, 230), (1728, 300), (1296, 120), (1728, 330), (700, 140) };
+int mtTotal = mtBlocks.Sum(b => b.Item1); var rng = new Random(7);
+var speech = new DecodedAudio(Enumerable.Range(0, mtTotal).Select(i => { double t = i / 22050.0, env = 0.5 + 0.5 * Math.Sin(2 * Math.PI * 3 * t), f0 = 140 + 30 * Math.Sin(2 * Math.PI * 1.5 * t);
+    double v = 0; for (int h = 1; h <= 12; h++) v += Math.Sin(2 * Math.PI * f0 * h * t) / h; return (short)Math.Clamp(env * (7000 * v + 600 * (rng.NextDouble() - 0.5)), -32000, 32000); }).ToArray(), 1, 22050, "speech-like");
+var mtSource = MicroTalkStreamOf(mtBlocks); var mtBefore = mtSource.ToArray();
+var mtResult = AudioReplacement.MicroTalkStream(mtSource, 0, speech, out var mtReport);
+var mtMemory = new MemoryByteSource(mtResult); var mtStream = SchlStream.ScanAll(mtMemory).Single(); var mtDecoded = mtStream.Decode(mtMemory);
+Check("MicroTalk: stream length, sample count and source preserved", mtResult.Length == mtSource.Length && mtDecoded.Pcm.Length == mtTotal && mtSource.SequenceEqual(mtBefore));
+bool framingKept = mtResult.AsSpan(0, 8 + Header(4, 3).Length).SequenceEqual(mtSource.AsSpan(0, 8 + Header(4, 3).Length)) && mtResult.AsSpan(^8).SequenceEqual(mtSource.AsSpan(^8));
+foreach (var block in mtStream.Blocks.Where(b => b.Id == "SCDl")) { int at = (int)(mtStream.Offset + block.Offset); framingKept &= mtResult.AsSpan(at, 17).SequenceEqual(mtSource.AsSpan(at, 17)); }
+Check("MicroTalk: block sizes, sample counts, channel offsets and flag bytes are exact", framingKept);
+Check($"MicroTalk: every block fits its own capacity ({mtReport.BytesUsed}/{mtReport.BytesAvailable} bytes, targets {mtReport.MinTarget}–{mtReport.MaxTarget})", mtReport.Blocks == 5 && mtReport.Frames == 3 + 4 + 3 + 4 + 2 && mtReport.BytesUsed <= mtReport.BytesAvailable);
+Check("MicroTalk: rate adapts per block (tight block gets a lower target)", mtReport.MinTarget < mtReport.MaxTarget);
+var mtSnr = Snr(speech.Pcm, mtDecoded.Pcm); Check($"MicroTalk: decoded SNR {mtSnr:F2} dB on speech-like input", mtSnr > 6);
+Check("MicroTalk: encoding is deterministic", AudioReplacement.MicroTalkStream(mtSource, 0, speech, out _).SequenceEqual(mtResult));
+bool tooSmall = false; try { AudioReplacement.MicroTalkStream(MicroTalkStreamOf([(1728, 12)]), 0, speech, out _); } catch (InvalidOperationException) { tooSmall = true; }
+Check("MicroTalk: an impossible block budget is rejected instead of overflowing", tooSmall);
+var silentResult = AudioReplacement.MicroTalkStream(mtSource, 0, new DecodedAudio(new short[mtTotal], 1, 22050, "silence"), out _); var silentMemory = new MemoryByteSource(silentResult);
+var silentReport = mtReport; AudioReplacement.MicroTalkStream(mtSource, 0, new DecodedAudio(new short[mtTotal], 1, 22050, "silence"), out silentReport);
+Check($"MicroTalk: starved silent blocks fit by forcing the rate-controllable mode ({silentReport.ForcedHuffmanBlocks} forced)", silentReport.ForcedHuffmanBlocks > 0);
+Check("MicroTalk: silence decodes to near-silence", SchlStream.ScanAll(silentMemory).Single().Decode(silentMemory).Pcm.All(s => Math.Abs((int)s) < 64));
+var quiet = new DecodedAudio(Enumerable.Range(0, 432 + 1728).Select(i => (short)(50 * Math.Sin(i * 0.07))).ToArray(), 1, 22050, "quiet");
+var quietResult = AudioReplacement.MicroTalkStream(MicroTalkStreamOf([(432, 120), (1728, 104)]), 0, quiet, out var quietReport);
+Check($"MicroTalk: starved blocks reach the native 26-byte frame minimum ({quietReport.BytesUsed} bytes)", quietReport.BytesUsed <= 120 + 104);
+var onsetBlocks = new[] { (1728, 400), (1728, 330), (1728, 330), (1296, 280) }; int onsetTotal = onsetBlocks.Sum(b => b.Item1);
+var onset = new DecodedAudio(Enumerable.Range(0, onsetTotal).Select(i => i < 2000 ? (short)(i % 7 - 3) : (short)Math.Clamp(Enumerable.Range(1, 10).Sum(h => 9000.0 / h * Math.Sin(2 * Math.PI * 120 * h * i / 22050.0)), -32000, 32000)).ToArray(), 1, 22050, "onset");
+var onsetResult = AudioReplacement.MicroTalkStream(MicroTalkStreamOf(onsetBlocks), 0, onset, out var onsetReport); var onsetMemory = new MemoryByteSource(onsetResult);
+var onsetDecoded = SchlStream.ScanAll(onsetMemory).Single().Decode(onsetMemory);
+Check($"MicroTalk: onset after silence stays stable (worst block {onsetReport.WorstBlockSnrDb:F1} dB, {onsetReport.StabilizedBlocks} stabilized, peak {onsetDecoded.Pcm.Max(x => Math.Abs((int)x))})", onsetReport.WorstBlockSnrDb > 0 && onsetDecoded.Pcm.Take(2000).All(x => Math.Abs((int)x) < 2000));
+Check("MicroTalk: MT5:1, standard-revision and stereo streams are refused", AudioReplacement.MicroTalkUnsupported(EaPatchHeader.Parse(Header(0x16, 3), 0)!) is not null && AudioReplacement.MicroTalkUnsupported(EaPatchHeader.Parse(Header(4, 0), 0)!) is not null);
 if(args.Length>0)
 {
     var root=GameFileSystem.OpenGame(args[0]); var nodes=root.EnumerateDeep().ToList(); var hd=nodes.First(n=>n.Extension==".hd"); var bd=hd.Parent!.Children.First(n=>n.Name.Equals(Path.ChangeExtension(hd.Name,".bd"),StringComparison.OrdinalIgnoreCase)); var bytes=bd.ReadAll(); var sounds=SonySoundBank.Read(hd.ReadAll(),bytes.Length);

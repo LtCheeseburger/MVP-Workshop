@@ -98,6 +98,42 @@ public static class AudioReplacement
         }
         return result;
     }
+    public sealed record MicroTalkReport(int Blocks, int Frames, int MinTarget, int MaxTarget, double MeanTarget, int BytesUsed, int BytesAvailable, int ForcedHuffmanBlocks, int StabilizedBlocks = 0, double WorstBlockSnrDb = double.NaN);
+
+    /// <summary>Why a stream cannot take the experimental per-block MicroTalk encoder, or null when it can.</summary>
+    public static string? MicroTalkUnsupported(EaPatchHeader header) =>
+        header.Codec2 != 0x04 ? "Only MicroTalk 10:1 has a per-block encoder; " + EaPatchHeader.CodecName(header.Codec2) + " is not handled."
+        : !header.UsePcmBlocks ? "Only revision-3 (byte-aligned, marker-framed) MicroTalk streams are handled."
+        : header.Channels != 1 ? "Only mono MicroTalk streams are handled."
+        : null;
+
+    /// <summary>
+    /// Experimental: replace a revision-3 MicroTalk 10:1 SCHl stream with per-block budgeted encoding. Every SCDl keeps its
+    /// size, sample count, channel offset and leading flag byte; only frame payloads change and unused capacity is zeroed.
+    /// Not wired into the editor: listening tests and native-game playback are still required (RUNTIME_BINDINGS_AND_MICROTALK.md).
+    /// </summary>
+    public static byte[] MicroTalkStream(byte[] source, int streamIndex, DecodedAudio audio, out MicroTalkReport report)
+    {
+        var stream = SchlStream.ScanAll(new MemoryByteSource(source))[streamIndex]; var header = stream.Header ?? throw new InvalidDataException("Missing PT header.");
+        if (MicroTalkUnsupported(header) is { } why) throw new NotSupportedException(why);
+        uint Read(int offset) => stream.LittleEndianBlocks ? Bin.U32LE(source, offset) : Bin.U32BE(source, offset);
+        var blocks = stream.Blocks.Where(b => b.Id == "SCDl").Select(b => checked((int)(stream.Offset + b.Offset))).ToList();
+        int total = blocks.Sum(at => checked((int)Read(at + 8)));
+        var pcm = Normalize(audio, header.SampleRate, 1, total).Pcm;
+        var result = source.ToArray(); var encoder = new MicroTalkEncoder(); var targets = new List<int>();
+        int sampleAt = 0, frames = 0, used = 0, available = 0, forced = 0, stabilized = 0; double worst = double.PositiveInfinity;
+        foreach (var (at, block) in blocks.Zip(stream.Blocks.Where(b => b.Id == "SCDl")))
+        {
+            int samples = checked((int)Read(at + 8)); int start = checked(at + 16 + (int)Read(at + 12)) + 1; int end = at + checked((int)block.Size);
+            if (start <= at + 16 || end < start || end > source.Length) throw new InvalidDataException("Invalid native MicroTalk block bounds.");
+            var encoded = encoder.EncodeBlock(pcm.AsSpan(sampleAt, samples), pcm.AsSpan(sampleAt + samples), end - start);
+            result.AsSpan(start, end - start).Clear(); encoded.Payload.CopyTo(result, start);
+            targets.Add(encoded.InnovationTarget); if (encoded.ForcedHuffman) forced++; if (encoded.RcLimit > 1) stabilized++; if (!double.IsNaN(encoded.SnrDb)) worst = Math.Min(worst, encoded.SnrDb); frames += encoded.Frames; used += encoded.Payload.Length; available += end - start; sampleAt += samples;
+        }
+        report = new(blocks.Count, frames, targets.DefaultIfEmpty().Min(), targets.DefaultIfEmpty().Max(), targets.DefaultIfEmpty().Average(), used, available, forced, stabilized, double.IsInfinity(worst) ? double.NaN : worst);
+        return result;
+    }
+
     public static byte[] Sony(byte[] source, SonySound sound, DecodedAudio audio)
     {
         var normalized = Normalize(audio, sound.SampleRate, 1, sound.Length / 16 * 28);

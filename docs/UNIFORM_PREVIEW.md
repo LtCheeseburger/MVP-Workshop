@@ -1,6 +1,6 @@
 # School uniform preview
 
-Open **Teams → LSU → Uniforms → Dressed player**. The same view is available for
+Open **Teams → LSU → Uniforms → Dressed player**, or open a school uniform in the explorer. The same view is available for
 every decoded school. Select a disc suffix (`a` or `b`), drag to orbit, right/middle
 drag to pan, or scroll to zoom. Fit, Front, Back, Side and Three-quarter presets
 and Lit/Unlit shading reuse the EAGL model viewer. Resizing fits the player again.
@@ -17,7 +17,11 @@ the tool never fabricates a third uniform. Mappings survive school-view rebuilds
 torso sheet (or the first sheet if no torso exists). The dressed model uses the actual
 school textures; the palette does not recolour assets or claim official brand colours.
 
-The workspace shows original disc and edited project players side by side. Select a
+The workspace opens with one large edited player. Turn on **Compare with original**
+to see both players with synchronized camera movement. The texture picker starts on
+the jersey and remembers the selected sheet after edits and undo. A thumbnail shows
+the texture selected for replacement. **Player name & number**, dirt controls and
+technical source details expand only when needed. Select a
 roster player, or enter a surname and number (0–99). The same selected disc variant
 is used on both sides so texture edits can be compared. The original side uses
 original texture bytes and the player's original DAT surname/number; the edited
@@ -28,12 +32,12 @@ edited camera to the original side. Each side retains its camera presets.
 `attrib.dat` record through project history. Preview typing does not edit the DAT.
 The complete surname is saved; the native rendering path displays ten characters.
 
-Choose a texture tag and **Replace selected texture…** with an exactly sized image.
-PAL4/PAL8/RGBA8888 replacements use the existing SSH writer, undo/redo, Save Project
-and Export Mod. GST images (including `tors` and most pants sheets) remain
-**PREVIEW ONLY**, using an undoable viewer replacement. They are excluded from
-projects and exported archives. The capability appears when selecting a tag and
-after replacement. **Open texture editor** retains sheet inspection and editing.
+Choose a texture and **Replace selected texture…**. PNG, DDS, TGA and common image
+formats use the sizing/resampling review before replacement. Supported native
+storage uses undo/redo, Save Project and Export Mod; unsupported storage is explicitly
+marked **PREVIEW ONLY** and is excluded from saved output. The capability appears
+when selecting a texture and after replacement. **Open texture editor** retains
+sheet inspection and editing. School-only replacements follow the edited copy.
 
 Selected variant, player, preview text, camera, and sample appearance are preview
 settings, not saved game settings. Temporary texture replacements and preview text

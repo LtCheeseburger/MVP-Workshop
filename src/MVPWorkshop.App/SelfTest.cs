@@ -20,6 +20,10 @@ public static class SelfTest
     public static async void RunIfRequested(MainWindow w)
     {
         var args = Environment.GetCommandLineArgs();
+        var nascarRelease = Array.IndexOf(args, "--nascar-release-selftest");
+        if (nascarRelease >= 0 && nascarRelease + 1 < args.Length) { w.RunNascarReleaseCheck(args[nascarRelease + 1]); return; }
+        var nascarCatalog = Array.IndexOf(args, "--nascar-catalog-selftest");
+        if (nascarCatalog >= 0 && nascarCatalog + 1 < args.Length) { w.RunNascarCatalogCheck(args[nascarCatalog + 1]); return; }
         var modelCheck = Array.IndexOf(args, "--model-viewers-selftest");
         if (modelCheck >= 0 && modelCheck + 1 < args.Length) { w.RunModelViewersCheck(args[modelCheck + 1]); return; }
         var phase6 = Array.IndexOf(args, "--viewers-selftest");

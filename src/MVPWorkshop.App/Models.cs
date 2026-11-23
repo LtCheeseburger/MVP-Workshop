@@ -48,6 +48,7 @@ public sealed class TreeItem : Observable
     private static readonly TreeItem Placeholder = new();
     private bool _expanded, _selected, _loaded;
     private readonly string? _groupName;
+    public string? BrowserName { get; init; }
     public TeamProfile? Team { get; init; }
     public TeamProfile? SchoolScope { get; init; }
     public string? AddedPath { get; init; }
@@ -74,7 +75,7 @@ public sealed class TreeItem : Observable
     public AssetNode Node { get; }
     public int Depth { get; }
     public ObservableCollection<TreeItem> Children { get; }
-    public string Name => _groupName ?? Node?.Name ?? "Loading…";
+    public string Name => _groupName ?? BrowserName ?? Node?.Name ?? "Loading…";
     public Thickness Indent => new(Depth * 14, 0, 0, 0);
     public string Glyph => Node is null ? (_groupName is null ? "" : "") : Node.IsFolder ? (Node.IsVirtualFolder ? "" : "") : Node.FormatInfo.Glyph;
     public string Meta => Team is not null ? $"{Team.Assets.Count} links" : _groupName == "Teams" && Children.Any(c => c.Team is not null) ? $"{Children.Count(c => c.Team is not null)} schools" : _groupName is not null ? LeafCount.ToString("N0") : Node is null || Node.IsFolder ? "" : Bin.Size(Node.StoredSize);
@@ -114,6 +115,7 @@ public sealed class TreeItem : Observable
         // Avoid reading every file just to draw the tree: only probe extensions that can be containers.
         var e = n.Extension;
         if (n.IsLooseTexturePack) return true;
+        if (n.TerfEntry is not null) return n.IsContainer;
         return e is ".big" or ".ast" or ".dat" or ".viv" || n.Name.EndsWith(".big", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -171,8 +173,8 @@ public sealed class Settings
     public string LogLevel { get; set; } = "INFO";
     public List<string> Recent { get; set; } = [];
 
-    internal static string StoragePath => Environment.GetCommandLineArgs().Any(a => a.EndsWith("selftest", StringComparison.OrdinalIgnoreCase)) && Environment.GetEnvironmentVariable("MVPWORKSHOP_TEST_SETTINGS") is { Length: > 0 } testPath
-        ? testPath : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MVP-Workshop", "settings.json");
+    internal static string StoragePath => Environment.GetCommandLineArgs().Any(a => a.EndsWith("selftest", StringComparison.OrdinalIgnoreCase) || a == "--snapshot") && Environment.GetEnvironmentVariable("MVPWORKSHOP_TEST_SETTINGS") is { Length: > 0 } testPath
+        ? testPath : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppInfo.Name, "settings.json");
     private static string FilePath => StoragePath;
     private static string LegacyFilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MVP07AssetTool", "settings.json");
 
@@ -181,7 +183,7 @@ public sealed class Settings
         // One-time migration of the pre-1.0 "MVP07 Asset Tool" settings (recent games, output folders).
         try
         {
-            if (Environment.GetEnvironmentVariable("MVPWORKSHOP_TEST_SETTINGS") is null && !File.Exists(FilePath) && File.Exists(LegacyFilePath))
+            if (!AppInfo.IsNascar && Environment.GetEnvironmentVariable("MVPWORKSHOP_TEST_SETTINGS") is null && !File.Exists(FilePath) && File.Exists(LegacyFilePath))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
                 File.Copy(LegacyFilePath, FilePath);

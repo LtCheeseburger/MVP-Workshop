@@ -28,10 +28,11 @@ that quantization. Stream block sizes, bank pointers, native sample counts and l
 fixed; replacements that cannot fit are rejected. ABKC replacements retain the complete outer bank.
 VAG flags are preserved. Shared bank/sample payloads are rejected for isolated replacement.
 
-**MicroTalk replacement remains unavailable:** no verified MicroTalk encoder is implemented.
-Playback and export remain available. The tool does not silently substitute another codec.
-An independent revision-3 encoding/repack experiment now establishes a feasible codec path, but
-per-block allocation and quality still prevent production integration. See
+**MicroTalk replacement is not yet offered in the editor.** Playback and export remain available, and the
+tool does not silently substitute another codec. A per-block budgeted encoder
+(`MicroTalkEncoder`, `AudioReplacement.MicroTalkStream`) now fits every studied native revision-3 stream
+exactly, but it is an explicit opt-in API for research and in-game trials. Listening tests and
+native-game playback are still required before the viewers and bulk import accept MicroTalk targets. See
 [the runtime/codec investigation](RUNTIME_BINDINGS_AND_MICROTALK.md) for measurements and remaining gates.
 Growing/repacking banks, changing durations or authoring new loop points are also unsupported.
 

@@ -73,8 +73,7 @@ public sealed class TaskStartView : ScrollViewer
         var root = _window.GameRoot;
         try
         {
-            var nodes = await _window.GetAssetIndex();
-            var profiles = await Task.Run(() => TeamAssetCatalog.Build(nodes, cancellation: token), token);
+            var profiles = await _window.GetSchoolProfiles();
             if (token.IsCancellationRequested || _window.GameRoot != root) return;
             Profiles = profiles;
             _schools.ItemsSource = profiles;

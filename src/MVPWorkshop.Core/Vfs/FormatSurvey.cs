@@ -74,6 +74,26 @@ public static class FormatSurvey
     {
         switch (fmt)
         {
+            case FormatId.QklCache:
+                Count(row, "cached references", QklFile.Read(n.Open()).Records.Count); break;
+            case FormatId.TiburonDatabase:
+                var db = TiburonDatabase.Read(n.ReadAll());
+                Count(row, "tables", db.Tables.Count); Count(row, "records", db.Tables.Sum(t => t.Rows));
+                if (db.CheckChecksums() is { Count: > 0 } checks) throw new InvalidDataException(string.Join(", ", checks));
+                foreach (var table in db.Tables) for (int record = 0; record < table.Rows; record++) foreach (var field in table.Fields) db.Get(table, record, field);
+                break;
+            case FormatId.TerfArchive:
+                Count(row, "entries", TerfArchive.ReadDirectory(n.Open()).Entries.Count); break;
+            case FormatId.MmapTexture:
+                var mmap = MmapTexture.Read(n.ReadAll());
+                foreach (var image in mmap.Images) { mmap.Decode(image); Count(row, MmapTexture.FormatName(image.Format), 1); }
+                break;
+            case FormatId.TiburonModel:
+                Count(row, "sections", TiburonModel.Read(n.Open()).Count); break;
+            case FormatId.TeamRoster:
+                Count(row, "named schools", TeamRoster.Read(n.ReadAll()).Count); break;
+            case FormatId.SpeechEvents:
+                Count(row, "directory names", SpeechEvents.Read(n.ReadAll()).Events.Count); break;
             case FormatId.SshTexture:
             {
                 var ssh = SshFile.Read(n.ReadAll());
@@ -182,6 +202,7 @@ public static class FormatSurvey
             {
                 var h = SpeechHeader.Parse(n.ReadAll()) ?? throw new InvalidDataException("Record shorter than its 18-byte head");
                 Count(row, $"kind {h.Kind}", 1);
+                Count(row, h.Link == -1 ? "no link" : "linked selector", 1);
                 break;
             }
             case FormatId.AptMovie:

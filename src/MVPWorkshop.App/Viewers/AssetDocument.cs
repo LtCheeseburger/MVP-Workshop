@@ -24,7 +24,7 @@ public static class AssetDocument
             p.Add(new("Asset", "Description", n.FormatInfo.Description));
             p.Add(new("Asset", "Stored size", $"{Bin.Size(n.StoredSize)} ({n.StoredSize:N0} bytes)"));
             if (open && n.UnpackedSize is { } u && n.IsCompressed) p.Add(new("Asset", "Unpacked size", $"{Bin.Size(u)} ({u:N0} bytes)"));
-            if (open) p.Add(new("Asset", "Compression", n.IsCompressed ? "RefPack (10 FB)" : "None"));
+            if (open) p.Add(new("Asset", "Compression", n.TerfEntry is { Compression: not 0 } te ? $"TERF algorithm {te.Compression}" : n.IsCompressed ? "RefPack (10 FB)" : "None"));
             p.Add(new("Asset", "Location", n.Location));
             if (n.Container.Length > 0) p.Add(new("Asset", "Container", n.Container));
             if (n.DiskPath is not null) p.Add(new("Asset", "Disk path", n.DiskPath));
@@ -122,7 +122,7 @@ public static class AssetDocument
             title.Children.Add(new Border
             {
                 Background = Ui.Res("AccentSoft"), CornerRadius = new CornerRadius(3), Padding = new Thickness(7, 2, 7, 2), Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
-                Child = new TextBlock { Text = "REFPACK", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = Ui.Res("Accent") }
+                Child = new TextBlock { Text = n.TerfEntry is { Compression: not 0 } ? "EA MADDEN" : "REFPACK", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = Ui.Res("Accent") }
             });
         var cap = Editor.CapabilityOf(n);
         if (cap.Level != EditLevel.None)
@@ -138,6 +138,8 @@ public static class AssetDocument
         left.Children.Add(names);
 
         var right = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+        if (UniformPreview.IsPlayerTexture(n))
+            right.Children.Add(B.Button("Dressed player", null, (_, _) => MainWindow.Instance?.OpenUniformPreview(n), "Outline"));
         right.Children.Add(B.Text($"{Bin.Size(n.UnpackedSize ?? n.StoredSize)}", "Muted"));
         right.Children.Add(B.Separator());
         right.Children.Add(B.Button("Export Raw", "", (_, _) => Exporter.SaveRaw(n), "Outline", "Save the (decompressed) bytes"));
@@ -155,6 +157,10 @@ public static class ViewerFactory
         : node.Format switch
     {
         FormatId.BigArchive => new ArchiveView(node),
+        FormatId.TerfArchive => new ArchiveView(node),
+        FormatId.MmapTexture => NascarModelResources.IsRelevant(node) ? new NascarAssetView(node) : new MmapView(node),
+        FormatId.TiburonDatabase => new TiburonDatabaseView(node),
+        FormatId.TiburonModel => NascarModelResources.IsRelevant(node) ? new NascarAssetView(node) : new EmbeddedModelView(node),
         FormatId.SchlContainer => new AudioView(AudioView.FromStreams(src), node, setExtra),
         FormatId.SonyHd or FormatId.SonyBd => AudioView.ForSony(node, setExtra),
         FormatId.SshTexture => new TextureView(SshFile.Read(src.ReadAll()), node, setExtra),
@@ -171,8 +177,11 @@ public static class ViewerFactory
         FormatId.AudioBankAbk => AemsViews.Abk(node, src, setExtra),
         FormatId.MoirCsi => AemsViews.Csi(src),
         FormatId.SpeechHeader => AemsViews.SpeechHeader(node, src, setExtra),
+        FormatId.SpeechEvents => AemsViews.Events(src),
+        FormatId.TeamRoster => AemsViews.Roster(node, src),
         FormatId.AptMovie or FormatId.AptConst => AptView.Create(node, setExtra),
-        FormatId.MpcMovie or FormatId.Vp6Movie => new MovieView(node, setExtra),
+        FormatId.MpcMovie or FormatId.Vp6Movie or FormatId.MadMovie => new MovieView(node, setExtra),
+        FormatId.TiburonSkeleton => new TiburonSkeletonView(node),
         FormatId.XboxResource => new TextureView(SshFile.Read(XprTexture.ToShpx(src.ReadAll())), node, setExtra),
         FormatId.OffsetPack => new ArchiveView(node),
         _ => new StructureView(node, src),

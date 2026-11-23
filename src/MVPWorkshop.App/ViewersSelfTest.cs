@@ -36,6 +36,15 @@ public partial class MainWindow
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) };
         try
         {
+            var evtBytes = new byte[60]; "\u0003\u0013<\u0007"u8.CopyTo(evtBytes); System.Buffers.Binary.BinaryPrimitives.WriteInt32LittleEndian(evtBytes.AsSpan(4),20); System.Buffers.Binary.BinaryPrimitives.WriteInt32LittleEndian(evtBytes.AsSpan(16),1); "stadium"u8.CopyTo(evtBytes.AsSpan(52));
+            var evtNode = new MVPWorkshop.Core.Vfs.AssetNode("Events.evt",null,false,evtBytes.Length,()=>new MemoryByteSource(evtBytes),"synthetic event directory");
+            var evtDoc = AssetDocument.Create(evtNode); AddTab(evtDoc); await Task.Delay(150); UpdateLayout();
+            Check("speech event preview displays decoded directory names", Find<DataGrid>(evtDoc.Content)?.Items.OfType<SpeechEventName>().Any(e=>e.Name=="stadium")==true);
+            var shot = new RenderTargetBitmap((int)ActualWidth,(int)ActualHeight,96,96,PixelFormats.Pbgra32); shot.Render(this); var image = new PngBitmapEncoder(); image.Frames.Add(BitmapFrame.Create(shot)); using(var file=File.Create(reportPath+".events.png"))image.Save(file);
+            var evtTabs=Find<TabControl>(evtDoc.Content)!; evtTabs.SelectedIndex=3; UpdateLayout();
+            var evtRegions=Find<StructureView>(evtDoc.Content)!;
+            Check("event directory has bounded Hex navigation regions",AssetStructure.Read(evtNode.Format,evtNode.Open()).Any(r=>r.Name.Contains("stadium")&&r.Offset==52));
+            CloseDocument(evtDoc);
             var node = Editor.Session!.GameRoot.EnumerateDeep().Single(n => n.Name == "tone.asf"); var original = node.ReadAll();
             OpenAsset(node); await Task.Delay(350);
             var document = AssetDocument.Create(node); var tabs = Find<TabControl>((DependencyObject)document.Content)!;

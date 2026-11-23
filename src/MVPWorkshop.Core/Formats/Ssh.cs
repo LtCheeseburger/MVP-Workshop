@@ -85,7 +85,7 @@ public sealed class SshFile
     {
         0x01 => "PAL4 (4bpp indexed)", 0x02 => "PAL8 (8bpp indexed)", 0x03 => "RGBA5551", 0x04 => "RGB888", 0x05 => "RGBA8888",
         0x60 => "DXT1 (Xbox)", 0x61 => "DXT3 (Xbox)", 0x62 => "DXT5 (Xbox)", 0x78 => "RGB565 (Xbox 0x78)", 0x7B => "PAL8 (Xbox)",
-        0x64 => "A8 (Xbox)", 0x7D => "BGRA8888 (Xbox)", 0x7E => "ARGB1555 (Xbox)", 0x7F => "RGB565 (Xbox)",
+        0x64 => "A8 (Xbox)", 0x7A => "Linear A4 font", 0x7D => "BGRA8888 (Xbox)", 0x7E => "ARGB1555 (Xbox)", 0x7F => "RGB565 (Xbox)",
         0x08 => "GST121", 0x09 => "GST221", 0x0A => "GST421", 0x0B => "GST821",
         0x0C => "GST122", 0x0D => "GST222", 0x0E => "GST422", 0x0F => "GST822",
         var x => $"Unknown 0x{x:X2}"
@@ -100,7 +100,7 @@ public sealed class SshFile
 
     public static int Bpp(int t) => (t & 0x7F) switch
     {
-        0x01 => 4, 0x02 => 8, 0x03 => 16, 0x04 => 24, 0x05 => 32, >= 0x08 and <= 0x0F => 8, 0x64 or 0x7B => 8, 0x7D => 32, 0x7E or 0x7F or 0x78 => 16, 0x60 => 4, 0x61 or 0x62 => 8, _ => 0
+        0x01 or 0x7A => 4, 0x02 => 8, 0x03 => 16, 0x04 => 24, 0x05 => 32, >= 0x08 and <= 0x0F => 8, 0x64 or 0x7B => 8, 0x7D => 32, 0x7E or 0x7F or 0x78 => 16, 0x60 => 4, 0x61 or 0x62 => 8, _ => 0
     };
 
     public static SshFile Read(byte[] d)
@@ -168,6 +168,18 @@ public sealed class SshFile
 
         var t = type & 0x7F;
         var swz = opt.Swizzle ?? h.FlagSwizzled;
+        if (t == 0x7A)
+        {
+            if (swz) throw new NotSupportedException("Swizzled A4 font data has not been validated.");
+            if (data.Length < (w * ht + 1) / 2) throw new InvalidDataException("Truncated A4 font atlas.");
+            var pixels = new byte[w * ht * 4];
+            for (int i = 0; i < w * ht; i++)
+            {
+                pixels[i * 4] = pixels[i * 4 + 1] = pixels[i * 4 + 2] = 255;
+                pixels[i * 4 + 3] = (byte)(((data[i / 2] >> ((i & 1) * 4)) & 15) * 17);
+            }
+            return new DecodedImage { Width = w, Height = ht, Bgra = pixels, Notes = "Linear packed alpha; low nibble first" };
+        }
         if (IsXbox) return DecodeXbox(img, data, t, swz, opt, notes);
         var outp = new byte[w * ht * 4];
         byte[]? palBgra = null;

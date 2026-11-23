@@ -25,8 +25,13 @@ public sealed class ModInfo
     {
         if (Id == "" || Id.Any(c => !(char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '-'))) return "The id must be lower case letters, digits and '-' (for example uniforms-2007).";
         if (Name.Trim() == "") return "Give the mod a name.";
-        var parts = Version.Split('.');
-        if (parts.Length != 3 || parts.Any(p => p.Length == 0 || p.Any(c => !char.IsAsciiDigit(c)) || !int.TryParse(p, out _))) return "The version must look like 1.0.0.";
+        // major.minor.patch with an optional pre-release tag, as the port's packages use (0.1.0-preview.3)
+        var dash = Version.IndexOf('-');
+        var parts = (dash < 0 ? Version : Version[..dash]).Split('.');
+        var pre = dash < 0 ? null : Version[(dash + 1)..];
+        if (parts.Length != 3 || parts.Any(p => p.Length == 0 || p.Any(c => !char.IsAsciiDigit(c)) || !int.TryParse(p, out _))
+            || pre is not null && (pre.Length == 0 || pre.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '.' or '-'))))
+            return "The version must look like 1.0.0 or 1.0.0-preview.1.";
         return IconProblem(IconPath);
     }
 

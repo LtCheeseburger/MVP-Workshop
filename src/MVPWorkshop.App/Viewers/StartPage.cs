@@ -9,6 +9,7 @@ public static class StartPage
 {
     public static FrameworkElement Build(MainWindow w, Settings settings)
     {
+        if (AppInfo.IsNascar) return NascarStartPage.Build(w, settings);
         if (w.GameRoot?.DiskPath is { } game && MVPWorkshop.Core.Install.LooseInstall.IsLoose(game)) return new TaskStartView(w, settings);
         var sp = new StackPanel { Margin = new Thickness(48, 40, 48, 40), MaxWidth = 880, HorizontalAlignment = HorizontalAlignment.Left };
 
@@ -25,6 +26,7 @@ public static class StartPage
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 28, 0, 0) };
         actions.Children.Add(B.Button("Open Game (MVP06.exe)", "", (_, _) => w.PromptOpenGame(), "Primary"));
+        actions.Children.Add(B.Button("Open Game / DATA Folder", "", (_, _) => w.PromptOpenDataFolder()));
         sp.Children.Add(actions);
 
         if (settings.RecentProjects.Count > 0)

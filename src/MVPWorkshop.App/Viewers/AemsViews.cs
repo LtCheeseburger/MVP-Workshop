@@ -12,6 +12,25 @@ namespace MVPWorkshop.App.Viewers;
 /// <summary>Viewers for the text, font and AEMS audio-system tables (SFN, LOCH, ABKC, MOIR, PROJx headers).</summary>
 public static class AemsViews
 {
+    public static FrameworkElement Roster(AssetNode node, IByteSource source)
+    {
+        var grid = B.Grid();
+        foreach (var (label, field, width) in new[] { ("Record", "RosterIndex", 65), ("Offset", "Offset", 95), ("School", "Name", 230), ("Nickname", "Nickname", 160), ("Players", "PlayerCount", 70), ("Logo", "LogoId", 65), ("Uniform", "UniformId", 70), ("Stadium enum", "StadiumId", 100) }) grid.Columns.Add(B.Col(label, field, width));
+        grid.ItemsSource = Core.Formats.TeamRoster.Read(source.ReadAll(), Core.Formats.TeamRoster.IsXbox(node));
+        return B.Rows((new TextBlock { Text = "Decoded roster records and assignments. Other packed fields remain unknown. Structure exposes bounded records and player-slot spans in Hex; use the school workspace to edit assignments and players.", Margin = new Thickness(12), TextWrapping = TextWrapping.Wrap, Foreground = Ui.Res("Muted") }, B.Auto), (grid, B.Star()));
+    }
+    public static FrameworkElement Events(IByteSource source)
+    {
+        var parsed = Core.Formats.SpeechEvents.Read(source.ReadAll());
+        var grid = B.Grid();
+        grid.Columns.Add(B.Col("Index", "Index", 60));
+        grid.Columns.Add(B.Col("Event directory name", "Name", 280));
+        grid.Columns.Add(B.Col("Record offset", "RecordOffset", 100, true, "X8"));
+        grid.Columns.Add(B.Col("Name offset", "NameOffset", 100, true, "X8"));
+        grid.Columns.Add(B.Col("Raw +4 (unknown)", "RawValue", 140, true, "X8"));
+        grid.ItemsSource = parsed.Events;
+        return B.Rows((new TextBlock { Text = $"Project {parsed.Project} · {parsed.Events.Count} directory names. Script bytecode and record +4..31 remain undecoded. Names alone do not identify schools or audio streams. Use Structure → Byte regions to navigate records and names in Hex.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(12), Foreground = Ui.Res("Muted") }, B.Auto), (grid, B.Star()));
+    }
     public static BitmapSource Bitmap(DecodedImage d)
     {
         var bmp = BitmapSource.Create(d.Width, d.Height, 96, 96, PixelFormats.Bgra32, null, d.Bgra, d.Width * 4);
@@ -163,6 +182,8 @@ public static class AemsViews
             rows.Add(new("0x04", "Link (s32)", h.Link.ToString()));
             rows.Add(new("0x08", "u16", h.Field8.ToString()));
             rows.Add(new("0x0A", "u16 (span?)", h.Length.ToString()));
+            rows.Add(new("0x0C", "Unknown fixed header bytes", Convert.ToHexString(data.AsSpan(12, 6))));
+            rows.Add(new("", "Parser variant", h.Variant));
             if (h.SplitPoints.Length > 0) rows.Add(new("0x12", "Phrase split points? (BE u16)", string.Join(", ", h.SplitPoints)));
             for (var o = 0; o < h.Payload.Length; o += 16)
                 rows.Add(new($"0x{Core.Formats.SpeechHeader.HeadSize + o:X2}", o == 0 ? "Payload" : "", string.Join(" ", h.Payload.Skip(o).Take(16).Select(b => b.ToString("X2")))));

@@ -258,6 +258,21 @@ public static class EaglXboxReader
             }
         }
 
+        // Optimized RMs omit the index-buffer header pointer. They store
+        // {animation constant, indexCount, indexData}; the count is still
+        // mirrored at indexData - 0x20. Falling back to sequential vertices
+        // here connects unrelated vertices and leaves triangular gaps.
+        int compactIndexData = -1;
+        if (indices is null && slot >= 0 && o.Ptr(slot + 8) is { } compact && compact >= 0x20 && !byData.ContainsKey(compact))
+        {
+            var count = o.U32(slot + 4);
+            if (count >= 3 && compact + count * 2L <= o.Data.Length && o.U32(compact - 0x20) == count)
+            {
+                var list = Enumerable.Range(0, (int)count).Select(i => (int)Bin.U16LE(o.Data, compact + i * 2)).ToList();
+                if (list.All(v => v < n)) { indices = list; compactIndexData = compact; }
+            }
+        }
+
         // Rigid objects (bats, ball, props) have no animation-buffer slot; the RM itself holds {→count, …, →indices}, the index data
         // sitting 0x20 after the u32 count (a 0x30-byte index-buffer header with the count at +0x10).
         var countAt = -1;
@@ -280,7 +295,7 @@ public static class EaglXboxReader
             info.AppendLine($"  {vb.Name,-34} {kind,-34} {vb.Stride,2} B × {vb.Count,5}  data @0x{vb.Data:X}");
         }
         if (lines) info.AppendLine("  line-strip render method (ParentRM_…Line): not drawn, triangles only");
-        info.AppendLine(indices is null ? "  no index buffer: vertices are consumed as a triangle strip" : $"  index buffer: {indices.Count:N0} × u16 (triangle strip) @0x{(countAt >= 0 ? countAt + 0x20 : o.Ptr(slot + 16)):X}");
+        info.AppendLine(indices is null ? "  no index buffer: vertices are consumed as a triangle strip" : $"  index buffer: {indices.Count:N0} × u16 (triangle strip) @0x{(compactIndexData >= 0 ? compactIndexData : countAt >= 0 ? countAt + 0x20 : o.Ptr(slot + 16)):X}");
         var draw = new EaglDraw
         {
             StreamInfo = info.ToString(),

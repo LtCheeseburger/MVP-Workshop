@@ -49,10 +49,12 @@ Check(warnings.Count == 0 && loaded.GetBytes(source).AsSpan().SequenceEqual(edit
 var report = ModExporter.Export(loaded, output, verify: true);
 Check(report.Ok, "archive export verifier: " + string.Join("; ", report.Problems));
 var reopenedRoot = GameFileSystem.OpenFolder(output);
-var actual = reopenedRoot.Resolve(source.Key)!.ReadAll();
+// Loose installs show name_big/ (with _big.json) as name.big; mod output keeps the plain name_big/ folder.
+AssetNode? Exported(string key) => reopenedRoot.Resolve(key) ?? reopenedRoot.Resolve(System.Text.RegularExpressions.Regex.Replace(key, @"([^/]+)\.big(?=/)", "$1_big", System.Text.RegularExpressions.RegexOptions.IgnoreCase));
+var actual = Exported(source.Key)?.ReadAll() ?? [];
 Check(actual.AsSpan().SequenceEqual(edited), "exported DAT reopened with exact edited bytes");
 foreach (var entry in expected)
-    Check(reopenedRoot.Resolve(entry.Key)!.ReadAll().AsSpan().SequenceEqual(entry.Value), entry.Key + " exported bytes reopen exactly");
+    Check((Exported(entry.Key)?.ReadAll() ?? []).AsSpan().SequenceEqual(entry.Value), entry.Key + " exported bytes reopen exactly");
 Check(profiles[0].Roster.ReadOriginal().AsSpan().SequenceEqual(profiles[0].Roster.ReadAll()), "roster relationships and all packed bits untouched");
 // Adversarial formatting and unknown payload preservation.
 var fixture = Encoding.Latin1.GetBytes("0 first_name,2 playerattrib_jerseynum,;\r\n00000001,0 Old  ,2 7,90 opaque bytes,;\r\n# tail\r\n");

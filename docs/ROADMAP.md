@@ -73,7 +73,9 @@ each lands as its own commit and is checked in the running app.
 - [ ] MicroTalk replacement encoder and undecoded school/event assignment authoring; playback/export
       remain available. Fixed-duration/native-allocation limits are documented in AUDIO_REPLACEMENT.md.
       Independent revision-3 encoder/repack research and Xbox school/nickname selector traces are
-      recorded in RUNTIME_BINDINGS_AND_MICROTALK.md; safe per-block encoding and runtime isolation remain incomplete.
+      recorded in RUNTIME_BINDINGS_AND_MICROTALK.md. A per-block budgeted encoder (byte-identical to utkencode,
+      fits all studied native streams) exists as an opt-in API; listening tests, native-game playback, banks
+      and editor integration remain.
 
 ## 7. Batch and round-trip
 
@@ -87,7 +89,9 @@ each lands as its own commit and is checked in the running app.
 
 - [x] Windows CI workflow builds every project and runs the self-contained console/WPF suites,
       synthetic install/player checks, and a `.mvpmod` round-trip test (`scripts/verify.ps1`)
-- [ ] Run the dataset-specific TeamAssignments and older game-dependent editor checks against their
-      supported validation installations; these are explicitly excluded from no-game CI
+- [x] Run the dataset-specific TeamAssignments and older game-dependent editor checks against their
+      supported validation installations; these are explicitly excluded from no-game CI. Passed on the
+      loose Xbox MVP06-NCAABB install (2026-11-07): checks now use the roster's platform bit shift,
+      resolve loose `name_big/` mod output, and accept both known LSU roster revisions.
 - [x] Tool/port version and layout checks on Start and export, with update links; absent advertised
       capabilities stay explicitly unknown and release-manifest schema is not treated as mod format

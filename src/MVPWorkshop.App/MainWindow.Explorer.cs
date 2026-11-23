@@ -94,7 +94,7 @@ public partial class MainWindow
         BuildAddedTree();
         TreeItem? Project(TreeItem item)
         {
-            if (item.Node is { } node) return Matches(node) ? new TreeItem(node, item.Depth) { SchoolScope = item.SchoolScope, ChildItems = FileItem(node, item.Depth).ChildItems, IsExpanded = item.IsExpanded } : null;
+            if (item.Node is { } node) return Matches(node) ? new TreeItem(node, item.Depth) { BrowserName = item.BrowserName, SchoolScope = item.SchoolScope, ChildItems = FileItem(node, item.Depth).ChildItems, IsExpanded = item.IsExpanded } : null;
             var children = item.Children.Select(Project).OfType<TreeItem>().ToList();
             if (Filtering && children.Count == 0) return null;
             return new TreeItem(item.Name, item.Depth, children)

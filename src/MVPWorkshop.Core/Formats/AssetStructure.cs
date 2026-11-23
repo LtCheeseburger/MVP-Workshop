@@ -19,6 +19,35 @@ public static class AssetStructure
         {
             switch (format)
             {
+                case FormatId.QklCache:
+                    var qkl = QklFile.Read(source); Add(0, qkl.DataOffset, "QKL header and source/cache tables");
+                    foreach (var record in qkl.Records) Add(record.PointerOffset - 8, 12, $"{record.FileName} · type {record.Kind} · entry {record.EntryIndex} · cache @0x{record.Offset:X}");
+                    break;
+                case FormatId.TerfArchive:
+                    foreach (var block in TerfArchive.Read(source)) Add(block.Offset, block.Size, block.Tag + " block");
+                    foreach (var entry in TerfArchive.ReadDirectory(source).Entries) { Add(entry.DirectoryOffset, 8, $"Entry {entry.Index} directory"); Add(entry.Offset, entry.Size, $"Entry {entry.Index} (compression {entry.Compression})"); }
+                    break;
+                case FormatId.MmapTexture:
+                    var mmap = MmapTexture.Read(source.ReadAll());
+                    foreach (var image in mmap.Images) Add(image.Offset, image.Length, image.Label);
+                    foreach (var palette in mmap.Palettes) Add(palette.Offset, palette.Length, "BGRA palette");
+                    break;
+                case FormatId.TiburonModel:
+                    foreach (var section in TiburonModel.Read(source)) Add(section.Offset, section.Length, section.Tag + $" section ({section.Count} records)");
+                    break;
+                case FormatId.TiburonDatabase:
+                    var db = TiburonDatabase.Read(source.ReadAll());
+                    foreach (var table in db.Tables) { Add(table.Offset, 40, table.Name + " header"); Add(table.Offset + 40, table.Fields.Count * 16, table.Name + " field definitions"); Add(table.DataOffset, table.End - table.DataOffset, table.Name + " records and string data"); }
+                    break;
+                case FormatId.TeamRoster:
+                    Add(0, 4, "Team count");
+                    foreach (var team in TeamRoster.Read(source.ReadAll())) { Add(team.Offset, 196, team.Name + " team prefix"); Add(team.Offset + 164, 8, team.Name + " packed assignment words"); Add(team.Offset + 196, team.PlayerCount * 8, team.Name + " player slots"); Add(team.Offset + 196 + team.PlayerCount * 8, 291, team.Name + " remaining record fields (undecoded)"); }
+                    break;
+                case FormatId.SpeechHeader:
+                    Add(0, 2, "Record word"); Add(2, 2, "Kind / segment fields"); Add(4, 4, "Link / selector"); Add(8, 4, "u16 fields (units unknown)"); Add(12, 6, "Unknown fixed header fields"); Add(18, source.Length - 18, "Payload (variant-dependent; partially undecoded)"); break;
+                case FormatId.SpeechEvents:
+                    var events = SpeechEvents.Read(source.ReadAll()); Add(0, 20, "EVT fixed header"); Add(20, events.TableOffset - 20, "Speech script bytecode (undecoded)");
+                    foreach (var entry in events.Events) { Add(entry.RecordOffset, 32, "Event directory record " + entry.Index); Add(entry.NameOffset, entry.Name.Length + 1, entry.Name + " (directory name)"); } break;
                 case FormatId.BigArchive:
                     var big = BigArchive.Read(source); Add(16, big.HeaderSize - 16L, "BIG directory"); foreach (var entry in big.Entries.Take(10000)) Add(entry.Offset, entry.Size, entry.Name); break;
                 case FormatId.SshTexture:

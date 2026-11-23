@@ -118,6 +118,8 @@ public sealed class MoirScript
 public sealed record SpeechHeader(int Id, int Kind, int Segments, int Link, int Field8, int Length, byte[] Payload)
 {
     public const int HeadSize = 0x12;
+    public static bool Recognizes(ReadOnlySpan<byte> d) => d.Length >= HeadSize && (d[2] & 0x7F) <= 6 && d[3] != 0 && (int)Bin.U32LE(d, 4) is >= -1 and <= 65535;
+    public string Variant => $"kind 0x{Kind:X2}, {(Link == -1 ? "no link" : "linked selector")}; payload semantics partial";
 
     public static SpeechHeader? Parse(ReadOnlySpan<byte> d)
     {

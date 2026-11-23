@@ -1,8 +1,50 @@
 # Changelog
 
+## 1.0.14 — 2026-11-23
+
+- MVP 27 overhaul support: after Open Game, an `MVP27-Overhaul.mvpmod` beside MVP06.exe is validated and layered as a read-only base so its teams, rosters, uniforms, stadiums and UI appear in the normal categories. Edits stay in the project; Tools → Build overhaul… writes a new package, and Tools → Locate overhaul… picks one manually. The game, mod install and launcher enablement are never touched.
+- Overhaul files are organized into the school and category browser (preorganized school indexing and uniform routing).
+- Added an optional NASCAR-Workshop build variant (`NASCAR_WORKSHOP`) with its own categories, APT artwork, embedded model and map viewers, build/verify scripts and self-tests.
+
+## 1.0.13 — 2026-11-19
+
+- Fixed Xbox compact index-buffer decoding that produced incorrect triangles and gaps in player pants and other optimized render methods.
+- Uniform editing defaults to one large edited player, with an optional Compare with original toggle. Added a selected-texture thumbnail and readable texture/region labels. Player text, dirt and technical details are collapsed until needed.
+- Simplified the main toolbar; raw export, extraction, dependencies and format survey remain in the menus.
+
+## 1.0.12 — 2026-11-19
+
+- After school-only texture replacement, the active viewer follows the edited school copy rather than staying on the unchanged shared source.
+- Texture replacement reviews use decoded school assignments without waiting for the full game's dependency scan. Other unresolved runtime consumers remain explicitly noted.
+- Dressed-player texture replacement supports DDS/TGA imports and the same dimension/resampling review as the texture editor. Import failures are logged and displayed.
+
+## 1.0.11 — 2026-11-19
+
+- Opening a school uniform texture now selects the dressed-player workspace and matching variant. The standalone uniform texture editor also has a Dressed player shortcut.
+- Installed mod discovery searches both the game folder's mods directory and the executable folder's mods directory, even when both exist. Added direct Open Mod and Installed Mods toolbar actions; diagnostics and base-mod selection use the combined catalog.
+
+## 1.0.10 — 2026-11-19
+
+- Restored school-by-school browsing, school asset groups, and direct toolbar actions while keeping initial source categories available immediately. Start and the explorer share school indexing instead of duplicating it.
+- Name enumeration skips payload probing for known leaf formats, including loose textures and models.
+- Installed inventory manifests larger than 16 MiB are streamed for compatibility metadata instead of rejected. The smaller release manifest retains its size limit.
+
+## 1.0.9 — 2026-11-19
+
+- Removed the full archive and school-indexing barrier from the MVP browser. Predefined source categories use filenames and routing directories; archives and texture folders load their children only when expanded. Search and school indexing run independently of browser readiness.
+
+## 1.0.8 — 2026-11-19
+
+- Fixed category matching for MVP 06 archive folders, including databases, frontend resources, and animations. Known file types use metadata for classification.
+- Game opening defaults to Categories with cleared filters and completes the browser setup before reporting the game loaded. School-indexing failures no longer block all categories. Base files still require an index pass.
+- Automatically discovers installed folder mods and `.mvpmod` packages in the mods directory. File > Open installed mod opens a selected mod as an editable project.
+- Recovered two corrupted APT viewer source files from their last committed versions to restore buildability.
+
 ## Unreleased — 2026-10-30
 
 ### Added
+- MicroTalk 10:1 revision-3 per-block budgeted encoder (opt-in API, not yet in the editor): a byte-exact port of the public-domain utkencode with per-SCDl rate search and committed decoder-consistent state. It fits all 11 studied native streams with exact framing, agrees with the independent vgmstream decoder to 1 PCM unit and averages about 19 dB SNR. Listening and native-game playback checks remain before replacement is enabled.
+- Game-dependent TeamAssignments, PlayerEditor and LooseTextures checks pass on the loose Xbox install. The checks now use the roster platform's bit layout, resolve loose `name_big/` mod output and accept both known LSU roster revisions.
 - Read-only runtime/codec research probes inventory real speech and stadium bindings, locate native string/call references, and test pinned public MicroTalk encoding against an independent decoder. Revision-3 repack experiments preserve native framing when every block fits; most 32 kb/s examples exceed individual block budgets. Xbox school/nickname audio selectors are traced, but production MicroTalk replacement and additional school-only scopes remain incomplete.
 - Explorer and search-result menus add read-only **Open original / sources** snapshots, separating vanilla game bytes, selected base-mod bytes and current project/preview bytes without editable controls. Added files have no invented vanilla layer. **Format import / export** routes textures, audio, models and text/CSV to their existing operations; unsupported layouts explain their limits and retain raw interchange.
 - Audio viewers add **Import folder…**: files named as Export All writes them (`crowd_Sound_3.wav`, `intro_Stream_0.ogg`, `sfx_Sony_sample_12.mp3`) are converted through the single-sound pipeline and shown in a review with input and native rate/channels/codec/duration, encoded previews and per-row results. Unmatched, duplicate, corrupt, unsupported-input and MicroTalk rows stay visible and are never guessed. Accepted sounds pass impact review and a stale-source check, then save as one undoable edit that preserves offsets, wrappers and untouched sounds.

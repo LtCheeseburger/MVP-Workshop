@@ -152,3 +152,10 @@ and mod export. See [details](docs/EDITING.md#texture-editing-inside-apt-movies)
 **Export ISO** writes a new verified image; extracted-folder projects select the matching
 original ISO as a layout template. Original sources remain unchanged. See
 [ISO support and limitations](docs/ISO_EDITING.md).
+
+A separate **NASCAR-Workshop** edition is available for NASCAR 06: Total Team Control
+(Xbox). Build it with `./scripts/build-nascar.ps1`; output is
+`release/NASCAR-Workshop/NASCAR-Workshop.exe`. It includes TERF decompression and
+verified rebuilding, MMAP texture editing, EA DB editing and QKL cache synchronization.
+Complete game-format support is still in development. See [NASCAR-README.md](NASCAR-README.md)
+for supported formats, validation evidence and remaining limitations.

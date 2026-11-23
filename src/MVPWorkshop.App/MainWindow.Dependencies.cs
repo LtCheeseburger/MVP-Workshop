@@ -41,9 +41,32 @@ public partial class MainWindow
         {
             if (!ReferenceEquals(Editor.Session, Session)) throw new InvalidOperationException("The project changed; review the replacement again.");
             if (!Session.GetBytes(Node).AsSpan().SequenceEqual(Baseline)) throw new InvalidOperationException("The asset changed; review the replacement again.");
-            if (Fork is not null) Fork.Apply(Session, bytes, description);
+            if (Fork is not null)
+            {
+                Fork.Apply(Session, bytes, description);
+                MainWindow.Instance?.FollowSchoolReplacement(this);
+            }
             else Editor.Apply(Node, bytes, description);
         }
+    }
+
+    private void FollowSchoolReplacement(ReplacementDecision decision)
+    {
+        if (decision.Fork is not { } fork || Editor.Session != decision.Session) return;
+        var path = fork.Copies.Single(c => c.Source.Key == decision.Node.Key).Destination;
+        var full = System.IO.Path.GetFullPath(System.IO.Path.Combine(decision.Session.GameRoot.DiskPath!, path));
+        var replacement = decision.Node.Parent?.Children
+            .FirstOrDefault(n => n.DiskPath is { } disk && disk.Equals(full, StringComparison.OrdinalIgnoreCase));
+        if (replacement is null) { Log.Warn("Replacement saved to " + path + "; reopen the school to view it."); return; }
+        if (Docs.SelectedItem is DocumentTab { Content: TeamView })
+        {
+            var school = _categoryRoots?.FirstOrDefault(r => r.Name == "Teams")?.Children
+                .FirstOrDefault(c => c.Team?.Team.RosterIndex == fork.School.Team.RosterIndex)?.Team;
+            if (school is not null) OpenSchoolAsset(school, replacement);
+            else OpenUniformPreview(replacement);
+        }
+        else OpenAsset(replacement);
+        SetStatus("Showing edited school copy: " + replacement.Name);
     }
 
     public async Task<bool> PreviewReplacementImpact(AssetNode node) => await PrepareReplacement(node, allowFork: false) is not null;
@@ -55,12 +78,26 @@ public partial class MainWindow
             var session = Editor.Session ?? throw new InvalidOperationException("Open a project first.");
             var generation = _dependencyGeneration;
             var baseline = session.GetBytes(node).ToArray();
-            var index = await GetDependencies();
-            var subject = index.Subjects.FirstOrDefault(s => s.Source.Key == node.Key && s.Id.StartsWith("asset:"));
-            var affected = subject is null ? [] : index.Impact(subject.Id);
-            var schoolIds = affected.Where(s => s.Id.StartsWith("team:")).Select(s => s.Id).ToHashSet();
-            var profiles = MVPWorkshop.Core.Vfs.TeamAssetCatalog.Build(session.GameRoot.EnumerateDeep().ToList());
-            var schools = profiles.Where(p => schoolIds.Contains($"team:{p.Roster.Key}:{p.Team.RosterIndex}")).ToList();
+            SetStatus("Checking replacement usage for " + node.Name + "…");
+            List<TeamProfile> schools;
+            if (node.IsTexturePack)
+            {
+                // School texture ownership is already decoded in the school catalog.
+                // Do not rebuild every loose texture and parse the entire game's UI,
+                // models and audio before allowing a single texture replacement.
+                var profiles = await GetSchoolProfiles();
+                schools = profiles.Where(p => p.Assets.Any(a => a.Asset.Key == node.Key && a.Status == "Confirmed")).ToList();
+            }
+            else
+            {
+                var index = await GetDependencies(new Progress<string>(SetStatus));
+                var subject = index.Subjects.FirstOrDefault(s => s.Source.Key == node.Key && s.Id.StartsWith("asset:"));
+                var affected = subject is null ? [] : index.Impact(subject.Id);
+                var schoolIds = affected.Where(s => s.Id.StartsWith("team:")).Select(s => s.Id).ToHashSet();
+                var profiles = await GetSchoolProfiles();
+                schools = profiles.Where(p => schoolIds.Contains($"team:{p.Roster.Key}:{p.Team.RosterIndex}")).ToList();
+            }
+            if (generation != _dependencyGeneration || !ReferenceEquals(session, Editor.Session)) return null;
             var dialog = new Window { Owner = this, Title = "Replacement impact", Width = 640, SizeToContent = SizeToContent.Height, MaxHeight = 760,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = Ui.Res("PanelBg"), Foreground = Ui.Res("Text") };
             var panel = new System.Windows.Controls.StackPanel { Margin = new Thickness(18) };

@@ -24,8 +24,57 @@ AssetNode? Find(string vpath)
 
 switch (args[0])
 {
+    case "nascar-unassigned-decals":
+    {
+        Directory.CreateDirectory(args[2]);
+        foreach (var pack in NascarModelResources.Get(root).Textures.Where(t => t.Node.Key.StartsWith("CARDATA.DAT/") && t.Names.Contains("DECAL") && NascarModelResources.VehicleFor(t.Node) is null))
+        {
+            var file = MmapTexture.Read(pack.Node.ReadAll()); var image = file.Decode(file.Images[0]); var pixels = new byte[128 * 128 * 4];
+            for (int y = 0; y < 128; y++) for (int x = 0; x < 128; x++) image.Bgra.AsSpan(((y * image.Height / 128) * image.Width + x * image.Width / 128) * 4, 4).CopyTo(pixels.AsSpan((y * 128 + x) * 4));
+            File.WriteAllBytes(Path.Combine(args[2], pack.Node.Name + ".png"), PngWriter.Encode(128, 128, pixels));
+            pack.Node.DropCache();
+        }
+        break;
+    }
+    case "nascar-db-table":
+    {
+        var db = TiburonDatabase.Read(Find("NASCAR.DB")!.ReadAll());
+        var table = db.Tables.Single(t => t.Name == args[2]);
+        var rows = Enumerable.Range(0, table.Rows).Select(r => table.Fields.ToDictionary(f => f.Name, f => db.Get(table, r, f)));
+        File.WriteAllText(args[3], System.Text.Json.JsonSerializer.Serialize(rows, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+        break;
+    }
+    case "nascar-db-schema":
+    {
+        var db = TiburonDatabase.Read(Find(args.Length > 2 ? args[2] : "NASCAR.DB")!.ReadAll());
+        foreach (var table in db.Tables)
+        {
+            Console.WriteLine($"{table.Name} ({table.Rows} rows): " + string.Join(" ", table.Fields.Select(f => f.Name)));
+            if (table.Rows > 0) Console.WriteLine("  " + string.Join("; ", table.Fields.Select(f => f.Name + "=" + db.Get(table, 0, f))));
+        }
+        break;
+    }
+    case "nascar-audit":
+        NascarResearch.Audit(root, args[2]);
+        break;
+    case "nascar-textures":
+        NascarResearch.TextureAudit(root, args[2]);
+        break;
+    case "header-audit":
+    {
+        var rows = root.EnumerateDeep().Where(n => n.Extension == ".hdr").Select(n => new { n.Key, Format = n.Format.ToString(), Bytes = Convert.ToHexString(n.ReadAll()) }).ToList();
+        File.WriteAllText(args[2], System.Text.Json.JsonSerializer.Serialize(rows));
+        Console.WriteLine($"{rows.Count} headers audited");
+        break;
+    }
     case "runtime-research":
         RuntimeResearch.Run(root, args[2]);
+        break;
+    case "microtalk-test-mod": // microtalk-test-mod <gameDir> <out.mvpmod> <virtual/folder>...
+        RuntimeResearch.TestMod(root, args[2], args[3..]);
+        break;
+    case "microtalk-budget-study": // microtalk-budget-study <studyDir> <studyDir> <mt-reference.exe>
+        RuntimeResearch.BudgetStudy(args[2], args[3]);
         break;
     case "microtalk-study":
         RuntimeResearch.Study(root, args[2], args[3], args[4], args.Length > 5 && args[5] == "--rev3");
@@ -1127,7 +1176,16 @@ switch (args[0])
         Directory.CreateDirectory(args[3]);
         var data = n.ReadAll();
         File.WriteAllBytes(Path.Combine(args[3], n.Name), data);
-        if (n.Format == FormatId.SshTexture)
+        if (n.Format == FormatId.MmapTexture)
+        {
+            var mmap = MmapTexture.Read(data);
+            foreach (var image in mmap.Images.Where(i => i.Mip == 0))
+            {
+                var pixels = mmap.Decode(image);
+                File.WriteAllBytes(Path.Combine(args[3], $"{image.FileIndex:D3}_{Sanitize(image.Name)}.png"), PngWriter.Encode(pixels.Width, pixels.Height, pixels.Bgra));
+            }
+        }
+        else if (n.Format == FormatId.SshTexture)
         {
             var ssh = SshFile.Read(data);
             foreach (var img in ssh.Images)

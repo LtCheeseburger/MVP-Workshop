@@ -18,6 +18,26 @@ public sealed record ModFileConflict(string Path, InstalledMod Other, bool Remov
 /// <summary>The launcher's mods folder and format-1 mods.json, read without changing its settings or extracting mods.</summary>
 public sealed class InstalledModCatalog
 {
+    public static IReadOnlyList<string> Directories(string gameDirectory, string? executable = null)
+    {
+        var game = Path.TrimEndingDirectorySeparator(Path.GetFullPath(gameDirectory));
+        return new[] { Path.Combine(game, "mods"), Path.Combine(Path.GetDirectoryName(game) ?? game, "mods"),
+            string.IsNullOrWhiteSpace(executable) ? null : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(executable))!, "mods") }
+            .OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    public static InstalledModCatalog ReadForGame(AssetNode root, string? executable = null, CancellationToken cancellation = default)
+    {
+        var combined = new InstalledModCatalog();
+        foreach (var directory in Directories(root.DiskPath!, executable))
+        {
+            var catalog = Read(directory, root, cancellation);
+            combined.Mods.AddRange(catalog.Mods);
+            combined.Problems.AddRange(catalog.Problems);
+        }
+        return combined;
+    }
+
     public List<InstalledMod> Mods { get; } = [];
     public List<string> Problems { get; } = [];
 

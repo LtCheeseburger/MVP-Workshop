@@ -66,6 +66,8 @@ standard/revision-3 MicroTalk experiments with a pinned independent decoder. Set
 measurements and the distinction from production support are documented in
 [RUNTIME_BINDINGS_AND_MICROTALK.md](RUNTIME_BINDINGS_AND_MICROTALK.md). These research experiments
 require game data plus the optional GCC/upstream tools and are not part of no-game CI.
+`microtalk-budget-study` re-encodes the same samples with the per-block budgeted encoder and writes
+`budget-study.json`. Its synthetic budget, framing, determinism and starvation checks run in `tests/AudioReplacement`.
 
 Explorer desktop checks also verify original/current source snapshots, separate read-only documents,
 Added assets without vanilla bytes, and reachable text interchange. Base-mod desktop checks verify

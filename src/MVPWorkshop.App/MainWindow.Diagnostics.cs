@@ -27,7 +27,7 @@ public partial class MainWindow
             var info = DiagnosticModInfo();
             var directory = InstalledModsDirectory();
             var compatibility = ReadPortCompatibility();
-            var rows = await Task.Run(() => ModDiagnostics.Check(snapshot, info, dependencies, token, InstalledModCatalog.Read(directory, snapshot.GameRoot, token)), token);
+            var rows = await Task.Run(() => ModDiagnostics.Check(snapshot, info, dependencies, token, InstalledModCatalog.ReadForGame(snapshot.GameRoot, _settings.GameExePath, token)), token);
             rows.AddRange(CompatibilityDiagnostics(compatibility));
             if (generation == _diagnosticGeneration && !token.IsCancellationRequested) SetDiagnostics(rows);
         }
@@ -98,7 +98,7 @@ public partial class MainWindow
             var dependencies = await GetDependencies();
             var directory = InstalledModsDirectory();
             var compatibility = ReadPortCompatibility();
-            var rows = await Task.Run(() => ModDiagnostics.Check(snapshot, info, dependencies, installed: InstalledModCatalog.Read(directory, snapshot.GameRoot)));
+            var rows = await Task.Run(() => ModDiagnostics.Check(snapshot, info, dependencies, installed: InstalledModCatalog.ReadForGame(snapshot.GameRoot, _settings.GameExePath)));
             rows.AddRange(CompatibilityDiagnostics(compatibility));
             if (generation != _diagnosticGeneration) { SetStatus("Edits changed while validating. Export again to include the current project."); return false; }
             SetDiagnostics(rows);
@@ -115,7 +115,9 @@ public partial class MainWindow
     {
         var executable = string.IsNullOrWhiteSpace(_settings.GameExePath) ? _gameRoot?.DiskPath is { } game ? MvpModExporter.GameExe(game) : null : _settings.GameExePath;
         var parent = executable is not null ? System.IO.Path.GetDirectoryName(executable) : System.IO.Path.GetDirectoryName(_gameRoot?.DiskPath ?? "");
-        return System.IO.Path.Combine(parent ?? "", "mods");
+        var portMods = System.IO.Path.Combine(parent ?? "", "mods");
+        var gameMods = System.IO.Path.Combine(_gameRoot?.DiskPath ?? "", "mods");
+        return !System.IO.Directory.Exists(portMods) && System.IO.Directory.Exists(gameMods) ? gameMods : portMods;
     }
 
     private static IEnumerable<ModDiagnostic> CompatibilityDiagnostics(MVPWorkshop.Core.Install.PortCompatibilityInfo info) =>

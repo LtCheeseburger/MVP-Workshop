@@ -10,7 +10,7 @@ namespace MVPWorkshop.App;
 internal static class CrashReporter
 {
     private static int _reporting;
-    internal static string ReportDirectory { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MVP-Workshop", "crashes");
+    internal static string ReportDirectory { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppInfo.Name, "crashes");
 
     internal static string WriteReport(Exception exception, string origin, string? project, string? autosave, IEnumerable<LogLine> lines)
     {
@@ -28,6 +28,15 @@ internal static class CrashReporter
 
     internal static void Handle(Exception exception, string origin)
     {
+        // Automated snapshots must fail with a diagnostic artifact instead of waiting on a modal dialog.
+        var arguments = Environment.GetCommandLineArgs();
+        int snapshot = Array.IndexOf(arguments, "--snapshot");
+        if (snapshot >= 0 && snapshot + 1 < arguments.Length)
+        {
+            try { File.WriteAllText(arguments[snapshot + 1] + ".error.txt", exception.ToString()); } catch { }
+            Environment.Exit(1);
+            return;
+        }
         if (Interlocked.Exchange(ref _reporting, 1) != 0) return;
         try
         {
@@ -68,7 +77,7 @@ internal static class CrashReporter
     internal static Window CreateDialog(Exception exception, string? path, string? autosave)
     {
         var panel = new StackPanel { Margin = new Thickness(20) };
-        var dialog = new Window { Title = "MVP Workshop crash report", Width = 620, SizeToContent = SizeToContent.Height,
+        var dialog = new Window { Title = AppInfo.Name + " crash report", Width = 620, SizeToContent = SizeToContent.Height,
             Content = panel, WindowStartupLocation = WindowStartupLocation.CenterScreen, Background = Ui.Res("WindowBg"), Foreground = Ui.Res("Text") };
         panel.Children.Add(new TextBlock { Text = "An unexpected error occurred.", FontSize = 18 });
         panel.Children.Add(new TextBlock { Text = exception.Message, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 12, 0, 12) });

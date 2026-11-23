@@ -86,6 +86,14 @@ public sealed class MicroTalkDecoder
 
     public ReadOnlySpan<float> Output => _sub.AsSpan(Samples, FrameSamples);
 
+    /// <summary>Independent copy of the synthesis state (the encoder's closed-loop mirror); the bit reader is not shared.</summary>
+    internal MicroTalkDecoder Clone()
+    {
+        var c = new MicroTalkDecoder(_pcmFrames) { _parsedHeader = _parsedHeader, _reducedBandwidth = _reducedBandwidth, _threshold = _threshold };
+        Array.Copy(_gains, c._gains, 64); Array.Copy(_rc, c._rc, 12); Array.Copy(_history, c._history, 12); Array.Copy(_sub, c._sub, _sub.Length);
+        return c;
+    }
+
     private byte ReadByte() => _pos < _end ? _buf[_pos++] : (byte)0;
 
     private int ReadS16() { var x = ReadByte() << 8 | ReadByte(); return (short)x; }

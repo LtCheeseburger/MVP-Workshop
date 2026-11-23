@@ -52,6 +52,16 @@ public static class UniformPreview
         }
         return Enumerable.Range(1,11).ToDictionary(i=>Entry(0x85CAB8,i),i=>Entry(0x85C998,i));
     }
+    public static List<AssetNode> Sources(AssetNode root) => root.EnumerateDeep(n =>
+        !n.IsLooseTexturePack && n.Name.ToUpperInvariant() is not ("AUDIO" or "STADIUM" or "ANIMS" or "APTANIMS" or "FRONTEND")).ToList();
+
+    public static bool IsPlayerTexture(AssetNode node)
+    {
+        var stem = System.IO.Path.GetFileNameWithoutExtension(node.Name);
+        return node.IsTexturePack && stem.Length == 5 && char.ToLowerInvariant(stem[0]) is 'u' or 'f'
+            && stem.Skip(1).Take(3).All(char.IsAsciiDigit);
+    }
+
     public static List<UniformVariant> Variants(TeamProfile profile) => profile.Assets
         .Where(a => a.Category == "Uniforms/Player textures" && a.Asset.Name.StartsWith('u'))
         .OrderBy(a => a.Asset.Name).Select(a => new UniformVariant(a.Asset.Name[4], a.Asset,

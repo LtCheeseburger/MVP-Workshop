@@ -13,7 +13,7 @@ public partial class MainWindow
 {
     private readonly DispatcherTimer _autosaveTimer = new();
     private readonly HashSet<string> _recoveryMarkers = new(StringComparer.OrdinalIgnoreCase);
-    internal static string AutosaveRoot { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MVP-Workshop", "Autosave");
+    internal static string AutosaveRoot { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppInfo.Name, "Autosave");
 
     private void InitializeProjects()
     {

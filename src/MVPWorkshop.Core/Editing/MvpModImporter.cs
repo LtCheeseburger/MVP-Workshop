@@ -53,6 +53,17 @@ public static class MvpModImporter
         return package;
     }
 
+    /// <summary>Just the mod.json details of a .mvpmod (no payload is read).</summary>
+    public static ModInfo ReadInfo(string path)
+    {
+        using var zip = ZipFile.OpenRead(path);
+        using var stream = (zip.GetEntry("mod.json") ?? throw new InvalidDataException("Missing mod.json.")).Open();
+        using var json = JsonDocument.Parse(stream);
+        var j = json.RootElement;
+        string Text(string key) => j.TryGetProperty(key, out var value) ? value.GetString() ?? "" : "";
+        return new ModInfo { Id = Text("id"), Name = Text("name"), Version = Text("version"), Author = Text("author"), Description = Text("description"), AffectsSaves = j.TryGetProperty("affectsSaves", out var a) && a.GetBoolean() };
+    }
+
     private static IReadOnlyList<string> Paths(JsonElement json, string name) => json.TryGetProperty(name, out var value)
         ? value.EnumerateArray().Select(v => (v.GetString() ?? "").Replace('\\', '/')).ToList() : [];
 
@@ -84,6 +95,14 @@ public static class MvpModImporter
 
     public static string NextVersion(string version)
     {
+        // a pre-release (0.1.0-preview.3) advances its trailing number (0.1.0-preview.4)
+        var dash = version.IndexOf('-');
+        if (dash > 0)
+        {
+            var tag = version[(dash + 1)..]; var digits = tag.Length - tag.Reverse().TakeWhile(char.IsAsciiDigit).Count();
+            NextVersion(version[..dash]);
+            return digits < tag.Length && int.TryParse(tag[digits..], out var n) ? $"{version[..dash]}-{tag[..digits]}{checked(n + 1)}" : $"{version}.1";
+        }
         var parts = version.Split('.');
         if (parts.Length != 3 || !int.TryParse(parts[0], out var major) || !int.TryParse(parts[1], out var minor) || !int.TryParse(parts[2], out var patch) || major < 0 || minor < 0 || patch < 0) throw new InvalidDataException("Invalid mod version.");
         return $"{major}.{minor}.{checked(patch + 1)}";

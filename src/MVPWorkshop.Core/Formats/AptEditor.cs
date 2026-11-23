@@ -31,6 +31,8 @@ public sealed record PlacementChange
     public float? SkewY { get; init; }
     /// <summary>Colour multiplier as the file stores it (0xAABBGGRR order as shown by the viewer).</summary>
     public uint? Tint { get; init; }
+    public uint? Additive { get; init; }
+    public string? Name { get; init; }
     public int? Depth { get; init; }
     public int? Character { get; init; }
     public int? ClipDepth { get; init; }
@@ -44,6 +46,23 @@ public sealed record PlacementChange
 /// </summary>
 public static class AptEditor
 {
+    public static byte[] ButtonRecord(byte[] apt, AptCharacter character, int index, int? flags = null, int? target = null, int? depth = null, Matrix3x2? matrix = null, Vector4? tint = null)
+    {
+        if (character.Type != AptCharacterType.Button || index < 0 || index >= character.ButtonRecords.Count) throw new ArgumentException("Invalid button state record.");
+        int table = checked((int)Bin.U32LE(apt, character.Offset + 48)), at = checked(table + index * 68);
+        if (at < 0 || at > apt.Length - 68) throw new InvalidDataException("Truncated button state record.");
+        var result = apt.ToArray();
+        if (flags is { } f) { if (f < 0 || f > 15) throw new InvalidDataException("Button states use Up=1, Over=2, Down=4, Hit=8."); result[at] = (byte)f; }
+        if (target is { } c) { if (c < 0) throw new InvalidDataException("Character must be nonnegative."); PutU(result, at + 4, (uint)c); }
+        if (depth is { } d) { if (d < 0) throw new InvalidDataException("Depth must be nonnegative."); PutU(result, at + 8, (uint)d); }
+        if (matrix is { } m)
+        {
+            var values = new[] { m.M11, m.M12, m.M21, m.M22, m.M31, m.M32 };
+            for (int i = 0; i < values.Length; i++) PutF(result, at + 12 + i * 4, values[i]);
+        }
+        if (tint is { } color) { PutF(result, at + 36, color.X); PutF(result, at + 40, color.Y); PutF(result, at + 44, color.Z); PutF(result, at + 48, color.W); }
+        return result;
+    }
     public static byte[] EditText(byte[] apt, AptCharacter c, EditTextChange e, out string notes)
     {
         if (c.Type != AptCharacterType.EditText) throw new ArgumentException("Not an EditText character.");
@@ -81,10 +100,12 @@ public static class AptEditor
             flags |= 4;
         }
         if (e.Tint is { } tint) { PutU(d, o + 0x28, tint); if ((flags & 8) == 0) PutU(d, o + 0x2C, 0); flags |= 8; }
+        if (e.Additive is { } additive) { if ((flags & 8) == 0) PutU(d, o + 0x28, uint.MaxValue); PutU(d, o + 0x2C, additive); flags |= 8; }
         if (e.Depth is { } depth) PutU(d, o + 8, (uint)depth);
         if (e.Character is { } ch) { PutU(d, o + 12, (uint)ch); flags |= 2; }
         if (e.ClipDepth is { } clip) { PutU(d, o + 0x38, (uint)clip); flags |= 64; }
         PutU(d, o + 4, flags);
+        if (e.Name is { } name) { d = SetString(d, o + 0x34, name, out _); PutU(d, o + 4, flags | 32); }
         return d;
     }
 
@@ -122,6 +143,7 @@ public static class AptEditor
     /// </summary>
     public static byte[] SetString(byte[] d, int field, string text, out string how)
     {
+        if (text.Contains('\0')) throw new InvalidDataException("UI strings cannot contain a NUL character.");
         var bytes = Encoding.Latin1.GetBytes(text);
         if (Encoding.Latin1.GetString(bytes) != text) throw new InvalidDataException("Only Latin-1 characters can be stored in this file's strings.");
         var payload = bytes.Append((byte)0).ToArray();
@@ -160,5 +182,9 @@ public static class AptEditor
     }
 
     private static void PutU(byte[] d, int o, uint v) => BinaryPrimitives.WriteUInt32LittleEndian(d.AsSpan(o), v);
-    private static void PutF(byte[] d, int o, float v) => BinaryPrimitives.WriteSingleLittleEndian(d.AsSpan(o), v);
+    private static void PutF(byte[] d, int o, float v)
+    {
+        if (!float.IsFinite(v)) throw new InvalidDataException("UI values must be finite numbers.");
+        BinaryPrimitives.WriteSingleLittleEndian(d.AsSpan(o), v);
+    }
 }
